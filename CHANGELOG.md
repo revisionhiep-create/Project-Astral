@@ -2,6 +2,25 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.5.1] - 2026-01-31
+
+### Added
+- **Image Memory System**: Astra now remembers images she's seen
+  - Short-term cache of last 5 images (injected into every response)
+  - Long-term RAG storage for image descriptions
+  - Context persists across searches and messages
+- **Local Vision Fallback**: Llama 3.2 Vision 11B for uncensored descriptions
+  - Gemini 3.0 Flash tries first (fast)
+  - Falls back to local model if Gemini censors or fails
+  - Runs on CPU/RAM to preserve VRAM for Mistral
+
+### Changed
+- **Upgraded Gemini Vision to 3.0 Flash** from 2.0
+- **Brief Natural Reactions**: Astra now gives short reactions to images instead of dumping descriptions
+- **Removed Generic Follow-ups**: No more "what's up with you?" or "got anything planned?"
+
+---
+
 ## [1.5.0] - 2026-01-31
 
 ### Added

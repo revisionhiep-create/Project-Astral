@@ -13,7 +13,7 @@ from memory.rag import (
     format_knowledge_for_context
 )
 from tools.search import search, format_search_results
-from tools.vision import analyze_image, can_see_images
+from tools.vision import analyze_image, can_see_images, get_recent_image_context
 from tools.discord_context import fetch_recent_messages, format_discord_context
 from tools.voice_handler import get_voice_handler
 
@@ -144,6 +144,11 @@ class ChatCog(commands.Cog):
                     
                     if short_term_context:
                         combined_context += f"=== RECENT CHAT (last few minutes - YOU SAW THIS) ===\n{short_term_context}\n\n"
+                    
+                    # Inject cached image descriptions so Astra remembers what she saw
+                    image_context = get_recent_image_context()
+                    if image_context:
+                        combined_context += f"{image_context}\n\n"
                     
                     if search_context:
                         combined_context += f"[Search Results]:\n{search_context}"
