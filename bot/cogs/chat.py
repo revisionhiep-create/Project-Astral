@@ -159,6 +159,7 @@ class ChatCog(commands.Cog):
                     user_message=content,
                     gemgem_response=response,
                     user_id=str(message.author.id),
+                    username=message.author.display_name,
                     channel_id=str(message.channel.id),
                     guild_id=str(message.guild.id) if message.guild else None
                 )

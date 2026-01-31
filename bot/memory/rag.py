@@ -45,6 +45,7 @@ def _init_db():
         CREATE TABLE IF NOT EXISTS conversations (
             id TEXT PRIMARY KEY,
             user_id TEXT,
+            username TEXT,
             channel_id TEXT,
             guild_id TEXT,
             user_message TEXT NOT NULL,
@@ -53,6 +54,12 @@ def _init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # Add username column if it doesn't exist (for existing databases)
+    try:
+        cursor.execute("ALTER TABLE conversations ADD COLUMN username TEXT")
+    except:
+        pass  # Column already exists
     
     # Search results table - stores FULL search results for knowledge building
     cursor.execute("""
@@ -139,6 +146,7 @@ async def store_conversation(
     user_message: str,
     gemgem_response: str,
     user_id: str = None,
+    username: str = None,
     channel_id: str = None,
     guild_id: str = None
 ) -> Optional[str]:
@@ -149,14 +157,16 @@ async def store_conversation(
         user_message: What the user said
         gemgem_response: What GemGem replied
         user_id: Discord user ID
+        username: Discord display name (for human-readable memory)
         channel_id: Discord channel ID
         guild_id: Discord server ID
     
     Returns:
         Conversation ID if successful
     """
-    # Create combined content for embedding
-    combined = f"User: {user_message}\nGemGem: {gemgem_response}"
+    # Create combined content for embedding - include username for better recall
+    name = username or "User"
+    combined = f"{name}: {user_message}\nAstra: {gemgem_response}"
     embedding = await get_embedding(combined)
     
     conv_id = f"conv_{hashlib.md5(combined.encode()).hexdigest()[:12]}_{int(datetime.now().timestamp())}"
@@ -167,13 +177,13 @@ async def store_conversation(
     try:
         cursor.execute(
             """INSERT INTO conversations 
-               (id, user_id, channel_id, guild_id, user_message, gemgem_response, embedding) 
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (conv_id, user_id, channel_id, guild_id, user_message, gemgem_response, 
+               (id, user_id, username, channel_id, guild_id, user_message, gemgem_response, embedding) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (conv_id, user_id, username, channel_id, guild_id, user_message, gemgem_response, 
              json.dumps(embedding) if embedding else None)
         )
         conn.commit()
-        print(f"[RAG] Stored conversation ({len(user_message)} + {len(gemgem_response)} chars)")
+        print(f"[RAG] Stored conversation from {username} ({len(user_message)} + {len(gemgem_response)} chars)")
         return conv_id
     except Exception as e:
         print(f"[RAG Conversation Error] {e}")
@@ -411,15 +421,16 @@ async def retrieve_relevant_knowledge(
                     })
         
         # Search conversations
-        cursor.execute("SELECT id, user_message, gemgem_response, embedding FROM conversations")
+        cursor.execute("SELECT id, user_message, gemgem_response, embedding, username FROM conversations")
         for row in cursor.fetchall():
             if row[3]:
                 stored_embedding = json.loads(row[3])
                 similarity = _cosine_similarity(query_embedding, stored_embedding)
                 if similarity >= threshold:
+                    username = row[4] or "Someone"
                     results.append({
                         "id": row[0],
-                        "content": f"Previous chat - User: {row[1][:200]} | GemGem: {row[2][:200]}",
+                        "content": f"Previous chat - {username}: {row[1][:200]} | Astra: {row[2][:200]}",
                         "type": "conversation",
                         "source": "conversations",
                         "score": similarity

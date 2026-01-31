@@ -2,6 +2,25 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.4.0] - 2026-01-31
+
+### Added
+- **Username Memory**: Astra now remembers who said what by name, not just user ID
+  - Stores display names with each conversation
+  - Retrieval shows: "Previous chat - Hiep: ... | Astra: ..."
+- **ARCHITECTURE.md**: Documentation of the conversation flow and system design
+
+### Fixed
+- **RAG Database Persistence**: Fixed volume mount path so memories persist across restarts
+  - Database now stored at `./db/memory.db` (mounted to `/app/data/db`)
+
+### Changed
+- `memory/rag.py`: Added username column to conversations table, updated storage and retrieval
+- `cogs/chat.py`: Now passes username to store_conversation
+- `docker-compose.yml`: Fixed volume mount for RAG database
+
+---
+
 ## [1.3.0] - 2026-01-31
 
 ### Added

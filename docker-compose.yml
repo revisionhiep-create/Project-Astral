@@ -9,7 +9,7 @@ services:
       - OLLAMA_HOST=http://host.docker.internal:11434
       - OLLAMA_MODEL=mistral-small-24b
       - SEARXNG_HOST=http://searxng:8080
-      - RAG_DATABASE=/app/db/memory.db
+      - RAG_DATABASE=/app/data/db/memory.db
       - CHARACTERS_FILE=/app/data/characters.json
       - ASSETS_DIR=/app/data/assets
       - KOKORO_TTS_URL=http://host.docker.internal:8000
@@ -18,7 +18,7 @@ services:
       searxng:
         condition: service_started
     volumes:
-      - ./data:/app/db # Persist RAG database (separate from character assets)
+      - ./db:/app/data/db # Persist RAG database
     restart: unless-stopped
     networks:
       - gemgem-network
