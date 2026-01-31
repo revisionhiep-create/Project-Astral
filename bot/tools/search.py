@@ -21,7 +21,8 @@ async def search(query: str, num_results: int = 5) -> list[dict]:
     params = {
         "q": query,
         "format": "json",
-        "language": "en-US"
+        "language": "en-US",
+        "time_range": "year"  # Prefer recent results over legacy data
     }
     
     try:

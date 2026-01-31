@@ -6,6 +6,9 @@ import discord
 # General chat channel for short-term context
 GENERAL_CHANNEL_ID = 1466420202563703088
 
+# Known bot IDs for proper labeling
+GEMGEM_BOT_ID = 1458550716225425560
+
 
 async def fetch_recent_messages(
     bot: discord.Client, 
@@ -33,10 +36,17 @@ async def fetch_recent_messages(
     messages = []
     try:
         async for msg in channel.history(limit=limit):
-            # Include bot messages so GemGem can see her own previous responses
+            # Determine author name
             author_name = msg.author.display_name
+            
             if msg.author.bot:
-                author_name = "Astra"  # Label bot messages as Astra
+                # Distinguish between known bots
+                if msg.author.id == GEMGEM_BOT_ID:
+                    author_name = "GemGem"  # Label GemGem's messages
+                elif msg.author.id == bot.user.id:
+                    author_name = "Astra"  # Label our own messages as Astra
+                else:
+                    author_name = msg.author.display_name  # Other bots keep their name
                 
             messages.append({
                 "author": author_name,

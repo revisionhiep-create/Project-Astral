@@ -171,13 +171,13 @@ class ChatCog(commands.Cog):
                 
                 # ============ END LOGIC AI FLOW ============
                 
-                # Send response (split if too long)
+                # Send response (split if too long) - use channel.send so other bots can see
                 if len(response) > 2000:
                     chunks = [response[i:i+2000] for i in range(0, len(response), 2000)]
                     for chunk in chunks:
-                        await message.reply(chunk, mention_author=False)
+                        await message.channel.send(chunk)
                 else:
-                    await message.reply(response, mention_author=False)
+                    await message.channel.send(response)
                 
                 # Speak response if in voice channel
                 if message.guild and message.guild.voice_client:
@@ -191,7 +191,7 @@ class ChatCog(commands.Cog):
                 print(f"[Chat Error] {e}")
                 import traceback
                 traceback.print_exc()
-                await message.reply("uh something broke lol, try again?", mention_author=False)
+                await message.channel.send("uh something broke lol, try again?")
 
 
 async def setup(bot: commands.Bot):

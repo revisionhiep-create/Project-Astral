@@ -2,6 +2,24 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.4.7] - 2026-01-31
+
+### Changed
+- **Vision Routes Through Astra's Brain**: Images now use two-step flow
+  - Gemini describes what it sees objectively
+  - Astra (Mistral) comments in her own voice via router
+  - She can now "grow" from image knowledge (stored in RAG)
+- **GemGem Visibility**: Astra can now see GemGem's messages in chat history
+  - Added `GEMGEM_BOT_ID` for proper labeling
+  - Messages labeled as "GemGem" instead of generic "Astra"
+- **No More Replies**: Messages sent via `channel.send()` instead of `reply()`
+  - Other bots can now see Astra's messages in history
+- **Search Prefers Recent Results**: Added `time_range: year` filter
+  - Prevents pulling outdated 2022 meta guides
+  - Fixes Argent Knight Rita style legacy data issues
+
+---
+
 ## [1.4.5] - 2026-01-31
 
 ### Fixed
