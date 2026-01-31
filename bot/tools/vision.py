@@ -1,8 +1,11 @@
-"""Gemini Vision Integration - Image analysis with GemGem personality and character recognition."""
+"""Gemini Vision Integration - Image analysis with Astra personality and character recognition."""
 import os
 import aiohttp
 import google.generativeai as genai
 from io import BytesIO
+
+# Import centralized personality
+from ai.personality import ASTRA_PROMPT
 
 # Import character system for recognition
 try:
@@ -22,7 +25,7 @@ VISION_MODEL = "gemini-2.0-flash"
 
 async def analyze_image(image_url: str, user_prompt: str = "", conversation_context: str = "", username: str = "") -> str:
     """
-    Analyze an image using Gemini Vision and return GemGem-styled commentary.
+    Analyze an image using Gemini Vision and return Astra-styled commentary.
     Now includes character recognition for known friends/avatars.
     
     Args:
@@ -32,7 +35,7 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
         username: Name of the person who sent the image
     
     Returns:
-        GemGem's response about the image
+        Astra's response about the image
     """
     if not GEMINI_API_KEY:
         return "can't see images rn, my vision is broken lol"
@@ -46,12 +49,10 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
                 
                 image_data = await resp.read()
         
-        # Build the vision prompt with context
-        vision_prompt = """You are GemGem - a casual, witty friend looking at an image. 
-DO NOT act like an AI assistant. Be casual and opinionated.
-Respond naturally like you're in a group chat with friends.
-Keep it brief (1-3 sentences unless the image needs more explanation).
-Speak like a charming adult, not a teenager. Use slang sparingly.
+        # Build the vision prompt using centralized personality
+        vision_prompt = f"""{ASTRA_PROMPT}
+
+You're looking at an image someone shared. Keep it brief (1-3 sentences unless the image needs more explanation).
 """
         
         # Add character recognition context

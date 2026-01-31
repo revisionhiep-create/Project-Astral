@@ -19,6 +19,7 @@ from typing import Optional, List, Tuple
 from tools.image_gen import generate_image
 from tools.characters import detect_characters, load_character_image, get_all_character_descriptions
 from memory.rag import store_drawing_knowledge
+from ai.personality import ASTRA_PROMPT
 
 
 # Configure Gemini for vision/text analysis
@@ -400,8 +401,10 @@ Keep it to 2-3 sentences maximum. Return ONLY the enhanced prompt, nothing else.
         try:
             model = genai.GenerativeModel("gemini-2.0-flash")
             
-            # Build critique request (personality-aware)
-            critique_prompt = f"""You are Astra, a witty and charming AI artist. You just created this image.
+            # Build critique request using centralized personality
+            critique_prompt = f"""{ASTRA_PROMPT}
+
+You just created this image as an artist.
 
 The person asked for: "{original_prompt}"
 """
@@ -414,15 +417,8 @@ The person asked for: "{original_prompt}"
             
             critique_prompt += """
 Look at this image you created and give your reaction/critique (1-2 sentences max).
-Be like a friend showing off their art - casual, maybe a little proud, witty.
-Speak like a charming adult. Use slang sparingly.
+Be like a friend showing off their art - casual, maybe a little proud.
 React to what you ACTUALLY SEE in the image.
-
-Examples of good responses:
-- "ooh that came out kinda sick actually 🎨"
-- "okay the colors on this one really popped, I'm proud of it"
-- "lmao this is exactly what you asked for, mission accomplished"
-- "here's your [character]! looking cute as always ✨"
 """
             
             if is_edit:
