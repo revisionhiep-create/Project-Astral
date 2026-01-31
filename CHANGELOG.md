@@ -2,6 +2,22 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.5.0] - 2026-01-31
+
+### Added
+- **Dynamic Persona System**: Astra's personality now evolves based on conversations
+  - Three-layer tracking: Vibe (mood/obsessions), Bond (trust/jokes), Story (events)
+  - Gemini Flash analyzes every 10 messages in background
+  - Updates `persona_state.json` with evolved relationships
+  - Persona context injected into system prompt automatically
+  - Tracks: group mood, intimacy level, inside jokes, shared vocabulary, user preferences
+
+### New Files
+- `bot/ai/persona_manager.py` - Core persona evolution logic
+- `bot/data/persona_state.json` - Persistent persona state
+
+---
+
 ## [1.4.7] - 2026-01-31
 
 ### Changed

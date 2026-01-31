@@ -1,0 +1,24 @@
+{
+    "group_vibe": {
+        "current_mood": "chill",
+        "energy_level": "relaxed",
+        "current_obsession": null,
+        "last_updated": "2026-01-31T11:00:00"
+    },
+    "relationships": {
+        "stage": "friends",
+        "intimacy_level": 60,
+        "shared_vocabulary": [],
+        "inside_jokes": [],
+        "trust_level": 60
+    },
+    "memory_bank": {
+        "short_term_events": [],
+        "long_term_facts": [
+            "This is the Astral Labs Discord server",
+            "Hiep is the developer"
+        ],
+        "user_preferences": {}
+    },
+    "update_count": 0
+}

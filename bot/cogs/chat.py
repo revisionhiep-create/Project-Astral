@@ -5,6 +5,7 @@ from discord import app_commands
 from typing import Optional
 
 from ai.router import process_message, decide_tools_and_query
+from ai.persona_manager import should_update, analyze_and_update
 from memory.rag import (
     retrieve_relevant_knowledge, 
     store_conversation,
@@ -168,6 +169,13 @@ class ChatCog(commands.Cog):
                     channel_id=str(message.channel.id),
                     guild_id=str(message.guild.id) if message.guild else None
                 )
+                
+                # Step 7: Check if we should update persona (every 10 messages)
+                if should_update():
+                    # Run in background - don't block the response
+                    import asyncio
+                    asyncio.create_task(analyze_and_update(discord_messages))
+                    print("[Persona] Triggered background persona update")
                 
                 # ============ END LOGIC AI FLOW ============
                 

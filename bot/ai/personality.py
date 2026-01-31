@@ -88,8 +88,15 @@ GEMGEM_EXAMPLES = ASTRA_EXAMPLES
 
 
 def build_system_prompt(search_context: str = "", memory_context: str = "") -> str:
-    """Build system prompt with optional context."""
+    """Build system prompt with optional context and dynamic persona."""
+    from ai.persona_manager import get_persona_context
+    
     prompt_parts = [ASTRA_PROMPT]
+    
+    # Inject dynamic persona (evolved relationships, inside jokes, current vibe)
+    persona_context = get_persona_context()
+    if persona_context:
+        prompt_parts.append(f"\n[YOUR CURRENT STATE - how you feel about this group right now]\n{persona_context}")
     
     if search_context:
         prompt_parts.append(f"\n[Context available to you - chat history you saw, search results, etc.]\n{search_context}")
