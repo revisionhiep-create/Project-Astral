@@ -1,0 +1,44 @@
+services:
+  # GemGem Discord Bot
+  gemgem-bot:
+    build: ./bot
+    container_name: gemgem-bot
+    env_file: .env
+    environment:
+      # Use host Ollama (models already downloaded locally)
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_MODEL=mistral-small-24b
+      - SEARXNG_HOST=http://searxng:8080
+      - RAG_DATABASE=/app/db/memory.db
+      - CHARACTERS_FILE=/app/data/characters.json
+      - ASSETS_DIR=/app/data/assets
+      - PYTHONUNBUFFERED=1 # Enable real-time logging
+    depends_on:
+      searxng:
+        condition: service_started
+    volumes:
+      - ./data:/app/db # Persist RAG database (separate from character assets)
+    restart: unless-stopped
+    networks:
+      - gemgem-network
+    # Allow access to host network on Windows Docker
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # SearXNG - Free Unlimited Search
+  searxng:
+    image: searxng/searxng:latest
+    container_name: gemgem-searxng
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080
+    restart: unless-stopped
+    networks:
+      - gemgem-network
+
+networks:
+  gemgem-network:
+    driver: bridge

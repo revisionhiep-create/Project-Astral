@@ -1,0 +1,52 @@
+{
+  "characters": {
+    "astra": {
+      "file": "astra_reference.jpg",
+      "keywords": [
+        "yourself",
+        "astra",
+        "self portrait",
+        "draw yourself"
+      ],
+      "description": "anime girl with long flowing dark blue-black cosmic galaxy hair with teal/cyan highlights, sparkling stars scattered throughout hair, purple-violet galaxy eyes with gradient coloring, warm friendly smile, wearing dark blue blazer with gold star trim and accents, white blouse underneath, gold star pendant necklace, soft rosy cheeks, bangs framing face, cosmic starfield background aesthetic"
+    },
+    "gemgem": {
+      "file": "gemgem_reference.jpg",
+      "keywords": [
+        "gemgem",
+        "gem gem",
+        "geminibot",
+        "the other bot"
+      ],
+      "description": "cute anime girl with long blue cosmic galaxy hair adorned with stars and planets, rainbow galaxy eyes with a pink/blue/yellow gradient, colorful gem accessories in hair, cute chibi style, cosmic space aesthetic, whimsical but with a sharp edge"
+    },
+    "liddo": {
+      "file": "liddo.x.jpg",
+      "keywords": [
+        "liddo"
+      ],
+      "description": "male chibi character with brown hair, wearing a red bunny-themed hood with tall mechanical-style ears and beige accents, steampunk goggles with red lenses resting on forehead, red jumpsuit with a white belly patch and white fluffy collar, large solid white eyes without pupils, wide open mouth happy expression, simple red feet, flat vector anime style"
+    },
+    "tei": {
+      "file": "melon_tei.jpg",
+      "keywords": [
+        "tei"
+      ],
+      "description": "male cute kawaii cactus character planted in a brown terracotta pot with a red diamond pattern, green body with small spikes, large red five-petaled flower on top of head, large sparkling green anime eyes, small happy mouth, clean vector art style"
+    },
+    "hiep": {
+      "file": "revisionhiep.jpg",
+      "keywords": [
+        "hiep"
+      ],
+      "description": "male chibi anime character with long lavender hair adorned with purple floating diamond crystals, distinct black spiral 'dizzy' eyes, happy open mouth smile, wearing a purple and white dress with gem accents, floating purple diamond shapes around the character, thick white sticker outline, soft shading"
+    },
+    "jason": {
+      "file": "Jason.jpg",
+      "keywords": [
+        "jason"
+      ],
+      "description": "green and white mech/robot character with pink flame effects emerging from wings and back, skull emblem on chest, armored plating with hexagonal pattern texture, black mechanical joints and parts, white accent trim, wing-like appendages on shoulders, pink ethereal flame aura, dynamic action pose with arms spread wide, anime mecha style"
+    }
+  }
+}

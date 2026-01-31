@@ -1,0 +1,24 @@
+# Discord Bot
+discord.py>=2.3.0
+
+# HTTP Requests
+aiohttp>=3.9.0
+httpx>=0.26.0
+
+# Ollama Client
+ollama>=0.4.0
+
+# Google AI (Vision + Embeddings)
+google-generativeai>=0.8.0
+
+# Vector Store
+numpy>=1.26.0
+
+# Image Processing
+Pillow>=10.0.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Timezone
+pytz>=2024.1

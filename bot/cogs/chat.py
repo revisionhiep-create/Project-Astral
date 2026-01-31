@@ -1,0 +1,161 @@
+"""GemGem Discord Bot - Chat Handler Cog (Logic AI Architecture)"""
+import discord
+from discord.ext import commands
+from discord import app_commands
+from typing import Optional
+
+from ai.router import process_message, decide_tools_and_query
+from memory.rag import (
+    retrieve_relevant_knowledge, 
+    store_conversation,
+    store_image_knowledge,
+    format_knowledge_for_context
+)
+from tools.search import search, format_search_results
+from tools.vision import analyze_image, can_see_images
+from tools.discord_context import fetch_recent_messages, format_discord_context
+
+
+class ChatCog(commands.Cog):
+    """Handles all chat interactions with GemGem."""
+    
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+    
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        """Handle incoming messages with Logic AI routing."""
+        # Ignore own messages and bots
+        if message.author.bot:
+            return
+        
+        # Check if bot is mentioned or in DM
+        is_mentioned = self.bot.user in message.mentions
+        is_dm = isinstance(message.channel, discord.DMChannel)
+        
+        if not (is_mentioned or is_dm):
+            return
+        
+        # Clean the message (remove bot mention)
+        content = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
+        if not content and not message.attachments:
+            return
+        
+        # Skip if it looks like a draw request (let draw cog handle it)
+        content_lower = content.lower()
+        draw_keywords = ['draw ', 'gdraw ', 'sketch ', 'paint ', 'create an image', 'create a picture', 'guided draw']
+        if any(content_lower.startswith(kw) or f' {kw}' in content_lower for kw in draw_keywords):
+            return  # Draw cog will handle this
+        
+        async with message.channel.typing():
+            try:
+                # Check for image attachments
+                image_url = None
+                for attachment in message.attachments:
+                    if attachment.content_type and attachment.content_type.startswith("image/"):
+                        image_url = attachment.url
+                        break
+                
+                # ============ NEW LOGIC AI FLOW ============
+                
+                # Step 1: Fetch short-term context from Discord (last 50 msgs)
+                discord_messages = await fetch_recent_messages(self.bot, limit=50)
+                short_term_context = format_discord_context(discord_messages)
+                
+                # Step 2: Query long-term memory (RAG - conversations only)
+                long_term_knowledge = await retrieve_relevant_knowledge(content, limit=5)
+                memory_context = format_knowledge_for_context(long_term_knowledge)
+                
+                # Step 3: Ask Logic AI what tools are needed
+                tool_decision = await decide_tools_and_query(
+                    user_message=content,
+                    has_image=bool(image_url),
+                    conversation_context=short_term_context
+                )
+                
+                # Step 4: Execute tools based on Logic AI decision
+                search_context = ""
+                vision_response = None
+                
+                # Search if Logic AI decided
+                if tool_decision.get("search"):
+                    search_query = tool_decision.get("search_query") or content
+                    print(f"[Chat] Logic AI triggered search: '{search_query}'")
+                    search_results = await search(search_query, num_results=5)
+                    search_context = format_search_results(search_results)
+                    print(f"[Chat] Got {len(search_results)} results")
+                    # NOTE: No RAG storage for searches anymore!
+                
+                # Vision if image is attached (always analyze images)
+                if image_url:
+                    print(f"[Chat] Vision triggered (image attached from {message.author.display_name})")
+                    vision_response = await analyze_image(
+                        image_url, 
+                        content if content else "",
+                        conversation_context=short_term_context,
+                        username=message.author.display_name
+                    )
+                    
+                    # Store image knowledge for learning
+                    await store_image_knowledge(
+                        gemini_description=vision_response,
+                        image_url=image_url,
+                        user_context=content if content else None,
+                        gemgem_response=vision_response,
+                        user_id=str(message.author.id)
+                    )
+                
+                # Step 5: Generate response
+                if vision_response:
+                    # Image was analyzed - use Gemini's vision response directly
+                    # (Gemini already has GemGem personality for image analysis)
+                    response = vision_response
+                else:
+                    # Regular chat with optional search/vision context
+                    # Combine: search results + Discord short-term context
+                    combined_context = ""
+                    
+                    # Tell the model WHO is currently speaking
+                    combined_context += f"[Current Speaker]: {message.author.display_name}\n\n"
+                    
+                    if short_term_context:
+                        combined_context += f"[Recent Chat History]:\n{short_term_context}\n\n"
+                    
+                    if search_context:
+                        combined_context += f"[Search Results]:\n{search_context}"
+                    
+                    response = await process_message(
+                        user_message=content,
+                        search_context=combined_context,  # Now includes Discord context + speaker!
+                        conversation_history=None,
+                        memory_context=memory_context
+                    )
+                
+                # Step 6: Store conversation to RAG (long-term memory)
+                await store_conversation(
+                    user_message=content,
+                    gemgem_response=response,
+                    user_id=str(message.author.id),
+                    channel_id=str(message.channel.id),
+                    guild_id=str(message.guild.id) if message.guild else None
+                )
+                
+                # ============ END LOGIC AI FLOW ============
+                
+                # Send response (split if too long)
+                if len(response) > 2000:
+                    chunks = [response[i:i+2000] for i in range(0, len(response), 2000)]
+                    for chunk in chunks:
+                        await message.reply(chunk, mention_author=False)
+                else:
+                    await message.reply(response, mention_author=False)
+                    
+            except Exception as e:
+                print(f"[Chat Error] {e}")
+                import traceback
+                traceback.print_exc()
+                await message.reply("uh something broke lol, try again?", mention_author=False)
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(ChatCog(bot))
