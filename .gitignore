@@ -21,6 +21,7 @@ venv/
 
 # Data (keep structure but ignore content)
 data/*.db
+db/*.db
 
 # OS
 .DS_Store
