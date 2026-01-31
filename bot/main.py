@@ -49,7 +49,7 @@ async def on_guild_join(guild: discord.Guild):
 
 async def load_cogs():
     """Load all cogs."""
-    cog_files = ["cogs.chat", "cogs.commands", "cogs.draw"]
+    cog_files = ["cogs.chat", "cogs.commands", "cogs.draw", "cogs.voice"]
     
     for cog in cog_files:
         try:
