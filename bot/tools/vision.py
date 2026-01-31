@@ -53,6 +53,7 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
         vision_prompt = f"""{ASTRA_PROMPT}
 
 You're looking at an image someone shared. Keep it brief (1-3 sentences unless the image needs more explanation).
+IMPORTANT: Describe what you ACTUALLY see - exact colors, details, poses. Don't make up or guess colors.
 """
         
         # Add character recognition context
@@ -79,14 +80,14 @@ If you recognize any of these characters in the image, mention them naturally by
         # Create vision model
         model = genai.GenerativeModel(VISION_MODEL)
         
-        # Generate response
+        # Generate response - lower temp for accuracy
         response = model.generate_content(
             [
                 {"mime_type": "image/jpeg", "data": image_data},
                 vision_prompt
             ],
             generation_config={
-                "temperature": 0.85,
+                "temperature": 0.6,  # Lower for more accurate descriptions
                 "max_output_tokens": 500
             }
         )

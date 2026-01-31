@@ -4,7 +4,7 @@ import json
 import ollama
 from typing import Optional
 
-from ai.personality import build_system_prompt
+from ai.personality import build_system_prompt, get_all_examples
 from tools.time_utils import get_date_context
 
 
@@ -114,6 +114,15 @@ async def generate_response(
     
     # Build messages
     messages = [{"role": "system", "content": system_prompt}]
+    
+    # Add few-shot examples to reinforce character (3 random examples)
+    import random
+    examples = get_all_examples()
+    if examples:
+        sample = random.sample(examples, min(3, len(examples)))
+        for ex in sample:
+            messages.append({"role": "user", "content": ex["user"]})
+            messages.append({"role": "assistant", "content": ex["astra"]})
     
     # Add conversation history (last 10 messages for context)
     if conversation_history:

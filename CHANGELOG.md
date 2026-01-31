@@ -2,6 +2,30 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.3.0] - 2026-01-31
+
+### Added
+- **Expanded Personality**: Full character profile with backstory, interests, and emotional intelligence
+  - 22-year-old night owl with dry humor
+  - Interests: tech, anime, VTubers, games, space
+  - Emotional intelligence guidelines for genuine responses
+- **Few-shot Example Injection**: 3 random conversation examples injected per response for better character consistency
+- **Timestamps in Chat History**: Astra can now see when messages were sent (e.g., "[05:35 AM] [Hiep]: message")
+- **Time Awareness**: Now shows current time with timezone, not just date
+
+### Fixed
+- **Vision Accuracy**: Lowered temperature from 0.85 to 0.6, added instruction to describe actual colors
+- **Assistant-speak Prevention**: Added explicit ban list ("I'm here to help", "What can I do for you?", etc.)
+
+### Changed
+- `personality.py`: Expanded from 40 to 90 lines with full character definition
+- `time_utils.py`: Now includes time with timezone (PST)  
+- `discord_context.py`: Formats messages with timestamps
+- `vision.py`: More accurate image descriptions
+- `router.py`: Injects few-shot examples as conversation history
+
+---
+
 ## [1.2.0] - 2026-01-31
 
 ### Added

@@ -68,9 +68,12 @@ class ChatCog(commands.Cog):
                         # Only label THIS bot as "Astra" - other bots (like GemGem) keep their names
                         if msg.author.id == self.bot.user.id:
                             author_name = "Astra"
+                        # Format timestamp as relative or simple time
+                        timestamp = msg.created_at.strftime("%I:%M %p")
                         discord_messages.append({
                             "author": author_name,
-                            "content": msg.content[:500]
+                            "content": msg.content[:500],
+                            "time": timestamp
                         })
                     discord_messages.reverse()  # Chronological order
                 except Exception as e:

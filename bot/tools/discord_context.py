@@ -76,8 +76,12 @@ def format_discord_context(messages: list[dict], max_messages: int = 25) -> str:
     
     lines = []
     for msg in recent:
-        # Format: [Username]: message content
-        lines.append(f"[{msg['author']}]: {msg['content']}")
+        # Format: [Time] [Username]: message content
+        time = msg.get('time', '')
+        if time:
+            lines.append(f"[{time}] [{msg['author']}]: {msg['content']}")
+        else:
+            lines.append(f"[{msg['author']}]: {msg['content']}")
     
     return "\n".join(lines)
 
