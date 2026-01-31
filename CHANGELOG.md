@@ -15,6 +15,7 @@ All notable changes to Project Astral will be documented in this file.
 
 ### Fixed
 - **Vision Accuracy**: Lowered temperature from 0.85 to 0.6, added instruction to describe actual colors
+  - Applied to both chat vision and drawing critiques (draw/gdraw/edit)
 - **Assistant-speak Prevention**: Added explicit ban list ("I'm here to help", "What can I do for you?", etc.)
 
 ### Changed

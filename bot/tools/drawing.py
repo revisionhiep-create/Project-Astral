@@ -418,18 +418,22 @@ The person asked for: "{original_prompt}"
             critique_prompt += """
 Look at this image you created and give your reaction/critique (1-2 sentences max).
 Be like a friend showing off their art - casual, maybe a little proud.
-React to what you ACTUALLY SEE in the image.
+React to what you ACTUALLY SEE in the image - describe real colors and details, don't make them up.
 """
             
             if is_edit:
                 critique_prompt += "\nThis was an edit of an existing image - comment on the changes.\n"
             
-            # Load image and send to vision
+            # Load image and send to vision with lower temp for accuracy
             response = await model.generate_content_async(
                 [
                     {"mime_type": "image/png", "data": image_data},
                     critique_prompt
-                ]
+                ],
+                generation_config={
+                    "temperature": 0.6,  # Lower for accurate descriptions
+                    "max_output_tokens": 300
+                }
             )
             
             critique = response.text.strip()
