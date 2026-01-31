@@ -58,9 +58,28 @@ class ChatCog(commands.Cog):
                 
                 # ============ NEW LOGIC AI FLOW ============
                 
-                # Step 1: Fetch short-term context from Discord (last 50 msgs)
-                discord_messages = await fetch_recent_messages(self.bot, limit=50)
+                # Step 1: Fetch short-term context from Discord (last 50 msgs from THIS channel)
+                # Use message.channel.history() directly (same as GemGem) for reliability
+                discord_messages = []
+                try:
+                    async for msg in message.channel.history(limit=50):
+                        author_name = msg.author.display_name
+                        # Only label THIS bot as "Astra" - other bots (like GemGem) keep their names
+                        if msg.author.id == self.bot.user.id:
+                            author_name = "Astra"
+                        discord_messages.append({
+                            "author": author_name,
+                            "content": msg.content[:500]
+                        })
+                    discord_messages.reverse()  # Chronological order
+                except Exception as e:
+                    print(f"[Chat] Failed to fetch channel history: {e}")
+                
                 short_term_context = format_discord_context(discord_messages)
+                print(f"[Chat] Discord context: {len(discord_messages)} msgs, {len(short_term_context)} chars")
+                # Debug: show first 5 authors
+                authors = [m.get('author', '?') for m in discord_messages[:10]]
+                print(f"[Chat] Sample authors: {authors}")
                 
                 # Step 2: Query long-term memory (RAG - conversations only)
                 long_term_knowledge = await retrieve_relevant_knowledge(content, limit=5)
@@ -119,7 +138,7 @@ class ChatCog(commands.Cog):
                     combined_context += f"[Current Speaker]: {message.author.display_name}\n\n"
                     
                     if short_term_context:
-                        combined_context += f"[Recent Chat History]:\n{short_term_context}\n\n"
+                        combined_context += f"=== MESSAGES YOU SAW IN THIS CHANNEL (You were there!) ===\\n{short_term_context}\\n\\n"
                     
                     if search_context:
                         combined_context += f"[Search Results]:\n{search_context}"
