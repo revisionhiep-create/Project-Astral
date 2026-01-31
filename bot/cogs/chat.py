@@ -14,6 +14,7 @@ from memory.rag import (
 from tools.search import search, format_search_results
 from tools.vision import analyze_image, can_see_images
 from tools.discord_context import fetch_recent_messages, format_discord_context
+from tools.voice_handler import get_voice_handler
 
 
 class ChatCog(commands.Cog):
@@ -62,7 +63,7 @@ class ChatCog(commands.Cog):
                 # Use message.channel.history() directly (same as GemGem) for reliability
                 discord_messages = []
                 try:
-                    async for msg in message.channel.history(limit=50):
+                    async for msg in message.channel.history(limit=100):
                         author_name = msg.author.display_name
                         # Only label THIS bot as "Astra" - other bots (like GemGem) keep their names
                         if msg.author.id == self.bot.user.id:
@@ -168,6 +169,14 @@ class ChatCog(commands.Cog):
                         await message.reply(chunk, mention_author=False)
                 else:
                     await message.reply(response, mention_author=False)
+                
+                # Speak response if in voice channel
+                if message.guild and message.guild.voice_client:
+                    try:
+                        voice_handler = get_voice_handler(self.bot)
+                        await voice_handler.speak_text(message.guild, response)
+                    except Exception as ve:
+                        print(f"[Voice] TTS error: {ve}")
                     
             except Exception as e:
                 print(f"[Chat Error] {e}")

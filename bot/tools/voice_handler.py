@@ -83,7 +83,7 @@ class VoiceHandler:
                 payload = {
                     "text": text,
                     "voice": self.default_voice,
-                    "speed": 1.0,
+                    "speed": 1.2,
                     "lang": "en-us"
                 }
                 async with session.post(
