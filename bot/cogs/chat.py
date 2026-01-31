@@ -142,16 +142,21 @@ class ChatCog(commands.Cog):
                     combined_context += f"[Current Speaker]: {message.author.display_name}\n\n"
                     
                     if short_term_context:
-                        combined_context += f"=== MESSAGES YOU SAW IN THIS CHANNEL (You were there!) ===\\n{short_term_context}\\n\\n"
+                        combined_context += f"=== RECENT CHAT (last few minutes - YOU SAW THIS) ===\n{short_term_context}\n\n"
                     
                     if search_context:
                         combined_context += f"[Search Results]:\n{search_context}"
                     
+                    # RAG memory is separate - only use for things NOT in recent chat
+                    rag_context = ""
+                    if memory_context:
+                        rag_context = f"[Old memories - only reference if not covered above]:\n{memory_context}"
+                    
                     response = await process_message(
                         user_message=content,
-                        search_context=combined_context,  # Now includes Discord context + speaker!
+                        search_context=combined_context,  # Discord context + search
                         conversation_history=None,
-                        memory_context=memory_context
+                        memory_context=rag_context  # RAG is deprioritized
                     )
                 
                 # Step 6: Store conversation to RAG (long-term memory)
