@@ -19,7 +19,6 @@ from typing import Optional, List, Tuple
 from tools.image_gen import generate_image
 from tools.characters import detect_characters, load_character_image, get_all_character_descriptions
 from memory.rag import store_drawing_knowledge
-from ai.personality import ASTRA_PROMPT
 
 
 # Configure Gemini for vision/text analysis
@@ -388,56 +387,72 @@ Keep it to 2-3 sentences maximum. Return ONLY the enhanced prompt, nothing else.
         is_edit: bool = False
     ) -> str:
         """
-        Analyze the generated image with vision, then create a personality critique.
+        Two-step critique flow:
+        1. Gemini describes what it sees in the generated image
+        2. Astra (Mistral) comments on that description
         
-        This is the key flow from the Pi version:
-         1. Load the generated image
-        2. Send image + context to AI with Astra's personality
-        3. Get witty critique based on what AI SEES
+        This lets Astra's real personality respond, not Gemini pretending.
         """
+        from ai.router import process_message
+        
         if not GEMINI_API_KEY:
             return self._simple_fallback(matched_chars, is_gdraw, is_edit)
         
         try:
+            # STEP 1: Gemini describes the generated image objectively
             model = genai.GenerativeModel("gemini-2.0-flash")
             
-            # Build critique request using centralized personality
-            critique_prompt = f"""{ASTRA_PROMPT}
+            description_prompt = """Describe this AI-generated image objectively.
+Include:
+- Main subjects and their appearance
+- Colors, art style, composition
+- Mood and atmosphere
+- Any notable details
 
-You just created this image as an artist.
-
-The person asked for: "{original_prompt}"
-"""
-            if enhanced_prompt != original_prompt:
-                critique_prompt += f"\nYou enhanced it to: \"{enhanced_prompt[:200]}...\"\n"
+Be factual (2-3 sentences). No personality or commentary."""
             
-            if matched_chars:
-                char_names = ", ".join([c["name"].title() for c in matched_chars])
-                critique_prompt += f"\nYou included these characters: {char_names}\n"
-            
-            critique_prompt += """
-Look at this image you created and give your reaction/critique (1-2 sentences max).
-Be like a friend showing off their art - casual, maybe a little proud.
-React to what you ACTUALLY SEE in the image - describe real colors and details, don't make them up.
-"""
-            
-            if is_edit:
-                critique_prompt += "\nThis was an edit of an existing image - comment on the changes.\n"
-            
-            # Load image and send to vision with lower temp for accuracy
             response = await model.generate_content_async(
                 [
                     {"mime_type": "image/png", "data": image_data},
-                    critique_prompt
+                    description_prompt
                 ],
                 generation_config={
-                    "temperature": 0.6,  # Lower for accurate descriptions
-                    "max_output_tokens": 300
+                    "temperature": 0.3,
+                    "max_output_tokens": 200
                 }
             )
             
-            critique = response.text.strip()
-            print(f"[Draw] Critique: {critique[:60]}...")
+            image_description = response.text.strip()
+            print(f"[Draw] Gemini description: {image_description[:60]}...")
+            
+            # STEP 2: Build context for Astra
+            context = f"[Image you just created]: {image_description}"
+            context += f"\n[Original request]: {original_prompt}"
+            
+            if enhanced_prompt != original_prompt:
+                context += f"\n[Your enhanced prompt]: {enhanced_prompt[:200]}"
+            
+            if matched_chars:
+                char_names = ", ".join([c["name"].title() for c in matched_chars])
+                context += f"\n[Characters included]: {char_names}"
+            
+            # What should Astra respond to?
+            if is_edit:
+                astra_prompt = "You just finished editing an image. Give a brief reaction to your work."
+            elif is_gdraw:
+                astra_prompt = "You just created art from someone's idea. Give a brief reaction to what you made."
+            else:
+                astra_prompt = "You just drew something. Give a brief reaction to your creation."
+            
+            # STEP 3: Let Astra respond through her normal chat flow
+            critique = await process_message(
+                user_message=astra_prompt,
+                search_context=context,
+                conversation_history=None,
+                memory_context=""
+            )
+            
+            print(f"[Draw] Astra critique: {critique[:60]}...")
             return critique
             
         except Exception as e:

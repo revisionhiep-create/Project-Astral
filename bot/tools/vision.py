@@ -1,11 +1,8 @@
-"""Gemini Vision Integration - Image analysis with Astra personality and character recognition."""
+"""Gemini Vision Integration - Two-step flow: Gemini describes, Astra comments."""
 import os
 import aiohttp
 import google.generativeai as genai
 from io import BytesIO
-
-# Import centralized personality
-from ai.personality import ASTRA_PROMPT
 
 # Import character system for recognition
 try:
@@ -19,87 +16,109 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# Vision model
+# Vision model for description only
 VISION_MODEL = "gemini-2.0-flash"
 
 
-async def analyze_image(image_url: str, user_prompt: str = "", conversation_context: str = "", username: str = "") -> str:
+async def describe_image(image_url: str = None, image_data: bytes = None) -> str:
     """
-    Analyze an image using Gemini Vision and return Astra-styled commentary.
-    Now includes character recognition for known friends/avatars.
-    
-    Args:
-        image_url: URL of the image to analyze
-        user_prompt: Optional user question about the image
-        conversation_context: Recent chat history for context
-        username: Name of the person who sent the image
-    
-    Returns:
-        Astra's response about the image
+    Step 1: Gemini describes what it sees objectively.
+    Returns a text description that can be passed to Astra.
     """
     if not GEMINI_API_KEY:
-        return "can't see images rn, my vision is broken lol"
+        return None
     
     try:
-        # Download image
-        async with aiohttp.ClientSession() as session:
-            async with session.get(image_url) as resp:
-                if resp.status != 200:
-                    return "couldn't load that image, try a different one?"
-                
-                image_data = await resp.read()
+        # Get image data if URL provided
+        if image_url and not image_data:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(image_url) as resp:
+                    if resp.status != 200:
+                        return None
+                    image_data = await resp.read()
         
-        # Build the vision prompt using centralized personality
-        vision_prompt = f"""{ASTRA_PROMPT}
+        if not image_data:
+            return None
+        
+        # Build objective description prompt
+        description_prompt = """Describe this image objectively and thoroughly.
+Include:
+- Main subjects (people, characters, objects)
+- Colors, art style, composition
+- Actions, poses, expressions
+- Background and setting
+- Any text visible in the image
 
-You're looking at an image someone shared. Keep it brief (1-3 sentences unless the image needs more explanation).
-IMPORTANT: Describe what you ACTUALLY see - exact colors, details, poses. Don't make up or guess colors.
-"""
+Be factual and detailed but concise (3-5 sentences).
+Do NOT add personality or commentary - just describe what you see."""
         
         # Add character recognition context
         character_context = get_character_context_for_vision()
         if character_context:
-            vision_prompt += f"""
+            description_prompt += f"""
+
+Known characters to identify if present:
 {character_context}
-If you recognize any of these characters in the image, mention them naturally by name!
-"""
+If you recognize any of these characters, mention them by name."""
         
-        # Add who sent it
-        if username:
-            vision_prompt += f"\n{username} just shared this image with you."
-        
-        # Add conversation context
-        if conversation_context:
-            vision_prompt += f"\n\nRecent chat for context:\n{conversation_context[-1500:]}"
-        
-        if user_prompt:
-            vision_prompt += f"\n\n{username if username else 'They'} asked: {user_prompt}"
-        else:
-            vision_prompt += "\n\nGive a casual reaction/comment about this image."
-        
-        # Create vision model
         model = genai.GenerativeModel(VISION_MODEL)
         
-        # Generate response - lower temp for accuracy
-        response = model.generate_content(
+        response = await model.generate_content_async(
             [
                 {"mime_type": "image/jpeg", "data": image_data},
-                vision_prompt
+                description_prompt
             ],
             generation_config={
-                "temperature": 0.6,  # Lower for more accurate descriptions
-                "max_output_tokens": 500
+                "temperature": 0.3,  # Low for accuracy
+                "max_output_tokens": 400
             }
         )
         
-        return response.text
+        description = response.text.strip()
+        print(f"[Vision] Description: {description[:80]}...")
+        return description
         
     except Exception as e:
         print(f"[Vision Error] {e}")
-        return "something broke when i tried to look at that lol"
+        return None
+
+
+async def analyze_image(image_url: str, user_prompt: str = "", conversation_context: str = "", username: str = "") -> str:
+    """
+    Two-step image analysis:
+    1. Gemini describes the image
+    2. Astra (Mistral) comments on the description
+    
+    This lets Astra's real personality respond, not Gemini pretending.
+    """
+    from ai.router import process_message
+    
+    # Step 1: Get Gemini's objective description
+    description = await describe_image(image_url=image_url)
+    
+    if not description:
+        return "couldn't see that image, try again?"
+    
+    # Step 2: Build context for Astra
+    image_context = f"[Image shared by {username}]: {description}"
+    
+    # What should Astra respond to?
+    if user_prompt:
+        astra_prompt = f"{username} shared an image and asked: {user_prompt}"
+    else:
+        astra_prompt = f"{username} shared an image with you"
+    
+    # Step 3: Let Astra respond naturally through her normal chat flow
+    response = await process_message(
+        user_message=astra_prompt,
+        search_context=image_context,
+        conversation_history=None,
+        memory_context=""
+    )
+    
+    return response
 
 
 async def can_see_images() -> bool:
     """Check if vision is available."""
     return bool(GEMINI_API_KEY)
-
