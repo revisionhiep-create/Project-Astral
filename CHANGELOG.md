@@ -2,6 +2,52 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.4.2] - 2026-01-31
+
+### Added
+- **Reddit Knowledge Scraper**: Pipeline to scrape and import knowledge from Reddit
+  - `bot/tools/scraper.py`: Scrapes via public JSON endpoints (no API key needed)
+  - `bot/tools/knowledge_processor.py`: Uses Gemini Flash to rephrase posts into facts
+  - `bot/tools/import_knowledge.py`: Imports facts to RAG database
+  - `bot/tools/run_pipeline.py`: All-in-one runner
+  - Scraped 820 posts → 751 knowledge facts (VTuber, Tech, Gaming)
+- **Initial Knowledge Base**: 783 entries covering VTubers, tech news, and gaming
+
+### Fixed
+- **Engagement Restored**: Added back ENGAGEMENT section that was removed in v1.3.0
+  - "Follow natural conversation flow", "Answer directly first, then add personality"
+  - Astra now more engaged instead of ultra-minimal
+
+### Changed
+- `personality.py`: Temperature bumped 0.7 → 0.75 for more expressive responses
+
+---
+
+## [1.4.1] - 2026-01-31
+
+### Fixed
+- **Smarter Search Triggering**: Router now explicitly triggers search for real-time data needs
+  - Weather, prices, sports scores, news, current events → auto-search
+  - Added time-word detection: "now", "today", "current", "latest", "recent", "will"
+  - Added weather/score examples to router prompt
+- **Context Awareness**: Astra now properly uses chat history when the answer is already visible
+  - Won't deflect when someone asks about something just discussed
+  - Knows her own tech stack (Mistral Small 24B, SearXNG, Gemini, Kokoro)
+  - Will say "lemme check" when she needs real-time data instead of guessing
+- **Response Length Balance**: No longer ultra-terse on every message
+  - Matches energy, not just character count
+  - Expands appropriately on factual questions, empathy moments, banter
+- **Silent Response Bug**: Astra now always responds, even when uncertain
+  - Added "WHEN YOU DON'T KNOW SOMETHING" guidance
+  - Will say "idk tbh", "honestly no idea", or ask for clarification
+
+### Changed
+- `router.py`: Enhanced decision prompt with CRITICAL real-time data rule and better examples
+- `personality.py`: Added "USING YOUR CONTEXT", "RESPONSE LENGTH", and "WHEN YOU DON'T KNOW" sections
+- `personality.py`: Added 6 new few-shot examples for uncertainty, empathy, and factual expansion
+
+---
+
 ## [1.4.0] - 2026-01-31
 
 ### Added

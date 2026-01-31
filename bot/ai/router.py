@@ -51,14 +51,22 @@ Respond with ONLY valid JSON:
 }}
 
 Rules:
-- search=true: factual questions, current events, looking up people/things
-- search=false: casual chat, greetings, opinions, emotional support
+- search=true: ANY question requiring CURRENT/REAL-TIME info you don't have (weather, prices, scores, news, "what's happening", recent events)
+- search=true: factual questions about people, things, events, releases, updates
+- search=true: questions with time words like "now", "today", "current", "latest", "recent", "will" (future predictions)
+- search=false: casual chat, greetings, opinions, emotional support, questions answerable from chat context
 - vision=true: image is attached OR user asks to look at something
-- search_query: extract key terms, add context, remove filler words
+- search_query: extract key terms, add context (city names, specific topics), remove filler words
+
+CRITICAL: If someone asks about weather, prices, sports scores, current events, or anything time-sensitive, ALWAYS search=true. You don't have real-time data.
 
 Examples:
+- "when will the snow melt in DC" -> {{"search": true, "search_query": "Washington DC weather forecast snow", "vision": false, "reasoning": "weather is real-time data"}}
+- "what's the weather like" -> {{"search": true, "search_query": "current weather", "vision": false, "reasoning": "weather needs real-time data"}}
+- "who won the game" -> {{"search": true, "search_query": "latest game score results", "vision": false, "reasoning": "sports scores are real-time"}}
 - "who is ironmouse" -> {{"search": true, "search_query": "Ironmouse VTuber", "vision": false, "reasoning": "looking up a person"}}
 - "hey what's up" -> {{"search": false, "search_query": "", "vision": false, "reasoning": "casual greeting"}}
+- "what did Hiep say earlier" -> {{"search": false, "search_query": "", "vision": false, "reasoning": "can answer from chat context"}}
 - "what's her real name" (context mentions Ironmouse) -> {{"search": true, "search_query": "Ironmouse real name VTuber", "vision": false, "reasoning": "follow-up question needs search"}}
 - [image attached] "what is this" -> {{"search": false, "vision": true, "reasoning": "user wants image analyzed"}}"""
 
@@ -140,7 +148,7 @@ async def generate_response(
             model=UNIFIED_MODEL,
             messages=messages,
             options={
-                "temperature": 0.7,
+                "temperature": 0.75,
                 "repeat_penalty": 1.15,
                 "top_p": 0.9,
                 "top_k": 40,
