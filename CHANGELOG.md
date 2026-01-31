@@ -2,6 +2,29 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.4.5] - 2026-01-31
+
+### Fixed
+- **Response Length Issue Resolved**: Astra now speaks naturally instead of ultra-short replies
+  - **Root Cause**: Few-shot injection was training her to respond in 1-8 words
+  - **Fix**: Removed few-shot injection from router, let system prompt guide personality
+  - Removed "match response length to input length" rule that caused feedback loop
+- **RAG Memory Priority**: Discord context (last 100 msgs) now prioritized over old RAG memory
+  - Labels: "RECENT CHAT (last few minutes)" vs "Old memories"
+  - Prevents confusion between immediate chat and 3-hour-old conversations
+
+### Changed
+- **Expanded Personality Restored**: Full backstory from d146cf0 commit
+  - 22-year-old girl, she/her pronouns
+  - GemGem context: "also female, like a sister to you"
+  - Personality: dry humor, night owl, low-key supportive
+  - Interests: VTubers, tech, anime, gaming, space
+  - Emotional intelligence: match energy, read between lines
+- Removed overly eager "curious about what people are working on" trait
+- Deleted 778 Reddit entries from RAG (was causing confusion)
+
+---
+
 ## [1.4.2] - 2026-01-31
 
 ### Added
