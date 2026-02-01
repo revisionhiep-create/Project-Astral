@@ -12,7 +12,7 @@ from tools.time_utils import get_date_context
 LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 
 # Model identifiers from LM Studio
-CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "mistral-small-3.2-24b-instruct-2506")
+CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "huihui-ai_mistral-small-24b-instruct-2501-abliterated")
 
 
 async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 2048, json_mode: bool = False) -> str:

@@ -6,8 +6,9 @@ All notable changes to Project Astral will be documented in this file.
 
 ### Changed
 - **LM Studio Migration**: Switched from Ollama to LM Studio for all local model inference
-  - Chat model: `mistral-small-3.2-24b-instruct-2506` via LM Studio's OpenAI-compatible API
+  - Chat model: `huihui-ai/mistral-small-24b-instruct-2501-abliterated` (uncensored)
   - Vision model: `gemma-3-27b-it-abliterated` for uncensored image descriptions
+  - Models stay loaded as long as LM Studio is open (no more random unloading)
   - Models stay loaded as long as LM Studio is open (no more random unloading)
 - **Vision Priority Flip**: Local Gemma 3 is now primary for vision, Gemini is fallback
   - Ensures uncensored descriptions by default
