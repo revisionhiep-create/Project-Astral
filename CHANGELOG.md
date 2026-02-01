@@ -2,7 +2,22 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.6.6] - 2026-02-01
+
+### Changed
+- **Chill Personality Rewrite**: Complete personality overhaul based on Gemini Pro 3 analysis
+  - Removed "add substance" rule that caused walls of text
+  - Removed strict "match energy" word count rules (was too restrictive)
+  - Removed "be lazy" instruction (caused single-word responses)
+  - Added "no cheerleader validation" (no "Oh nice!", "Wow!")
+  - Added "no forced engagement" (no follow-up questions to keep chat going)
+  - Temperature: 0.4 → 0.5 (slightly more natural variation)
+- **Context Settings**: Chat history set to 50 messages
+
+---
+
 ## [1.6.5] - 2026-02-01
+
 
 ### Changed
 - **Anti-Copy Rule**: Astra will no longer rephrase GemGem's answers

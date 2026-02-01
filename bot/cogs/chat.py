@@ -64,7 +64,7 @@ class ChatCog(commands.Cog):
                 # Use message.channel.history() directly (same as GemGem) for reliability
                 discord_messages = []
                 try:
-                    async for msg in message.channel.history(limit=100):
+                    async for msg in message.channel.history(limit=50):
                         author_name = msg.author.display_name
                         # Only label THIS bot as "Astra" - other bots (like GemGem) keep their names
                         if msg.author.id == self.bot.user.id:

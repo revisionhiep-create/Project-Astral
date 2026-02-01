@@ -182,7 +182,7 @@ async def generate_response(
         
         response = await _call_lmstudio(
             messages=messages,
-            temperature=0.4,
+            temperature=0.5,
             max_tokens=2048
         )
         
