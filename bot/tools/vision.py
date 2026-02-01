@@ -198,15 +198,18 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
     except Exception as e:
         print(f"[Vision] RAG storage failed: {e}")
     
-    # Step 4: Build context for Astra (internal - she shouldn't repeat this)
-    # Use memory_context so it's lower priority and she doesn't echo it
-    image_context = f"[CONTEXT - DO NOT REPEAT THIS IN YOUR RESPONSE]\nYou saw an image from {username}. Here's what's in it: {description}"
+    # Step 4: Build context for Astra (internal - she should USE this but not dump it)
+    # Critical: This is what you SEE, respond based on it naturally
+    image_context = f"""[WHAT YOU SEE IN THE IMAGE]
+{description}
+
+Note: This is what's actually in the image. React to it naturally, don't just describe it back."""
     
     # What should Astra respond to?
     if user_prompt:
-        astra_prompt = f"{username} shared an image and asked: {user_prompt}\n\n(Give a brief, natural reaction. Don't describe the image back to them - just comment on it like a friend would.)"
+        astra_prompt = f"{username} shared an image and asked: {user_prompt}\n\n(You can see exactly what's in the image above. Comment on specific things you notice, don't be generic.)"
     else:
-        astra_prompt = f"{username} shared an image with you.\n\n(Give a brief, natural reaction. Don't describe the image back to them - just react like a friend would. One or two sentences max.)"
+        astra_prompt = f"{username} shared an image with you.\n\n(You can see exactly what's in the image above. React to something specific you notice, like a friend would.)"
     
     # Step 5: Let Astra respond naturally through her normal chat flow
     response = await process_message(

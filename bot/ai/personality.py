@@ -110,7 +110,7 @@ def build_system_prompt(search_context: str = "", memory_context: str = "") -> s
         prompt_parts.append(f"\n[Context available to you - chat history you saw, search results, etc.]\n{search_context}")
     
     if memory_context:
-        prompt_parts.append(f"\n{memory_context}")
+        prompt_parts.append(f"\n[INTERNAL CONTEXT - use this information to inform your response]\n{memory_context}")
     
     return "\n".join(prompt_parts)
 

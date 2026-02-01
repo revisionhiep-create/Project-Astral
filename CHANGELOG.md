@@ -2,6 +2,26 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.5.4] - 2026-01-31
+
+### Changed
+- **Voice Update**: Switched TTS voice from `af_heart` (Hannah) to `jf_tebukuro` (Japanese female anime voice)
+  - Provides a more anime-style voice matching Astra's personality
+  - Uses same Kokoro TTS container on 192.168.1.15:8000
+
+---
+
+## [1.5.3] - 2026-01-31
+
+### Fixed
+- **Vision Context Ignored**: Astra was seeing images but not using the descriptions in her response
+  - **Root Cause**: Vision descriptions passed in `memory_context` had no label and said "DO NOT REPEAT"
+  - **Fix**: Renamed to `[WHAT YOU SEE IN THE IMAGE]` with clear instructions to react to specific details
+  - Added `[INTERNAL CONTEXT]` label to `memory_context` in `personality.py`
+  - Changed user prompt from "don't describe" to "comment on specific things you notice"
+
+---
+
 ## [1.5.2] - 2026-01-31
 
 ### Fixed
