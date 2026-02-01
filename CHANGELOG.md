@@ -2,6 +2,15 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.6.1] - 2026-02-01
+
+### Changed
+- **TTS Routing to 5090**: Moved Kokoro TTS from CPU (localhost) to 5090 GPU (`192.168.1.16:8000`)
+  - Faster voice synthesis with GPU acceleration
+  - Reduced latency for voice responses
+
+---
+
 ## [1.6.0] - 2026-02-01
 
 ### Changed

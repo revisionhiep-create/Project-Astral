@@ -16,7 +16,7 @@ class VoiceHandler:
 
     def __init__(self, bot):
         self.bot = bot
-        self.kokoro_url = os.getenv("KOKORO_TTS_URL", "http://localhost:8000")
+        self.kokoro_url = os.getenv("KOKORO_TTS_URL", "http://192.168.1.16:8000")
         self.default_voice = "jf_tebukuro"  # Japanese anime voice
         self.voice_queues = {}  # Guild ID -> list of audio files to play
         self.currently_playing = {}  # Guild ID -> bool
