@@ -2,6 +2,15 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.6.7] - 2026-02-01
+
+### Changed
+- **Anti-Fabrication Rule**: Astra no longer invents fake hobbies/activities
+  - Won't claim she was "gaming all night" or "coding"
+  - Deflects vaguely ("nothing much", "just vibing") instead of fabricating
+
+---
+
 ## [1.6.6] - 2026-02-01
 
 ### Changed
