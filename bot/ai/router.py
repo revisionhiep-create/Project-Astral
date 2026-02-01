@@ -163,6 +163,11 @@ async def generate_response(
         for msg in conversation_history[-10:]:
             messages.append(msg)
     
+    # Inject few-shot examples to guide response style
+    from ai.personality import get_few_shot_examples
+    few_shot = get_few_shot_examples(count=3)
+    messages.extend(few_shot)
+    
     # User message is clean - no search injection
     messages.append({"role": "user", "content": user_message})
     

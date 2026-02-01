@@ -2,6 +2,24 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.6.3] - 2026-02-01
+
+### Added
+- **Few-Shot Examples**: Injected conversation examples to guide response style
+  - 6 curated examples showing ideal 2-3 sentence responses
+  - 3 random examples injected before each response
+  - Demonstrates empathy + engagement ("Yes, And..." principle)
+
+### Changed
+- **Personality Enhancements**: Updated ASTRA_PROMPT with new guidelines
+  - Added "CONVERSATIONAL SUBSTANCE" section - no dead-end responses
+  - "Yes, And..." rule: always add substance when agreeing
+  - "Match VIBE, not LENGTH" - thoughtful replies even to short messages
+  - Variable sentence length mixing
+  - Active participant, not passive observer
+
+---
+
 ## [1.6.2] - 2026-02-01
 
 ### Added
