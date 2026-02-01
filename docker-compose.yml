@@ -18,6 +18,7 @@ services:
       searxng:
         condition: service_started
     volumes:
+      - ./bot:/app/bot    # Live code mount (no rebuild needed for code changes)
       - ./db:/app/data/db # Persist RAG database
     restart: unless-stopped
     networks:

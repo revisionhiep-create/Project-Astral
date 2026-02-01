@@ -15,7 +15,7 @@ LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "huihui-ai_mistral-small-24b-instruct-2501-abliterated")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 2048, json_mode: bool = False) -> str:
+async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 2048) -> str:
     """Make a request to LM Studio's OpenAI-compatible API."""
     payload = {
         "model": CHAT_MODEL,
@@ -24,9 +24,9 @@ async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: i
         "max_tokens": max_tokens,
         "stream": False
     }
-    
-    if json_mode:
-        payload["response_format"] = {"type": "json_object"}
+    # Note: LM Studio doesn't support json_mode like OpenAI
+    # The prompt instructs JSON output directly
+
     
     try:
         async with aiohttp.ClientSession() as session:
@@ -104,8 +104,7 @@ Examples:
         response = await _call_lmstudio(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
-            max_tokens=256,
-            json_mode=True
+            max_tokens=256
         )
         
         if not response:

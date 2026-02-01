@@ -2,6 +2,32 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.6.2] - 2026-02-01
+
+### Added
+- **Unfiltered Personality Mode**: Added explicit instructions for abliterated model behavior
+  - No refusals, no safety disclaimers, no hedging
+  - Swearing, crude humor, controversial topics - all handled naturally
+- **TTS Chunking System**: Ported streaming TTS from GemGem
+  - Text split into 200-char chunks at sentence boundaries
+  - Long responses now speak fully instead of failing silently
+  - Markdown stripped before TTS (headers, bold, code blocks, etc.)
+
+### Fixed
+- **Router Search Decision**: Fixed LM Studio incompatibility with OpenAI's `json_mode`
+  - Router was failing every request with `response_format` error
+  - Astra now correctly triggers SearXNG for factual questions
+- **Import Error**: Removed stale `GEMGEM_EXAMPLES` export that broke chat cog
+- **Volume Mount**: Added `./bot:/app/bot` mount for live code reloading
+
+### Changed
+- **Personality Cleanup**: Removed dead code (unused few-shot examples)
+  - Deleted `ASTRA_EXAMPLES`, `GEMGEM_EXAMPLES`, `get_all_examples()`
+  - Removed specific VTuber names to prevent repetitive mentions
+- **Typo Fix**: `tel` → `tei` in user identity section
+
+---
+
 ## [1.6.1] - 2026-02-01
 
 ### Changed

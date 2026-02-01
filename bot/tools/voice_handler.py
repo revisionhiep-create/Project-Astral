@@ -1,14 +1,16 @@
 """
 Voice Handler for Astra
-Uses Kokoro TTS API for text-to-speech with Hannah voice (af_heart)
+Uses Kokoro TTS API with streaming chunks for long text
+Voice: jf_tebukuro (Japanese female anime voice)
 """
 
 import discord
 import asyncio
-import aiohttp
 import os
 from pathlib import Path
 from typing import Optional
+
+from tools.kokoro_tts import KokoroTTS
 
 
 class VoiceHandler:
@@ -16,8 +18,10 @@ class VoiceHandler:
 
     def __init__(self, bot):
         self.bot = bot
-        self.kokoro_url = os.getenv("KOKORO_TTS_URL", "http://192.168.1.16:8000")
-        self.default_voice = "jf_tebukuro"  # Japanese anime voice
+        self.tts = KokoroTTS(
+            api_url=os.getenv("KOKORO_TTS_URL", "http://192.168.1.16:8000"),
+            voice="jf_tebukuro"
+        )
         self.voice_queues = {}  # Guild ID -> list of audio files to play
         self.currently_playing = {}  # Guild ID -> bool
         self.temp_audio_dir = Path(__file__).parent.parent / "temp_audio"
@@ -76,35 +80,9 @@ class VoiceHandler:
         except Exception as e:
             print(f"❌ Failed to leave voice channel: {e}")
 
-    async def generate_tts(self, text: str, output_path: str) -> bool:
-        """Generate TTS audio using Kokoro API"""
-        try:
-            async with aiohttp.ClientSession() as session:
-                payload = {
-                    "text": text,
-                    "voice": self.default_voice,
-                    "speed": 1.2,
-                    "lang": "en-us"
-                }
-                async with session.post(
-                    f"{self.kokoro_url}/tts",
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    if response.status == 200:
-                        with open(output_path, 'wb') as f:
-                            f.write(await response.read())
-                        return True
-                    else:
-                        print(f"❌ TTS API error: {response.status}")
-                        return False
-        except Exception as e:
-            print(f"❌ TTS generation failed: {e}")
-            return False
-
     async def speak_text(self, guild, text: str):
         """
-        Convert text to speech and play in voice channel
+        Convert text to speech and play in voice channel - STREAMING VERSION
 
         Args:
             guild: discord.Guild where bot is connected
@@ -115,23 +93,34 @@ class VoiceHandler:
             return
 
         try:
-            # Generate TTS audio
-            audio_path = self.temp_audio_dir / f"astra_tts_{guild.id}_{asyncio.get_event_loop().time()}.wav"
-            
-            success = await self.generate_tts(text, str(audio_path))
-            if not success:
-                return
+            # Generate TTS audio - STREAMING VERSION with background generation
+            base_filename = f"astra_tts_{guild.id}_{asyncio.get_event_loop().time()}"
+            base_path = self.temp_audio_dir / base_filename
 
-            # Add to queue and start playback
+            # Initialize queue if needed
             if guild.id not in self.voice_queues:
                 self.voice_queues[guild.id] = []
                 self.currently_playing[guild.id] = False
 
-            self.voice_queues[guild.id].append(str(audio_path))
+            # Start background task to generate all chunks
+            async def generate_chunks():
+                try:
+                    async for chunk_path in self.tts.generate_audio_streaming(
+                        text, str(base_path)
+                    ):
+                        # Add to queue
+                        self.voice_queues[guild.id].append(chunk_path)
 
-            # Start playback if not already playing
-            if not self.currently_playing[guild.id]:
-                asyncio.create_task(self._process_queue(guild))
+                        # Start playback if not already playing
+                        if not self.currently_playing[guild.id]:
+                            asyncio.create_task(self._process_queue(guild))
+                except Exception as e:
+                    print(f"❌ Background chunk generation failed: {e}")
+                    import traceback
+                    traceback.print_exc()
+
+            # Run generation in background (don't await - let it run independently!)
+            asyncio.create_task(generate_chunks())
 
         except Exception as e:
             print(f"❌ Failed to speak text: {e}")
@@ -157,9 +146,9 @@ class VoiceHandler:
                     print(f"❌ Audio file doesn't exist: {audio_path}")
                     continue
 
-                # Play audio using FFmpeg
+                # Play audio using FFmpeg with Discord-compatible options
                 audio_source = discord.FFmpegPCMAudio(
-                    audio_path, options="-vn"
+                    audio_path, executable="ffmpeg", options="-vn"
                 )
 
                 # Wait for audio to finish
@@ -169,6 +158,7 @@ class VoiceHandler:
                 def after_playback(error):
                     if error:
                         print(f"❌ Playback error: {error}")
+                    # Schedule the event.set() on the event loop thread
                     loop.call_soon_threadsafe(done_event.set)
 
                 voice_client.play(audio_source, after=after_playback)
@@ -180,8 +170,8 @@ class VoiceHandler:
                 except:
                     pass
 
-                # Small delay between clips
-                await asyncio.sleep(0.1)
+                # Minimal delay for smooth chunk transitions
+                await asyncio.sleep(0.05)
 
             except Exception as e:
                 print(f"❌ Error playing audio: {e}")
