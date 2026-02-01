@@ -2,6 +2,35 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.6.0] - 2026-02-01
+
+### Changed
+- **LM Studio Migration**: Switched from Ollama to LM Studio for all local model inference
+  - Chat model: `mistral-small-3.2-24b-instruct-2506` via LM Studio's OpenAI-compatible API
+  - Vision model: `gemma-3-27b-it-abliterated` for uncensored image descriptions
+  - Models stay loaded as long as LM Studio is open (no more random unloading)
+- **Vision Priority Flip**: Local Gemma 3 is now primary for vision, Gemini is fallback
+  - Ensures uncensored descriptions by default
+  - Gemini only used if LM Studio is unreachable
+- **Kokoro TTS CPU Mode**: Moved TTS from GPU to CPU, freeing ~2GB VRAM for LLMs
+
+### Technical
+- Router rewritten to use aiohttp + OpenAI API format instead of ollama library
+- Vision uses `/v1/chat/completions` with base64 image data URI format
+- LM Studio server accessible on local network (port 1234)
+
+---
+
+## [1.5.5] - 2026-01-31
+
+### Changed
+- **Vision Model Upgrade**: Switched from `llama3.2-vision:11b` to `huihui_ai/gemma3-abliterated:27b`
+  - Better vision quality benchmarks
+  - Fully uncensored image descriptions
+  - Runs on 3090 desktop RAM (64GB available)
+
+---
+
 ## [1.5.4] - 2026-01-31
 
 ### Changed

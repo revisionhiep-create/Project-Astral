@@ -1,20 +1,50 @@
-"""AI Router - Single model orchestration with Mistral Small 24B."""
+"""AI Router - Single model orchestration with LM Studio (Mistral Small 24B)."""
 import os
 import json
-import ollama
+import aiohttp
 from typing import Optional
 
 from ai.personality import build_system_prompt
 from tools.time_utils import get_date_context
 
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+# LM Studio server (OpenAI-compatible API)
+LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 
-# Single unified model for everything
-UNIFIED_MODEL = os.getenv("OLLAMA_MODEL", "mistral-small-24b")
+# Model identifiers from LM Studio
+CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "mistral-small-3.2-24b-instruct-2506")
 
-# Ollama client
-client = ollama.AsyncClient(host=OLLAMA_HOST)
+
+async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 2048, json_mode: bool = False) -> str:
+    """Make a request to LM Studio's OpenAI-compatible API."""
+    payload = {
+        "model": CHAT_MODEL,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "stream": False
+    }
+    
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{LMSTUDIO_HOST}/v1/chat/completions",
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=120)
+            ) as resp:
+                if resp.status != 200:
+                    error = await resp.text()
+                    print(f"[LMStudio] Error {resp.status}: {error[:200]}")
+                    return None
+                
+                data = await resp.json()
+                return data["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(f"[LMStudio] Request failed: {e}")
+        return None
 
 
 async def decide_tools_and_query(
@@ -71,17 +101,17 @@ Examples:
 - [image attached] "what is this" -> {{"search": false, "vision": true, "reasoning": "user wants image analyzed"}}"""
 
     try:
-        response = await client.chat(
-            model=UNIFIED_MODEL,
+        response = await _call_lmstudio(
             messages=[{"role": "user", "content": prompt}],
-            options={
-                "temperature": 0.1,
-                "num_ctx": 4096
-            },
-            format="json"
+            temperature=0.1,
+            max_tokens=256,
+            json_mode=True
         )
         
-        result = json.loads(response["message"]["content"])
+        if not response:
+            raise Exception("No response from LM Studio")
+        
+        result = json.loads(response)
         print(f"[Router] Decision: search={result.get('search')}, vision={result.get('vision')}, query='{result.get('search_query', '')[:50]}'")
         return result
         
@@ -111,7 +141,7 @@ async def generate_response(
     current_speaker: str = None
 ) -> str:
     """
-    Generate a GemGem response.
+    Generate an Astra response.
     
     Search context goes in SYSTEM PROMPT to separate facts from conversation.
     """
@@ -129,9 +159,6 @@ async def generate_response(
     # Build messages
     messages = [{"role": "system", "content": system_prompt}]
     
-    # Note: Few-shot examples removed - they were causing overly terse responses
-    # The system prompt alone guides the personality now
-    
     # Add conversation history (last 10 messages for context)
     if conversation_history:
         for msg in conversation_history[-10:]:
@@ -144,20 +171,18 @@ async def generate_response(
         use_search = bool(search_context)
         print(f"[Router] Query: '{user_message[:50]}' | Search: {len(search_context)} chars")
         
-        response = await client.chat(
-            model=UNIFIED_MODEL,
+        response = await _call_lmstudio(
             messages=messages,
-            options={
-                "temperature": 0.75,
-                "repeat_penalty": 1.15,
-                "top_p": 0.9,
-                "top_k": 40,
-                "num_ctx": 8192
-            }
+            temperature=0.75,
+            max_tokens=2048
         )
-        return response["message"]["content"]
+        
+        if not response:
+            return "something broke on my end, try again?"
+        
+        return response
     except Exception as e:
-        print(f"[Ollama Error] {e}")
+        print(f"[LMStudio Error] {e}")
         return "something broke on my end, try again?"
 
 

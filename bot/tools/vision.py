@@ -25,8 +25,8 @@ if GEMINI_API_KEY:
 
 # Vision models
 GEMINI_VISION_MODEL = "gemini-3-flash-preview"
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
-LOCAL_VISION_MODEL = "llama3.2-vision:11b"  # Less filtered than LLaVA
+LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
+LOCAL_VISION_MODEL = "gemma-3-27b-it-abliterated"  # Uncensored vision model in LM Studio
 
 # Short-term image cache (last 5 images)
 # Stores: {"username": str, "description": str, "timestamp": str, "user_context": str}
@@ -35,11 +35,11 @@ _recent_images = deque(maxlen=5)
 
 async def describe_image_local(image_data: bytes) -> str:
     """
-    Fallback: Use LLaVA locally for uncensored descriptions.
-    Runs on CPU/RAM to avoid VRAM usage.
+    Fallback: Use Gemma 3 27B Abliterated via LM Studio for uncensored descriptions.
+    Uses OpenAI-compatible vision API.
     """
     try:
-        # Encode image as base64
+        # Encode image as base64 with data URI
         image_b64 = base64.b64encode(image_data).decode('utf-8')
         
         prompt = """Describe this image in detail. Include:
@@ -51,40 +51,52 @@ async def describe_image_local(image_data: bytes) -> str:
 
 Be thorough and honest in your description (3-5 sentences)."""
 
+        # LM Studio OpenAI-compatible vision format
         payload = {
             "model": LOCAL_VISION_MODEL,
-            "prompt": prompt,
-            "images": [image_b64],
-            "stream": False,
-            "options": {
-                "num_ctx": 2048,
-                "temperature": 0.3
-            }
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_b64}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "max_tokens": 500,
+            "temperature": 0.3,
+            "stream": False
         }
         
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{OLLAMA_HOST}/api/generate",
+                f"{LMSTUDIO_HOST}/v1/chat/completions",
                 json=payload,
-                timeout=aiohttp.ClientTimeout(total=60)
+                timeout=aiohttp.ClientTimeout(total=120)
             ) as resp:
                 if resp.status != 200:
-                    print(f"[Vision] LLaVA error: {resp.status}")
+                    error = await resp.text()
+                    print(f"[Vision] LM Studio error: {resp.status} - {error[:100]}")
                     return None
                 
                 data = await resp.json()
-                description = data.get("response", "").strip()
-                print(f"[Vision] LLaVA description: {description[:80]}...")
+                description = data["choices"][0]["message"]["content"].strip()
+                print(f"[Vision] Gemma 3 description: {description[:80]}...")
                 return description
                 
     except Exception as e:
-        print(f"[Vision] LLaVA error: {e}")
+        print(f"[Vision] LM Studio vision error: {e}")
         return None
 
 
 async def describe_image(image_url: str = None, image_data: bytes = None) -> str:
     """
-    Step 1: Try Gemini first, fallback to LLaVA for uncensored descriptions.
+    Step 1: Try local Gemma 3 first (uncensored), fallback to Gemini if local fails.
     Returns a text description that can be passed to Astra.
     """
     # Get image data if URL provided
@@ -104,9 +116,18 @@ async def describe_image(image_url: str = None, image_data: bytes = None) -> str
     
     description = None
     
-    # Try Gemini first (fast, but may censor)
-    if GEMINI_API_KEY:
+    # Try local Gemma 3 first (uncensored, primary)
+    try:
+        description = await describe_image_local(image_data)
+        if description:
+            print(f"[Vision] Using local Gemma 3 (primary): {description[:80]}...")
+    except Exception as e:
+        print(f"[Vision] Local vision failed: {e}")
+    
+    # Fallback to Gemini if local failed
+    if not description and GEMINI_API_KEY:
         try:
+            print("[Vision] Falling back to Gemini...")
             description_prompt = """Describe this image objectively and thoroughly.
 Include:
 - Main subjects (people, characters, objects)
@@ -141,22 +162,10 @@ If you recognize any of these characters, mention them by name."""
             )
             
             description = response.text.strip()
-            print(f"[Vision] Gemini description: {description[:80]}...")
-            
-            # If Gemini gave a very short response, it might have censored - try LLaVA
-            if len(description) < 100:
-                print("[Vision] Gemini response short, trying LLaVA fallback...")
-                llava_desc = await describe_image_local(image_data)
-                if llava_desc and len(llava_desc) > len(description):
-                    description = llava_desc
-                    print("[Vision] Using LLaVA description instead")
+            print(f"[Vision] Gemini description (fallback): {description[:80]}...")
                     
         except Exception as e:
-            print(f"[Vision] Gemini error: {e}, trying LLaVA fallback...")
-            description = await describe_image_local(image_data)
-    else:
-        # No Gemini API, use LLaVA directly
-        description = await describe_image_local(image_data)
+            print(f"[Vision] Gemini fallback also failed: {e}")
     
     return description
 
