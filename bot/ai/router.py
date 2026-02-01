@@ -182,8 +182,8 @@ async def generate_response(
         
         response = await _call_lmstudio(
             messages=messages,
-            temperature=0.5,
-            max_tokens=2048
+            temperature=0.65,
+            max_tokens=6000
         )
         
         if not response:

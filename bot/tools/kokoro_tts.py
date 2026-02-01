@@ -84,6 +84,12 @@ class KokoroTTS:
 
         # Remove emotion stickers [laugh], [cool], [comfy], etc.
         text = re.sub(r"\[\w+\]", "", text)
+        
+        # Remove Discord emotes :joy:, :fire:, :skull:, etc.
+        text = re.sub(r":\w+:", "", text)
+        
+        # Remove Unicode emoji (actual emoji characters like 😂🔥💀)
+        text = re.sub(r"[\U0001F300-\U0001F9FF\U00002600-\U000027BF\U0001FA00-\U0001FAFF]", "", text)
 
         # Clean up multiple spaces and newlines
         text = re.sub(r"\n\s*\n", ". ", text)  # Double newlines become periods

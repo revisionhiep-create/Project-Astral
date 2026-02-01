@@ -2,6 +2,30 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.7.0] - 2026-02-01
+
+### Changed
+- **Personality System Rewrite v2**: Complete overhaul for natural conversation
+  - 2-4 sentences baseline (flexible for deep topics)
+  - Down-to-earth friend vibe - can tease, never condescending  
+  - Medium energy like a normal person
+  - Slang/emotes: understood, used rarely
+  - Added self-appearance so Astra recognizes herself in images
+  - Temperature: 0.5 → 0.65, max_tokens: 2048 → 6000
+- **Character Recognition in Vision**: Both local Gemma 3 and Gemini now check for known characters
+  - Only mentions characters if actually present (no "I don't see X")
+- **TTS Emoji Stripping**: Kokoro TTS now removes all emotes before speaking
+  - Discord emotes (`:joy:`, `:fire:`)
+  - Unicode emoji (😂🔥💀)
+
+### Removed
+- **Persona Manager System**: Removed dynamic persona evolution
+  - Deleted `persona_manager.py` and `persona_state.json`
+  - Removed Gemini Flash analysis calls
+  - Simplified system for more predictable behavior
+
+---
+
 ## [1.6.7] - 2026-02-01
 
 ### Changed

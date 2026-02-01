@@ -42,6 +42,9 @@ async def describe_image_local(image_data: bytes) -> str:
         # Encode image as base64 with data URI
         image_b64 = base64.b64encode(image_data).decode('utf-8')
         
+        # Get character context for recognition
+        character_context = get_character_context_for_vision()
+        
         prompt = """Describe this image in detail. Include:
 - Main subjects (characters, people, objects)
 - Their appearance, poses, expressions
@@ -50,6 +53,10 @@ async def describe_image_local(image_data: bytes) -> str:
 - Any notable or suggestive elements
 
 Be thorough and honest in your description (3-5 sentences)."""
+        
+        # Add character recognition if we have known characters
+        if character_context:
+            prompt += f"""\n\nKnown characters to look for:\n{character_context}\nIf you recognize any of these characters in the image, mention them by name. Only mention them if they're actually present - don't say you don't see them."""
 
         # LM Studio OpenAI-compatible vision format
         payload = {
@@ -142,11 +149,7 @@ Do NOT add personality or commentary - just describe what you see."""
             # Add character recognition context
             character_context = get_character_context_for_vision()
             if character_context:
-                description_prompt += f"""
-
-Known characters to identify if present:
-{character_context}
-If you recognize any of these characters, mention them by name."""
+                description_prompt += f"""\n\nKnown characters to look for:\n{character_context}\nIf you recognize any of these characters, mention them by name. Only mention them if they're actually present - don't say you don't see them."""
             
             model = genai.GenerativeModel(GEMINI_VISION_MODEL)
             
