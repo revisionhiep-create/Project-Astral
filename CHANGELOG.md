@@ -2,6 +2,34 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.6.5] - 2026-02-01
+
+### Changed
+- **Anti-Copy Rule**: Astra will no longer rephrase GemGem's answers
+  - Explicit instruction to form own opinion or react briefly
+- **Proactive Search Trust**: Told model search happens automatically
+  - "Don't guess or tell users to look it up themselves"
+- **Voice Preservation**: Share search results in personality, not as summaries
+- **Router Expansion**: More aggressive search triggering
+  - Added rules for concepts, theories, philosophies
+  - "When in doubt, search=true" principle
+  - Added Zizek example for philosophical topics
+
+---
+
+## [1.6.4] - 2026-02-01
+
+### Changed
+- **Temperature Reduced**: 0.75 → 0.4 (reduces hallucinations)
+- **Prose-Style Prompt**: Rewrote entire personality as paragraphs
+  - Removed all bullet point lists
+  - Removed INTERESTS section (was causing fabrication)
+  - Removed few-shot example injection (caused context confusion)
+  - Removed "night owl" reference
+- **Startup Logging**: Added search system URL to boot messages
+
+---
+
 ## [1.6.3] - 2026-02-01
 
 ### Added

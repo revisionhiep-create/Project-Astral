@@ -84,17 +84,22 @@ Rules:
 - search=true: ANY question requiring CURRENT/REAL-TIME info you don't have (weather, prices, scores, news, "what's happening", recent events)
 - search=true: factual questions about people, things, events, releases, updates
 - search=true: questions with time words like "now", "today", "current", "latest", "recent", "will" (future predictions)
-- search=false: casual chat, greetings, opinions, emotional support, questions answerable from chat context
+- search=true: questions about concepts, theories, philosophies, or anything you'd need to look up to answer accurately
+- search=true: when you're not 100% certain about the answer - better to search than guess
+- search=true: "who is", "what is", "explain", "tell me about" questions about specific topics
+- search=false: casual chat, greetings, pure opinions, emotional support, questions answerable from chat context
+- search=false: personal questions about the user or reactions to what they said
 - vision=true: image is attached OR user asks to look at something
 - search_query: extract key terms, add context (city names, specific topics), remove filler words
 
-CRITICAL: If someone asks about weather, prices, sports scores, current events, or anything time-sensitive, ALWAYS search=true. You don't have real-time data.
+CRITICAL: When in doubt, search=true. It's better to have accurate info than to guess and be wrong. If the question is about any real-world topic, concept, person, or event, search.
 
 Examples:
 - "when will the snow melt in DC" -> {{"search": true, "search_query": "Washington DC weather forecast snow", "vision": false, "reasoning": "weather is real-time data"}}
 - "what's the weather like" -> {{"search": true, "search_query": "current weather", "vision": false, "reasoning": "weather needs real-time data"}}
 - "who won the game" -> {{"search": true, "search_query": "latest game score results", "vision": false, "reasoning": "sports scores are real-time"}}
 - "who is ironmouse" -> {{"search": true, "search_query": "Ironmouse VTuber", "vision": false, "reasoning": "looking up a person"}}
+- "what does zizek think about freedom" -> {{"search": true, "search_query": "Slavoj Zizek philosophy freedom determinism", "vision": false, "reasoning": "philosophical topic needs accurate info"}}
 - "hey what's up" -> {{"search": false, "search_query": "", "vision": false, "reasoning": "casual greeting"}}
 - "what did Hiep say earlier" -> {{"search": false, "search_query": "", "vision": false, "reasoning": "can answer from chat context"}}
 - "what's her real name" (context mentions Ironmouse) -> {{"search": true, "search_query": "Ironmouse real name VTuber", "vision": false, "reasoning": "follow-up question needs search"}}
@@ -163,10 +168,10 @@ async def generate_response(
         for msg in conversation_history[-10:]:
             messages.append(msg)
     
-    # Inject few-shot examples to guide response style
-    from ai.personality import get_few_shot_examples
-    few_shot = get_few_shot_examples(count=3)
-    messages.extend(few_shot)
+    # Few-shot injection disabled - was causing context confusion
+    # from ai.personality import get_few_shot_examples
+    # few_shot = get_few_shot_examples(count=3)
+    # messages.extend(few_shot)
     
     # User message is clean - no search injection
     messages.append({"role": "user", "content": user_message})
@@ -177,7 +182,7 @@ async def generate_response(
         
         response = await _call_lmstudio(
             messages=messages,
-            temperature=0.75,
+            temperature=0.4,
             max_tokens=2048
         )
         
