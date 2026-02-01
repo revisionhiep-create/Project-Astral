@@ -139,11 +139,16 @@ class ChatCog(commands.Cog):
                     # Combine: search results + Discord short-term context
                     combined_context = ""
                     
-                    # Tell the model WHO is currently speaking
-                    combined_context += f"[Current Speaker]: {message.author.display_name}\n\n"
+                    # === CURRENT SPEAKER (TOP PRIORITY) ===
+                    # This person is talking to you RIGHT NOW - respond to THEM specifically
+                    speaker_name = message.author.display_name
+                    combined_context += f">>> RESPONDING TO: {speaker_name} <<<\n"
+                    combined_context += f"(This is who you're talking to. Address them specifically.)\n\n"
                     
                     if short_term_context:
-                        combined_context += f"=== RECENT CHAT (last few minutes - YOU SAW THIS) ===\n{short_term_context}\n\n"
+                        combined_context += f"=== RECENT CHAT (last few minutes - YOU SAW THIS) ===\n{short_term_context}\n"
+                        combined_context += f"\n--- END OF CHAT HISTORY ---\n"
+                        combined_context += f"--- {speaker_name} IS NOW TALKING TO YOU ---\n\n"
                     
                     # Inject cached image descriptions so Astra remembers what she saw
                     image_context = get_recent_image_context()
@@ -160,6 +165,7 @@ class ChatCog(commands.Cog):
                     
                     response = await process_message(
                         user_message=content,
+                        current_speaker=speaker_name,  # Pass speaker separately for system prompt
                         search_context=combined_context,  # Discord context + search
                         conversation_history=None,
                         memory_context=rag_context  # RAG is deprioritized

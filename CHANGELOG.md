@@ -2,6 +2,17 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.5.2] - 2026-01-31
+
+### Fixed
+- **User Identity Confusion**: Astra now correctly distinguishes between different users
+  - Current speaker prominently marked at top of system prompt
+  - Visual separators between chat history and current message
+  - Added "USER IDENTITY (CRITICAL)" section to personality prompt
+  - `current_speaker` passed through router to reinforce who's talking
+
+---
+
 ## [1.5.1] - 2026-01-31
 
 ### Added

@@ -107,7 +107,8 @@ async def generate_response(
     user_message: str,
     search_context: str = "",
     memory_context: str = "",
-    conversation_history: list[dict] = None
+    conversation_history: list[dict] = None,
+    current_speaker: str = None
 ) -> str:
     """
     Generate a GemGem response.
@@ -116,6 +117,11 @@ async def generate_response(
     """
     # Build system prompt with context
     system_prompt = build_system_prompt(search_context, memory_context)
+    
+    # Add current speaker at the VERY TOP if provided
+    if current_speaker:
+        speaker_header = f"[RESPONDING TO: {current_speaker}]\nYou are replying to {current_speaker} specifically. Keep this in mind.\n\n"
+        system_prompt = speaker_header + system_prompt
     
     # Add date awareness
     system_prompt = f"{get_date_context()}\n\n{system_prompt}"
@@ -159,7 +165,8 @@ async def process_message(
     user_message: str,
     search_context: str,
     conversation_history: list[dict] = None,
-    memory_context: str = ""
+    memory_context: str = "",
+    current_speaker: str = None
 ) -> str:
     """
     Full message processing pipeline.
@@ -172,7 +179,8 @@ async def process_message(
         user_message=user_message,
         search_context=search_context,
         memory_context=memory_context,
-        conversation_history=conversation_history
+        conversation_history=conversation_history,
+        current_speaker=current_speaker
     )
     
     return response
