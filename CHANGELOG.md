@@ -2,6 +2,32 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.7.2] - 2026-02-01
+
+### Added
+- **First-Person Self-Recognition**: Astra now uses first person when seeing herself in images
+  - "I'm kicking Liddo" not "Astra is kicking Liddo"
+  - Personality prompt includes explicit first-person examples
+  - Image cache stores self-aware descriptions for follow-up messages
+- **Dynamic Character Loading**: `personality.py` now loads from `characters.json` at runtime
+  - Edit JSON, rebuild container, done
+- **Character Recognition in Chat**: "PEOPLE YOU KNOW" section in personality prompt
+  - Matches GemGem's approach for consistent recognition
+
+### Changed
+- **Vision Prompt Enhancement**: More aggressive character identification
+  - Forces vision model to use names instead of describing appearance
+  - "any blue-haired anime girl with stars/cosmic theme is likely Astra"
+- **Broadened Astra Description**: Updated `characters.json` for visual variations
+  - Covers cosmic galaxy outfits, stars in hair, various styles
+  - Still distinguishes from GemGem (rainbow eyes, chibi style)
+
+### Fixed
+- **Third-Person Bug**: Vision now marks Astra as "YOU (Astra)" in character context
+- **Follow-up Memory**: Recent image cache replaces "Astra" with "you" for recall
+
+---
+
 ## [1.7.1] - 2026-02-01
 
 ### Changed

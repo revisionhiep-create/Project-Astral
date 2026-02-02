@@ -112,7 +112,7 @@ def get_character_description(character_name: str) -> Optional[str]:
 def get_character_context_for_vision() -> str:
     """
     Build a context string for vision analysis.
-    Helps GemGem recognize people she knows in images.
+    Helps Astra recognize people she knows in images.
     """
     characters = _load_characters()
     
@@ -122,7 +122,11 @@ def get_character_context_for_vision() -> str:
     context = "People/Characters you know:\n"
     for name, data in characters.items():
         desc = data.get("description", "")
-        context += f"- {name.title()}: {desc[:150]}...\n" if len(desc) > 150 else f"- {name.title()}: {desc}\n"
+        # Mark Astra as "YOU" so the vision model knows who the AI is
+        if name.lower() == "astra":
+            context += f"- **YOU (Astra)**: {desc[:150]}... - THIS IS YOU, the AI. If you see this character, say 'Astra' or 'you'.\n"
+        else:
+            context += f"- {name.title()}: {desc[:150]}...\n" if len(desc) > 150 else f"- {name.title()}: {desc}\n"
     
     return context
 

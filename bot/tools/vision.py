@@ -56,7 +56,10 @@ Be thorough and honest in your description (3-5 sentences)."""
         
         # Add character recognition if we have known characters
         if character_context:
-            prompt += f"""\n\nKnown characters to look for:\n{character_context}\nIf you recognize any of these characters in the image, mention them by name. Only mention them if they're actually present - don't say you don't see them."""
+            prompt += f"""\n\nIMPORTANT - Known characters to identify:
+{character_context}
+
+CRITICAL INSTRUCTION: If any character in the image matches a description above, you MUST use their NAME (like "Astra", "Liddo", etc.) instead of describing their appearance. Do NOT say "blue-haired anime girl" if it matches Astra - say "Astra". Only describe appearance for characters NOT in this list."""
 
         # LM Studio OpenAI-compatible vision format
         payload = {
@@ -211,17 +214,21 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
         print(f"[Vision] RAG storage failed: {e}")
     
     # Step 4: Build context for Astra (internal - she should USE this but not dump it)
-    # Critical: This is what you SEE, respond based on it naturally
+    # Critical: Replace "Astra" with "you" so she understands she IS the blue-haired character
+    description_for_self = description.replace("Astra", "you (Astra)").replace("astra", "you (Astra)")
+    
     image_context = f"""[WHAT YOU SEE IN THE IMAGE]
-{description}
+{description_for_self}
 
-Note: This is what's actually in the image. React to it naturally, don't just describe it back."""
+IMPORTANT: If the description mentions "you (Astra)" or a blue-haired girl matching your appearance - that IS you. Respond in first person about YOUR actions ("I'm kicking", "that's me"), not third person ("Astra is kicking", "nice kick, Astra").
+
+React naturally, don't just describe it back."""
     
     # What should Astra respond to?
     if user_prompt:
-        astra_prompt = f"{username} shared an image and asked: {user_prompt}\n\n(You can see exactly what's in the image above. Comment on specific things you notice, don't be generic.)"
+        astra_prompt = f"{username} shared an image and asked: {user_prompt}\n\n(You can see exactly what's in the image above. If YOU are in it, talk about yourself in first person.)"
     else:
-        astra_prompt = f"{username} shared an image with you.\n\n(You can see exactly what's in the image above. React to something specific you notice, like a friend would.)"
+        astra_prompt = f"{username} shared an image with you.\n\n(You can see exactly what's in the image above. If YOU are in it, react to what you're doing in first person.)"
     
     # Step 5: Let Astra respond naturally through her normal chat flow
     response = await process_message(
@@ -244,7 +251,9 @@ def get_recent_image_context() -> str:
     
     lines = ["[RECENT IMAGES YOU SAW]"]
     for img in _recent_images:
-        lines.append(f"- {img['username']} ({img['timestamp']}): {img['description'][:200]}")
+        # Replace "Astra" with "you" so she remembers in first person
+        desc = img['description'][:200].replace("Astra", "you").replace("astra", "you")
+        lines.append(f"- {img['username']} ({img['timestamp']}): {desc}")
     
     return "\n".join(lines)
 
