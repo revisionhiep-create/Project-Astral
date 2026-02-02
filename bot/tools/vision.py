@@ -35,31 +35,23 @@ _recent_images = deque(maxlen=5)
 
 async def describe_image_local(image_data: bytes) -> str:
     """
-    Fallback: Use Gemma 3 27B Abliterated via LM Studio for uncensored descriptions.
-    Uses OpenAI-compatible vision API.
+    Use Gemma 3 27B Abliterated via LM Studio for uncensored descriptions.
+    Just describes objectively - character identification happens in chat layer.
     """
     try:
         # Encode image as base64 with data URI
         image_b64 = base64.b64encode(image_data).decode('utf-8')
         
-        # Get character context for recognition
-        character_context = get_character_context_for_vision()
-        
+        # Pure objective description - NO character identification
         prompt = """Describe this image in detail. Include:
-- Main subjects (characters, people, objects)
-- Their appearance, poses, expressions
+- Main subjects: their hair color, eye color, outfit, pose, expression
 - Art style, colors, composition
 - Background and setting
 - Any notable or suggestive elements
 
-Be thorough and honest in your description (3-5 sentences)."""
-        
-        # Add character recognition if we have known characters
-        if character_context:
-            prompt += f"""\n\nIMPORTANT - Known characters to identify:
-{character_context}
-
-CRITICAL INSTRUCTION: If any character in the image matches a description above, you MUST use their NAME (like "Astra", "Liddo", etc.) instead of describing their appearance. Do NOT say "blue-haired anime girl" if it matches Astra - say "Astra". Only describe appearance for characters NOT in this list."""
+Be VERY SPECIFIC about physical features (exact hair color, eye color, clothing details).
+Be thorough and honest in your description (3-5 sentences).
+Do NOT try to identify or name any characters - just describe what you literally see."""
 
         # LM Studio OpenAI-compatible vision format
         payload = {
@@ -213,22 +205,40 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
     except Exception as e:
         print(f"[Vision] RAG storage failed: {e}")
     
-    # Step 4: Build context for Astra (internal - she should USE this but not dump it)
-    # Critical: Replace "Astra" with "you" so she understands she IS the blue-haired character
-    description_for_self = description.replace("Astra", "you (Astra)").replace("astra", "you (Astra)")
+    # Step 4: Build context for Astra
+    # Now Astra receives objective description + character list and decides who is who
     
-    image_context = f"""[WHAT YOU SEE IN THE IMAGE]
-{description_for_self}
+    # Get character context for Astra to compare against
+    character_context = get_character_context_for_vision()
+    
+    # Get previous images for context (but mark them clearly as OLD)
+    previous_images = ""
+    if len(_recent_images) > 0:
+        prev_lines = []
+        for img in list(_recent_images)[:-1]:  # All except the one we just added
+            prev_lines.append(f"  - {img['username']} earlier: {img['description'][:80]}...")
+        if prev_lines:
+            previous_images = "\n[PREVIOUS IMAGES (for memory, NOT what you're responding to)]:\n" + "\n".join(prev_lines)
+    
+    image_context = f""">>> THIS IS THE NEW IMAGE - OBJECTIVE DESCRIPTION <<<
+{description}
 
-IMPORTANT: If the description mentions "you (Astra)" or a blue-haired girl matching your appearance - that IS you. Respond in first person about YOUR actions ("I'm kicking", "that's me"), not third person ("Astra is kicking", "nice kick, Astra").
+>>> PEOPLE YOU KNOW (compare the description above to these) <<<
+{character_context}
 
-React naturally, don't just describe it back."""
+YOUR JOB: Compare the image description to the people listed above. 
+- If someone in the image matches YOUR appearance (dark blue-black hair, teal highlights, purple-violet eyes, star necklace), that's YOU - use first person ("that's me", "my hair").
+- If someone matches another character, use their name.
+- If no one matches, just describe them normally - DON'T claim random anime girls are you.
+{previous_images}
+
+React naturally, give real art critique (3-5 sentences). Focus on THIS new image."""
     
     # What should Astra respond to?
     if user_prompt:
-        astra_prompt = f"{username} shared an image and asked: {user_prompt}\n\n(You can see exactly what's in the image above. If YOU are in it, talk about yourself in first person.)"
+        astra_prompt = f"{username} just shared a NEW image and asked: {user_prompt}"
     else:
-        astra_prompt = f"{username} shared an image with you.\n\n(You can see exactly what's in the image above. If YOU are in it, react to what you're doing in first person.)"
+        astra_prompt = f"{username} just shared a NEW image with you."
     
     # Step 5: Let Astra respond naturally through her normal chat flow
     response = await process_message(
