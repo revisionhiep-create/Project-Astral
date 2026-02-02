@@ -4,8 +4,54 @@ import json
 import aiohttp
 from typing import Optional
 
+import re
+
 from ai.personality import build_system_prompt
 from tools.time_utils import get_date_context
+
+
+def _extract_json(text: str) -> dict:
+    """
+    Extract JSON from LLM response that may contain markdown or extra text.
+    Handles: ```json {...}```, ```{...}```, raw JSON, or JSON buried in text.
+    """
+    if not text or not text.strip():
+        raise ValueError("Empty response")
+    
+    text = text.strip()
+    
+    # Try 1: Direct parse (ideal case)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    
+    # Try 2: Strip markdown code blocks
+    # Matches ```json {...}``` or ```{...}```
+    code_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+    if code_block:
+        try:
+            return json.loads(code_block.group(1))
+        except json.JSONDecodeError:
+            pass
+    
+    # Try 3: Find JSON object anywhere in text
+    json_match = re.search(r'\{[^{}]*"search"[^{}]*\}', text, re.DOTALL)
+    if json_match:
+        try:
+            return json.loads(json_match.group(0))
+        except json.JSONDecodeError:
+            pass
+    
+    # Try 4: More aggressive - find any {...} block
+    brace_match = re.search(r'\{.*?\}', text, re.DOTALL)
+    if brace_match:
+        try:
+            return json.loads(brace_match.group(0))
+        except json.JSONDecodeError:
+            pass
+    
+    raise ValueError(f"Could not extract JSON from: {text[:100]}")
 
 
 # LM Studio server (OpenAI-compatible API)
@@ -115,11 +161,11 @@ Examples:
         if not response:
             raise Exception("No response from LM Studio")
         
-        result = json.loads(response)
+        result = _extract_json(response)
         print(f"[Router] Decision: search={result.get('search')}, vision={result.get('vision')}, query='{result.get('search_query', '')[:50]}'")
         return result
         
-    except json.JSONDecodeError as e:
+    except (json.JSONDecodeError, ValueError) as e:
         print(f"[Router] JSON parse error: {e}")
         return {
             "search": len(user_message) > 15,

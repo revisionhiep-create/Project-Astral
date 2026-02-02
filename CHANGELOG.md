@@ -2,6 +2,28 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.7.1] - 2026-02-01
+
+### Changed
+- **Hybrid Personality**: Combined v1.6.6 lazy vibe with v1.7.0 substance
+  - Brought back "low-energy texter" and "half-asleep on the couch" vibe
+  - 2-4 sentences baseline still applies
+  - No forced follow-up questions (only ask if you actually want to know)
+  - No cheerleader validation ("Oh nice!", "always impressed by...")
+  - No HR speak (compliments about work ethic/dedication)
+  - It's okay to be unimpressed - not everything needs a reaction
+
+### Fixed
+- **TTS Routing**: Fixed Kokoro TTS routing to correct IP
+  - Was: `host.docker.internal:8000` (localhost - wrong)
+  - Now: `192.168.1.16:8000` (5090 GPU machine - correct)
+- **Router JSON Parsing**: Added robust `_extract_json()` helper
+  - Handles markdown code blocks (```json {...}```)
+  - Finds JSON buried in LLM text responses
+  - Reduces fallback to dumb heuristics
+
+---
+
 ## [1.7.0] - 2026-02-01
 
 ### Changed
