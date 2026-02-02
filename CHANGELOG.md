@@ -2,6 +2,21 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.8.0] - 2026-02-02
+
+### Changed
+- **Unified Model Architecture**: Consolidated from two models to one
+  - Chat brain: Mistral Small 24B → Gemma 3 27B (abliterated)
+  - Vision: Already using Gemma 3 27B
+  - Same model handles both chat and vision (no more RAM spill from swapping)
+  - Anti-hallucination character recognition preserved (two-step flow intact)
+
+### Fixed
+- **Timezone Bug**: Image timestamps now use PST instead of container UTC
+  - `vision.py` was using `datetime.now()` (UTC) instead of `pytz.timezone("America/Los_Angeles")`
+
+---
+
 ## [1.7.2] - 2026-02-01
 
 ### Added

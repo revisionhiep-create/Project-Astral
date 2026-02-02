@@ -10,6 +10,7 @@ import google.generativeai as genai
 from io import BytesIO
 from datetime import datetime
 from collections import deque
+import pytz
 
 # Import character system for recognition
 try:
@@ -189,7 +190,7 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
     _recent_images.append({
         "username": username,
         "description": description,
-        "timestamp": datetime.now().strftime("%I:%M %p"),
+        "timestamp": datetime.now(pytz.timezone("America/Los_Angeles")).strftime("%I:%M %p"),
         "user_context": user_prompt or "shared an image"
     })
     print(f"[Vision] Cached image from {username} (total cached: {len(_recent_images)})")
