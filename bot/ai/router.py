@@ -219,8 +219,11 @@ async def generate_response(
     # few_shot = get_few_shot_examples(count=3)
     # messages.extend(few_shot)
     
-    # User message is clean - no search injection
-    messages.append({"role": "user", "content": user_message})
+    # User message with speaker tag (survives truncation)
+    if current_speaker:
+        messages.append({"role": "user", "content": f"[{current_speaker}]: {user_message}"})
+    else:
+        messages.append({"role": "user", "content": user_message})
     
     try:
         use_search = bool(search_context)

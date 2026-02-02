@@ -2,6 +2,16 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.8.2] - 2026-02-02
+
+### Fixed
+- **Identity Confusion on Truncation**: Astra now correctly identifies who's talking even when context is truncated
+  - Added `[Username]:` prefix to user messages in router
+  - Survives LM Studio context window truncation (8K limit was cutting speaker headers)
+  - Fixes issue where Astra would respond to wrong person mid-conversation
+
+---
+
 ## [1.8.1] - 2026-02-02
 
 ### Fixed
