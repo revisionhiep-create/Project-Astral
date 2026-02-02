@@ -2,6 +2,18 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.8.3] - 2026-02-02
+
+### Changed
+- **Image Reactions Reworked**: Astra now reacts like a "Man of Culture" to shared art
+  - Genuine enthusiasm instead of stiff art critiques
+  - Leads with the "Wow" factor - what catches her eye first
+  - Natural language for aesthetics ("golden hour lighting feels cozy" not clinical descriptions)
+  - Technical appreciation for rendering details (skin shading, fabric folds, eye detail)
+  - Unapologetically appreciates spicy art - comments on *how* the artist made it work
+
+---
+
 ## [1.8.2] - 2026-02-02
 
 ### Fixed
