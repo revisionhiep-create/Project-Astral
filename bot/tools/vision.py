@@ -187,10 +187,12 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
         return "couldn't see that image, try again?"
     
     # Step 2: Store in short-term cache (last 5 images)
+    now = datetime.now(pytz.timezone("America/Los_Angeles"))
     _recent_images.append({
         "username": username,
         "description": description,
-        "timestamp": datetime.now(pytz.timezone("America/Los_Angeles")).strftime("%I:%M %p"),
+        "timestamp": now.strftime("%I:%M %p"),
+        "timestamp_dt": now,  # For expiry checking
         "user_context": user_prompt or "shared an image"
     })
     print(f"[Vision] Cached image from {username} (total cached: {len(_recent_images)})")
@@ -260,11 +262,20 @@ def get_recent_image_context() -> str:
     if not _recent_images:
         return ""
     
+    # Only include images from last 5 minutes
+    now = datetime.now(pytz.timezone("America/Los_Angeles"))
     lines = ["[RECENT IMAGES YOU SAW]"]
     for img in _recent_images:
+        # Skip images older than 5 minutes
+        if (now - img.get('timestamp_dt', now)).total_seconds() > 300:
+            continue
         # Replace "Astra" with "you" so she remembers in first person
         desc = img['description'][:200].replace("Astra", "you").replace("astra", "you")
         lines.append(f"- {img['username']} ({img['timestamp']}): {desc}")
+    
+    # Return empty if no recent images
+    if len(lines) == 1:
+        return ""
     
     return "\n".join(lines)
 

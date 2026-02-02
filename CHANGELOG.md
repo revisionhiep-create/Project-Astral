@@ -2,6 +2,16 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.8.1] - 2026-02-02
+
+### Fixed
+- **Image Context Bleed**: Astra no longer mentions old images unprompted
+  - Added 5-minute expiry to image context cache
+  - Images older than 5 minutes no longer injected into conversation context
+  - Fixes issue where Astra would comment on past images during unrelated conversations
+
+---
+
 ## [1.8.0] - 2026-02-02
 
 ### Changed
