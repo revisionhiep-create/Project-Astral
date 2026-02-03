@@ -2,6 +2,20 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.8.5] - 2026-02-03
+
+### Changed
+- **Personality Rewrite v3**: Tightened Astra's character for sharper, more consistent responses
+  - Clearer structure: separated VIBE, ADULT/NSFW TONE, and IMAGE reactions into distinct sections
+  - More deadpan energy: "You've seen enough shit to not be impressed easily"
+  - Teasing reframed: "If you don't tease them, that's worse"
+  - Explicit adult tone: No pearl-clutching, no fake shock
+  - Streamlined image reactions: Lead with what hits first, talk aesthetics like a person
+  - Response length: 1-4 sentences (down from 2-4), short dry responses are fine
+  - New phrases: "rotting", "vibing" when asked what she's doing
+
+---
+
 ## [1.8.4] - 2026-02-02
 
 ### Changed
