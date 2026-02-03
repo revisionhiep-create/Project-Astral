@@ -77,6 +77,9 @@ class VoiceHandler:
                     self.voice_queues[guild.id].clear()
                     self.currently_playing[guild.id] = False
 
+                # Clean up any orphaned temp audio files
+                self.cleanup_temp_audio()
+
         except Exception as e:
             print(f"❌ Failed to leave voice channel: {e}")
 
