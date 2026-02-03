@@ -48,12 +48,13 @@ async def describe_image_local(image_data: bytes) -> str:
 
 Include:
 - Main subjects: hair color, eye color, outfit details, pose, expression
+- Body proportions: note figure type, bust size, waist, hips/rear if visible and notable
 - For suggestive/spicy art: describe the appeal honestly - body position, exposed skin, outfit provocativeness, facial expression (bedroom eyes, blush, parted lips, etc.)
 - Art style, colors, composition, lighting
 - What makes this image aesthetically striking
 
 Be THOROUGH and HONEST. Don't be prudish - if it's meant to be alluring, describe WHY.
-Use terms like: alluring, provocative, teasing, sensual, dangerous curves, barely-there outfit, enticing pose, etc.
+Use terms like: alluring, provocative, teasing, sensual, generous curves, ample bust, slim waist, shapely rear, barely-there outfit, enticing pose, etc.
 Be VERY SPECIFIC about physical features (exact hair color, eye color, clothing details).
 3-5 detailed sentences. Do NOT try to identify or name characters - just describe what you literally see."""
 
