@@ -2,6 +2,17 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.8.9] - 2026-02-03
+
+### Changed
+- **Adaptive Image Reactions**: Now distinguishes between normal photos and artwork
+  - Normal photos (food, pets, memes, screenshots): casual reactions like "nice", "lmao", "oof"
+  - Art (anime, digital art, illustrations): aesthetic analysis with pose, lighting, rendering
+  - Matches energy to what's shared instead of over-analyzing mundane images
+  - Text/screenshots: comments on content, not the image itself
+
+---
+
 ## [1.8.8] - 2026-02-03
 
 ### Fixed
