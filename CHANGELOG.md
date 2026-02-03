@@ -2,6 +2,19 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.8.8] - 2026-02-03
+
+### Fixed
+- **Stripped Leading Names**: Removed unwanted `liddo.` style name prefixes from responses
+  - Model was mimicking the `[Username]:` pattern from context injection
+  - Added `_strip_leading_name()` helper to clean known usernames from response start
+  - Covers: liddo, tei, hiep, jason, melon, revision, shiftstep
+
+### Changed
+- **Wiped RAG Memory**: Cleared `memory.db` for fresh start
+
+---
+
 ## [1.8.7] - 2026-02-03
 
 ### Fixed
