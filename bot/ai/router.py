@@ -22,6 +22,21 @@ def _strip_think_tags(text: str) -> str:
     return cleaned.strip()
 
 
+def _strip_roleplay_actions(text: str) -> str:
+    """
+    Strip roleplay action narration from model output.
+    The abliterated/roleplay-tuned models often output (pauses, blinks slowly) style actions.
+    """
+    if not text:
+        return text
+    # Remove (action) style narration - matches parentheses with lowercase text inside
+    # Examples: (pauses), (blinks slowly), (sighs dramatically)
+    cleaned = re.sub(r'\([a-z][^)]*\)\s*', '', text)
+    # Also remove *action* style if present
+    cleaned = re.sub(r'\*[^*]+\*\s*', '', cleaned)
+    return cleaned.strip()
+
+
 def _extract_json(text: str) -> dict:
     """
     Extract JSON from LLM response that may contain markdown or extra text.
@@ -250,7 +265,7 @@ async def generate_response(
         if not response:
             return "something broke on my end, try again?"
         
-        return _strip_think_tags(response)
+        return _strip_roleplay_actions(_strip_think_tags(response))
     except Exception as e:
         print(f"[LMStudio Error] {e}")
         return "something broke on my end, try again?"

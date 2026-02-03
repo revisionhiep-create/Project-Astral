@@ -2,6 +2,17 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.8.7] - 2026-02-03
+
+### Fixed
+- **Stripped Roleplay Actions**: Removed unwanted `(pauses, blinks slowly)` style narration from responses
+  - Root cause: Abliterated/roleplay-tuned models output action narration by default
+  - Added `_strip_roleplay_actions()` helper to `router.py` to clean responses
+  - Also strips `*action*` asterisk style actions
+  - Astra now speaks directly without roleplay narration
+
+---
+
 ## [1.8.6] - 2026-02-03
 
 ### Fixed
