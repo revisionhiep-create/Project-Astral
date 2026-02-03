@@ -2,6 +2,16 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.8.6] - 2026-02-03
+
+### Fixed
+- **Exposed Think Tags**: Astra's internal `<think>` reasoning blocks were leaking into Discord messages
+  - Root cause: Deep Reasoning model outputs chain-of-thought in `<think>...</think>` tags
+  - Added `_strip_think_tags()` helper to `router.py` to clean responses before sending
+  - Astra now keeps her thoughts to herself (as intended)
+
+---
+
 ## [1.8.5] - 2026-02-03
 
 ### Changed

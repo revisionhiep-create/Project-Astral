@@ -10,6 +10,18 @@ from ai.personality import build_system_prompt
 from tools.time_utils import get_date_context
 
 
+def _strip_think_tags(text: str) -> str:
+    """
+    Strip <think>...</think> reasoning blocks from model output.
+    The Deep Reasoning model outputs these for chain-of-thought, but we don't want to show them.
+    """
+    if not text:
+        return text
+    # Remove <think>...</think> blocks (including newlines within)
+    cleaned = re.sub(r'<think>.*?</think>\s*', '', text, flags=re.DOTALL)
+    return cleaned.strip()
+
+
 def _extract_json(text: str) -> dict:
     """
     Extract JSON from LLM response that may contain markdown or extra text.
@@ -238,7 +250,7 @@ async def generate_response(
         if not response:
             return "something broke on my end, try again?"
         
-        return response
+        return _strip_think_tags(response)
     except Exception as e:
         print(f"[LMStudio Error] {e}")
         return "something broke on my end, try again?"
