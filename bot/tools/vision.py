@@ -48,6 +48,7 @@ async def describe_image_local(image_data: bytes) -> str:
 
 Include:
 - Main subjects: hair color, eye color, outfit details, pose, expression
+- Hand positions: where are hands placed? Grabbing clothing, touching self/others, resting on thighs, etc.
 - Body proportions: note figure type, bust size, waist, hips/rear if visible and notable
 - For suggestive/spicy art: describe the appeal honestly - body position, exposed skin, outfit provocativeness, facial expression (bedroom eyes, blush, parted lips, etc.)
 - Art style, colors, composition, lighting
