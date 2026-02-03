@@ -37,18 +37,6 @@ def _strip_roleplay_actions(text: str) -> str:
     return cleaned.strip()
 
 
-def _strip_leading_name(text: str) -> str:
-    """
-    Strip known usernames from the start of responses.
-    The model sometimes mimics the [Username]: pattern from context.
-    """
-    if not text:
-        return text
-    # Known usernames (case-insensitive) followed by punctuation
-    # Matches: "liddo.", "Tei,", "hiep:", "Jason -", etc.
-    cleaned = re.sub(r'^(liddo|tei|hiep|jason|melon|revision|shiftstep)[.,:\-\s]+', '', text, flags=re.IGNORECASE)
-    return cleaned.strip()
-
 
 def _extract_json(text: str) -> dict:
     """
@@ -278,7 +266,7 @@ async def generate_response(
         if not response:
             return "something broke on my end, try again?"
         
-        return _strip_leading_name(_strip_roleplay_actions(_strip_think_tags(response)))
+        return _strip_roleplay_actions(_strip_think_tags(response))
     except Exception as e:
         print(f"[LMStudio Error] {e}")
         return "something broke on my end, try again?"
