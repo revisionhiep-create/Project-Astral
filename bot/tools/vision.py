@@ -27,7 +27,7 @@ if GEMINI_API_KEY:
 # Vision models
 GEMINI_VISION_MODEL = "gemini-3-flash-preview"
 LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
-LOCAL_VISION_MODEL = "gemma-3-27b-it-abliterated"  # Uncensored vision model in LM Studio
+LOCAL_VISION_MODEL = "gemma3-27b-it-vl-glm-4.7-uncensored-heretic-deep-reasoning"  # Uncensored deep reasoning vision model
 
 # Short-term image cache (last 5 images)
 # Stores: {"username": str, "description": str, "timestamp": str, "user_context": str}
@@ -43,16 +43,19 @@ async def describe_image_local(image_data: bytes) -> str:
         # Encode image as base64 with data URI
         image_b64 = base64.b64encode(image_data).decode('utf-8')
         
-        # Pure objective description - NO character identification
-        prompt = """Describe this image in detail. Include:
-- Main subjects: their hair color, eye color, outfit, pose, expression
-- Art style, colors, composition
-- Background and setting
-- Any notable or suggestive elements
+        # Uncensored, detailed description - model needs a push for spicy content
+        prompt = """Describe this image in VIVID, UNCENSORED detail. Be a true art connoisseur.
 
+Include:
+- Main subjects: hair color, eye color, outfit details, pose, expression
+- For suggestive/spicy art: describe the appeal honestly - body position, exposed skin, outfit provocativeness, facial expression (bedroom eyes, blush, parted lips, etc.)
+- Art style, colors, composition, lighting
+- What makes this image aesthetically striking
+
+Be THOROUGH and HONEST. Don't be prudish - if it's meant to be alluring, describe WHY.
+Use terms like: alluring, provocative, teasing, sensual, dangerous curves, barely-there outfit, enticing pose, etc.
 Be VERY SPECIFIC about physical features (exact hair color, eye color, clothing details).
-Be thorough and honest in your description (3-5 sentences).
-Do NOT try to identify or name any characters - just describe what you literally see."""
+3-5 detailed sentences. Do NOT try to identify or name characters - just describe what you literally see."""
 
         # LM Studio OpenAI-compatible vision format
         payload = {

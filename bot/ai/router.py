@@ -58,7 +58,7 @@ def _extract_json(text: str) -> dict:
 LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 
 # Model identifiers from LM Studio
-CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "gemma-3-27b-it-abliterated")
+CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "gemma3-27b-it-vl-glm-4.7-uncensored-heretic-deep-reasoning")
 
 
 async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 2048) -> str:

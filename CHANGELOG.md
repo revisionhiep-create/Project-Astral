@@ -2,6 +2,21 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.8.4] - 2026-02-02
+
+### Changed
+- **Model Upgrade**: Switched to `Gemma3-27B-it-vl-GLM-4.7-Uncensored-Heretic-Deep-Reasoning`
+  - Fine-tuned with GLM 4.7 reasoning dataset for enhanced "thinking"
+  - Improved image intelligence and output generation
+  - 128k context, temp stable 0.1-2.5
+  - Recommended: Repeat Penalty 1.1-1.15 in LM Studio
+- **Vision Prompt Enhanced**: Updated local vision prompt for richer descriptions
+  - Now explicitly asks for vivid, uncensored detail on suggestive art
+  - Art connoisseur vocabulary: alluring, provocative, sensual, etc.
+  - Focus on *why* art is aesthetically striking, not just clinical descriptions
+
+---
+
 ## [1.8.3] - 2026-02-02
 
 ### Changed
