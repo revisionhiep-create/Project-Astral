@@ -130,10 +130,14 @@ ASTRA_PROMPT = get_astra_prompt()
 GEMGEM_PROMPT = ASTRA_PROMPT  # Legacy alias
 
 
-def build_system_prompt(search_context: str = "", memory_context: str = "") -> str:
+def build_system_prompt(search_context: str = "", memory_context: str = "", current_speaker: str = None) -> str:
     """Build system prompt with optional context."""
     # Reload characters each time for freshness
     prompt_parts = [get_astra_prompt()]
+    
+    # CRITICAL: Speaker identity goes in system prompt for highest priority
+    if current_speaker:
+        prompt_parts.append(f"\n\n>>> YOU ARE RESPONDING TO: {current_speaker} <<<\nThis person is talking to you RIGHT NOW. Address {current_speaker} specifically in your reply.")
     
     if search_context:
         prompt_parts.append(f"\n[CONTEXT]\n{search_context}")

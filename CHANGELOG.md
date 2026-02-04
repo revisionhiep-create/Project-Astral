@@ -2,6 +2,22 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.9.0] - 2026-02-03
+
+### Fixed
+- **Username Confusion**: Astra no longer calls users by wrong names (e.g., calling Hiep "tei")
+  - **Root Cause**: Speaker identity at START of context was getting diluted by 50 messages of chat history
+  - **Fix 1**: Added speaker identity to SYSTEM PROMPT itself (highest priority)
+  - **Fix 2**: Moved speaker reminder to END of context (recency bias)
+  - **Fix 3**: Reduced context from 50→25 messages (less name pollution)
+
+### Changed
+- `ai/personality.py`: `build_system_prompt()` now accepts `current_speaker` param
+- `ai/router.py`: Removed redundant speaker header, passes speaker to system prompt
+- `cogs/chat.py`: Reduced history limit, restructured context with speaker at end
+
+---
+
 ## [1.8.9] - 2026-02-03
 
 ### Changed

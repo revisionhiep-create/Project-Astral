@@ -60,11 +60,11 @@ class ChatCog(commands.Cog):
                 
                 # ============ NEW LOGIC AI FLOW ============
                 
-                # Step 1: Fetch short-term context from Discord (last 50 msgs from THIS channel)
+                # Step 1: Fetch short-term context from Discord (last 25 msgs - reduced from 50 to prevent name dilution)
                 # Use message.channel.history() directly (same as GemGem) for reliability
                 discord_messages = []
                 try:
-                    async for msg in message.channel.history(limit=50):
+                    async for msg in message.channel.history(limit=25):
                         author_name = msg.author.display_name
                         # Only label THIS bot as "Astra" - other bots (like GemGem) keep their names
                         if msg.author.id == self.bot.user.id:
@@ -139,16 +139,14 @@ class ChatCog(commands.Cog):
                     # Combine: search results + Discord short-term context
                     combined_context = ""
                     
-                    # === CURRENT SPEAKER (TOP PRIORITY) ===
-                    # This person is talking to you RIGHT NOW - respond to THEM specifically
-                    speaker_name = message.author.display_name
-                    combined_context += f">>> RESPONDING TO: {speaker_name} <<<\n"
-                    combined_context += f"(This is who you're talking to. Address them specifically.)\n\n"
-                    
+                    # Short-term context FIRST (so speaker reminder at END has recency bias)
                     if short_term_context:
-                        combined_context += f"=== RECENT CHAT (last few minutes - YOU SAW THIS) ===\n{short_term_context}\n"
-                        combined_context += f"\n--- END OF CHAT HISTORY ---\n"
-                        combined_context += f"--- {speaker_name} IS NOW TALKING TO YOU ---\n\n"
+                        combined_context += f"=== RECENT CHAT ===\n{short_term_context}\n"
+                        combined_context += f"--- END OF CHAT ---\n\n"
+                    
+                    # === CURRENT SPEAKER (AT END for recency bias) ===
+                    speaker_name = message.author.display_name
+                    combined_context += f">>> {speaker_name} IS NOW TALKING TO YOU <<<"
                     
                     # Inject cached image descriptions so Astra remembers what she saw
                     image_context = get_recent_image_context()

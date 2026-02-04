@@ -223,13 +223,9 @@ async def generate_response(
     
     Search context goes in SYSTEM PROMPT to separate facts from conversation.
     """
-    # Build system prompt with context
-    system_prompt = build_system_prompt(search_context, memory_context)
-    
-    # Add current speaker at the VERY TOP if provided
-    if current_speaker:
-        speaker_header = f"[RESPONDING TO: {current_speaker}]\nYou are replying to {current_speaker} specifically. Keep this in mind.\n\n"
-        system_prompt = speaker_header + system_prompt
+    # Build system prompt with context AND speaker identity (v1.7.3)
+    # Speaker goes in system prompt for highest priority (not buried by chat history)
+    system_prompt = build_system_prompt(search_context, memory_context, current_speaker)
     
     # Add date awareness
     system_prompt = f"{get_date_context()}\n\n{system_prompt}"
