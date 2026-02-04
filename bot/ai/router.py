@@ -153,34 +153,42 @@ Respond with ONLY valid JSON:
 {{
   "search": true or false,
   "search_query": "optimized search query if search is true, otherwise empty string",
+  "time_range": "day/week/month/year or null for all-time",
   "vision": true or false,
   "reasoning": "brief one-line explanation"
 }}
 
 Rules:
-- search=true: ANY question requiring CURRENT/REAL-TIME info you don't have (weather, prices, scores, news, "what's happening", recent events)
-- search=true: factual questions about people, things, events, releases, updates
-- search=true: questions with time words like "now", "today", "current", "latest", "recent", "will" (future predictions)
-- search=true: questions about concepts, theories, philosophies, or anything you'd need to look up to answer accurately
+- search=true: ANY question requiring CURRENT/REAL-TIME info (weather, prices, scores, news, "what's happening", recent events)
+- search=true: factual questions about specific people, things, events, releases, updates
+- search=true: questions with time words like "now", "today", "current", "latest", "recent", "will" (future)
+- search=true: niche/technical topics, specific person details, current events
 - search=true: when you're not 100% certain about the answer - better to search than guess
-- search=true: "who is", "what is", "explain", "tell me about" questions about specific topics
+- search=false: well-known concepts you already know (Stoicism, basic science, common knowledge)
 - search=false: casual chat, greetings, pure opinions, emotional support, questions answerable from chat context
 - search=false: personal questions about the user or reactions to what they said
 - vision=true: image is attached OR user asks to look at something
-- search_query: extract key terms, add context (city names, specific topics), remove filler words
 
-CRITICAL: When in doubt, search=true. It's better to have accurate info than to guess and be wrong. If the question is about any real-world topic, concept, person, or event, search.
+QUERY REWRITING (CRITICAL):
+- De-contextualize: Replace ALL pronouns (he, she, it, they, him, her, this, that) with specific entities from chat context
+- Bad: "How old is he?" → Good: "Tim Cook age" (if context mentioned Tim Cook)
+- Bad: "What does it cost?" → Good: "iPhone 16 Pro price" (if context mentioned iPhone)
+- Extract key terms, add context (city names, specific topics), remove filler words
+
+TIME RANGE:
+- "day" or "week": News, current events, scores, weather, "what's happening now"
+- "month" or "year": Recent releases, updates, new products
+- null: Historical facts, biographies, evergreen documentation, "who was", "what is"
 
 Examples:
-- "when will the snow melt in DC" -> {{"search": true, "search_query": "Washington DC weather forecast snow", "vision": false, "reasoning": "weather is real-time data"}}
-- "what's the weather like" -> {{"search": true, "search_query": "current weather", "vision": false, "reasoning": "weather needs real-time data"}}
-- "who won the game" -> {{"search": true, "search_query": "latest game score results", "vision": false, "reasoning": "sports scores are real-time"}}
-- "who is ironmouse" -> {{"search": true, "search_query": "Ironmouse VTuber", "vision": false, "reasoning": "looking up a person"}}
-- "what does zizek think about freedom" -> {{"search": true, "search_query": "Slavoj Zizek philosophy freedom determinism", "vision": false, "reasoning": "philosophical topic needs accurate info"}}
-- "hey what's up" -> {{"search": false, "search_query": "", "vision": false, "reasoning": "casual greeting"}}
-- "what did Hiep say earlier" -> {{"search": false, "search_query": "", "vision": false, "reasoning": "can answer from chat context"}}
-- "what's her real name" (context mentions Ironmouse) -> {{"search": true, "search_query": "Ironmouse real name VTuber", "vision": false, "reasoning": "follow-up question needs search"}}
-- [image attached] "what is this" -> {{"search": false, "vision": true, "reasoning": "user wants image analyzed"}}"""
+- "when will the snow melt in DC" → {{"search": true, "search_query": "Washington DC weather forecast snow", "time_range": "week", "vision": false, "reasoning": "weather is real-time"}}
+- "who won the game" → {{"search": true, "search_query": "latest game score results", "time_range": "day", "vision": false, "reasoning": "sports scores are real-time"}}
+- "who is ironmouse" → {{"search": true, "search_query": "Ironmouse VTuber", "time_range": null, "vision": false, "reasoning": "person lookup, evergreen info"}}
+- "How old is he?" (context: discussed Tim Cook) → {{"search": true, "search_query": "Tim Cook age", "time_range": null, "vision": false, "reasoning": "resolved pronoun from context"}}
+- "who was the first Roman Emperor" → {{"search": true, "search_query": "first Roman Emperor", "time_range": null, "vision": false, "reasoning": "historical fact, no time limit"}}
+- "what is Stoicism" → {{"search": false, "search_query": "", "time_range": null, "vision": false, "reasoning": "well-known concept, use internal knowledge"}}
+- "hey what's up" → {{"search": false, "search_query": "", "time_range": null, "vision": false, "reasoning": "casual greeting"}}
+- [image attached] "what is this" → {{"search": false, "time_range": null, "vision": true, "reasoning": "user wants image analyzed"}}"""
 
     try:
         response = await _call_lmstudio(
@@ -193,7 +201,7 @@ Examples:
             raise Exception("No response from LM Studio")
         
         result = _extract_json(response)
-        print(f"[Router] Decision: search={result.get('search')}, vision={result.get('vision')}, query='{result.get('search_query', '')[:50]}'")
+        print(f"[Router] Decision: search={result.get('search')}, vision={result.get('vision')}, time_range={result.get('time_range')}, query='{result.get('search_query', '')[:50]}'")
         return result
         
     except (json.JSONDecodeError, ValueError) as e:
@@ -201,6 +209,7 @@ Examples:
         return {
             "search": len(user_message) > 15,
             "search_query": user_message,
+            "time_range": None,
             "vision": has_image,
             "reasoning": "fallback due to parse error"
         }
@@ -209,6 +218,7 @@ Examples:
         return {
             "search": False,
             "search_query": "",
+            "time_range": None,
             "vision": has_image,
             "reasoning": f"error: {e}"
         }

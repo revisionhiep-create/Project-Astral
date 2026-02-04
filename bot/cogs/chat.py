@@ -104,8 +104,9 @@ class ChatCog(commands.Cog):
                 # Search if Logic AI decided
                 if tool_decision.get("search"):
                     search_query = tool_decision.get("search_query") or content
-                    print(f"[Chat] Logic AI triggered search: '{search_query}'")
-                    search_results = await search(search_query, num_results=5)
+                    time_range = tool_decision.get("time_range")  # day/week/month/year/None
+                    print(f"[Chat] Logic AI triggered search: '{search_query}' (time_range={time_range})")
+                    search_results = await search(search_query, num_results=5, time_range=time_range)
                     search_context = format_search_results(search_results)
                     print(f"[Chat] Got {len(search_results)} results")
                     # NOTE: No RAG storage for searches anymore!

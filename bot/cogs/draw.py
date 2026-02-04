@@ -31,24 +31,18 @@ class DrawCog(commands.Cog):
                 await interaction.followup.send(commentary)
                 return
             
-            # Build embed
-            embed = discord.Embed(
-                title=f"✨ {engine_name}",
-                description=f"**Prompt:** {prompt[:200]}",
-                color=discord.Color.purple()
-            )
-            embed.set_footer(text=f"For {interaction.user.display_name}")
-            
-            # Send image FIRST
+            # Send image with plain text header (no embed to avoid text cutoff)
             file = discord.File(image_data, filename="drawing.png")
-            embed.set_image(url="attachment://drawing.png")
             
             # Create edit button view
             view = EditButtonView(prompt, image_data.getvalue(), self.handler, interaction.user.id)
             
-            # Send image, then commentary after (so comment appears BELOW image)
+            # Build plain text header
+            header = f"✨ **{engine_name}**\n**Prompt:** {prompt}"
+            
+            # Send image with header, then commentary
             await interaction.followup.send(
-                embed=embed,
+                content=header,
                 file=file,
                 view=view
             )
@@ -78,33 +72,18 @@ class DrawCog(commands.Cog):
                 await interaction.followup.send(commentary)
                 return
             
-            # Build embed with enhanced prompt shown
-            embed = discord.Embed(
-                title=f"✨ {engine_name} | Guided Draw",
-                color=discord.Color.purple()
-            )
-            embed.add_field(
-                name="Your Idea",
-                value=idea[:200],
-                inline=False
-            )
-            embed.add_field(
-                name="Enhanced Prompt",
-                value=enhanced_prompt[:500] if enhanced_prompt else "N/A",
-                inline=False
-            )
-            embed.set_footer(text=f"For {interaction.user.display_name}")
-            
-            # Send image FIRST
+            # Send image with plain text (no embed to avoid text cutoff)
             file = discord.File(image_data, filename="drawing.png")
-            embed.set_image(url="attachment://drawing.png")
             
             # Create edit button view
             view = EditButtonView(idea, image_data.getvalue(), self.handler, interaction.user.id)
             
-            # Send image first
+            # Build plain text header showing idea and enhanced prompt
+            header = f"✨ **{engine_name} | Guided Draw**\n**Your Idea:** {idea}\n**Enhanced:** {enhanced_prompt if enhanced_prompt else 'N/A'}"
+            
+            # Send image with header
             await interaction.followup.send(
-                embed=embed,
+                content=header,
                 file=file,
                 view=view
             )
@@ -158,20 +137,14 @@ class DrawCog(commands.Cog):
                     )
                     
                     if image_data:
-                        embed = discord.Embed(
-                            title=f"✨ {engine_name} | Guided Draw",
-                            color=discord.Color.purple()
-                        )
-                        embed.add_field(name="Your Idea", value=subject[:200], inline=False)
-                        if enhanced:
-                            embed.add_field(name="Enhanced", value=enhanced[:300], inline=False)
-                        
                         file = discord.File(image_data, filename="drawing.png")
-                        embed.set_image(url="attachment://drawing.png")
-                        
                         view = EditButtonView(subject, image_data.getvalue(), self.handler, message.author.id)
+                        
+                        # Build plain text header
+                        header = f"✨ **{engine_name} | Guided Draw**\n**Your Idea:** {subject}\n**Enhanced:** {enhanced if enhanced else 'N/A'}"
+                        
                         # Send image first, then commentary
-                        await message.reply(embed=embed, file=file, view=view)
+                        await message.reply(content=header, file=file, view=view)
                         await message.channel.send(content=commentary)
                     else:
                         await message.reply(commentary)
@@ -195,18 +168,14 @@ class DrawCog(commands.Cog):
                     )
                     
                     if image_data:
-                        embed = discord.Embed(
-                            title=f"✨ {engine_name}",
-                            description=f"**Prompt:** {subject[:200]}",
-                            color=discord.Color.purple()
-                        )
-                        
                         file = discord.File(image_data, filename="drawing.png")
-                        embed.set_image(url="attachment://drawing.png")
-                        
                         view = EditButtonView(subject, image_data.getvalue(), self.handler, message.author.id)
+                        
+                        # Build plain text header
+                        header = f"✨ **{engine_name}**\n**Prompt:** {subject}"
+                        
                         # Send image first, then commentary
-                        await message.reply(embed=embed, file=file, view=view)
+                        await message.reply(content=header, file=file, view=view)
                         await message.channel.send(content=commentary)
                     else:
                         await message.reply(commentary)
@@ -271,17 +240,8 @@ class EditModal(discord.ui.Modal, title="Edit Drawing"):
                 await interaction.followup.send(critique)
                 return
             
-            # Build embed
-            embed = discord.Embed(
-                title=f"✏️ {engine_name} | Edited",
-                color=discord.Color.purple()
-            )
-            embed.add_field(name="Original", value=self.original_subject[:100], inline=True)
-            embed.add_field(name="Edit", value=self.edit_instruction.value[:100], inline=True)
-            embed.set_footer(text=f"For {interaction.user.display_name}")
-            
+            # Send image with plain text (no embed to avoid text cutoff)
             file = discord.File(image_data, filename="edited.png")
-            embed.set_image(url="attachment://edited.png")
             
             # New edit view for chain editing
             view = EditButtonView(
@@ -291,9 +251,12 @@ class EditModal(discord.ui.Modal, title="Edit Drawing"):
                 interaction.user.id
             )
             
+            # Build plain text header
+            header = f"✏️ **{engine_name} | Edited**\n**Original:** {self.original_subject}\n**Edit:** {self.edit_instruction.value}"
+            
             # Send edited image first
             await interaction.followup.send(
-                embed=embed,
+                content=header,
                 file=file,
                 view=view
             )

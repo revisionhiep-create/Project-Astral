@@ -2,6 +2,21 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.9.3] - 2026-02-04
+
+### Changed
+- **Search Intelligence Overhaul**: Smarter search routing and better results
+  - **Query Rewriting**: Router now de-contextualizes pronouns (he/she/it → actual entities)
+  - **Dynamic Time Range**: Searches use appropriate time filters (`day` for news, `null` for historical facts)
+  - **User-Agent Headers**: Prevents search engines from blocking requests
+  - **Improved Formatting**: Results now include numbered sources with URLs
+  - Well-known concepts (Stoicism, basic science) skip search, use model knowledge
+- **Draw Commands**: Removed embeds from `draw`, `gdraw`, and `edit` commands
+  - Embeds were cutting off enhanced prompts at 500 chars
+  - Now uses plain text formatting with full prompt display
+
+---
+
 ## [1.9.2] - 2026-02-04
 
 ### Changed
