@@ -89,7 +89,7 @@ LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "gemma3-27b-it-vl-glm-4.7-uncensored-heretic-deep-reasoning")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 2048) -> str:
+async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 2048, stop: list = None) -> str:
     """Make a request to LM Studio's OpenAI-compatible API."""
     payload = {
         "model": CHAT_MODEL,
@@ -98,6 +98,9 @@ async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: i
         "max_tokens": max_tokens,
         "stream": False
     }
+    # Add stop sequences if provided (prevents model from roleplaying users)
+    if stop:
+        payload["stop"] = stop
     # Note: LM Studio doesn't support json_mode like OpenAI
     # The prompt instructs JSON output directly
 
@@ -219,44 +222,67 @@ async def generate_response(
     current_speaker: str = None
 ) -> str:
     """
-    Generate an Astra response.
+    Generate an Astra response using transcript format for Gemma 3 reasoning model.
     
-    Search context goes in SYSTEM PROMPT to separate facts from conversation.
+    Uses single-message transcript format instead of ChatML to prevent confusion
+    in group chat scenarios with reasoning models.
     """
-    # Build system prompt with context AND speaker identity (v1.7.3)
-    # Speaker goes in system prompt for highest priority (not buried by chat history)
+    # Build system prompt with context AND speaker identity
     system_prompt = build_system_prompt(search_context, memory_context, current_speaker)
     
     # Add date awareness
     system_prompt = f"{get_date_context()}\n\n{system_prompt}"
     
-    # Build messages
-    messages = [{"role": "system", "content": system_prompt}]
-    
-    # Add conversation history (last 10 messages for context)
+    # Build transcript from conversation history (last 50 messages)
+    transcript_lines = []
     if conversation_history:
-        for msg in conversation_history[-10:]:
-            messages.append(msg)
+        for msg in conversation_history[-50:]:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            
+            # Extract speaker from content if formatted as [Speaker]: message
+            if content.startswith("[") and "]:" in content:
+                # Already formatted, use as-is
+                transcript_lines.append(content)
+            elif role == "assistant":
+                transcript_lines.append(f"[Astra]: {content}")
+            else:
+                # Check for image indicator in content
+                if "[shares an image]" in content or "[Image:" in content:
+                    transcript_lines.append(content)
+                else:
+                    transcript_lines.append(f"[User]: {content}")
     
-    # Few-shot injection disabled - was causing context confusion
-    # from ai.personality import get_few_shot_examples
-    # few_shot = get_few_shot_examples(count=3)
-    # messages.extend(few_shot)
-    
-    # User message with speaker tag (survives truncation)
+    # Add current message
     if current_speaker:
-        messages.append({"role": "user", "content": f"[{current_speaker}]: {user_message}"})
+        transcript_lines.append(f"[{current_speaker}]: {user_message}")
     else:
-        messages.append({"role": "user", "content": user_message})
+        transcript_lines.append(f"[User]: {user_message}")
+    
+    transcript = "\n".join(transcript_lines)
+    
+    # Build single-message prompt in transcript format
+    full_prompt = f"""[System Prompt]
+{system_prompt}
+
+[Transcript - Last {len(transcript_lines)} Messages]
+{transcript}
+
+[Instruction]: Reply to the last message as Astra. Do not output internal thoughts."""
+    
+    messages = [{"role": "user", "content": full_prompt}]
+    
+    # Stop sequences to prevent roleplaying other users (crucial for uncensored models)
+    stop_sequences = ["\n[", "[Hiep]", "[User]", "<end_of_turn>", "<start_of_turn>"]
     
     try:
-        use_search = bool(search_context)
-        print(f"[Router] Query: '{user_message[:50]}' | Search: {len(search_context)} chars")
+        print(f"[Router] Query: '{user_message[:50]}' | Search: {len(search_context)} chars | History: {len(transcript_lines)} msgs")
         
         response = await _call_lmstudio(
             messages=messages,
             temperature=0.65,
-            max_tokens=6000
+            max_tokens=6000,
+            stop=stop_sequences
         )
         
         if not response:

@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Set timezone to Pacific for correct time reporting
+ENV TZ=America/Los_Angeles
+
 WORKDIR /app
 
 # Install system dependencies for voice support

@@ -2,6 +2,31 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.9.2] - 2026-02-04
+
+### Changed
+- **Transcript Format for Gemma 3 Reasoning**: Refactored prompt construction for group chat stability
+  - Switched from ChatML message list to single-message transcript format
+  - History expanded to 50 messages (up from 10)
+  - Format: `[Username]: Message` per line, ending with instruction footer
+  - Prevents reasoning model confusion in multi-user scenarios
+- **Stop Sequences Added**: Prevents model from roleplaying other users
+  - Stops on: `\n[`, `[Hiep]`, `[User]`, `<end_of_turn>`, `<start_of_turn>`
+  - Crucial for uncensored models prone to user impersonation
+- **Think Tag Stripping**: `<think>...</think>` blocks stripped from output (already existed)
+
+---
+
+## [1.9.1] - 2026-02-04
+
+### Fixed
+- **Wrong Time Reporting**: Astra was reporting UTC time instead of PST (8 hours ahead)
+  - Root cause: Docker container had no timezone set, `datetime.now()` returned UTC
+  - Fix: Added `ENV TZ=America/Los_Angeles` to Dockerfile
+  - Astra now correctly reports Pacific time
+
+---
+
 ## [1.9.0] - 2026-02-03
 
 ### Fixed
