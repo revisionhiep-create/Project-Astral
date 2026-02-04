@@ -31,3 +31,6 @@ Thumbs.db
 # Downloads (model files)
 *.gguf
 *.tmp
+
+# Temp files
+temp_audio/
