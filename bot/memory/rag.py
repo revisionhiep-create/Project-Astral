@@ -1,8 +1,15 @@
-"""RAG Vector Store - SQLite-based semantic memory with full knowledge storage."""
+"""RAG Vector Store - SQLite-based semantic memory with Summary RAG (facts, not logs).
+
+v1.9.2: Summary RAG - conversations are summarized to facts before storage.
+Instead of storing raw chat logs like "Hiep: hey\nAstra: sup", we extract
+meaningful facts like "Hiep is working on a Discord bot called GemGem."
+This prevents context pollution and reasoning model confusion.
+"""
 import os
 import json
 import sqlite3
 import hashlib
+import aiohttp
 from datetime import datetime
 from typing import Optional
 import numpy as np
@@ -11,6 +18,74 @@ from memory.embeddings import get_embedding, get_query_embedding
 
 
 DATABASE_PATH = os.getenv("RAG_DATABASE", "/app/data/memory.db")
+LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
+CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "gemma3-27b-it-vl-glm-4.7-uncensored-heretic-deep-reasoning")
+
+
+async def _extract_fact_from_conversation(username: str, user_message: str, astra_response: str) -> Optional[str]:
+    """
+    Extract a factual statement from a conversation, or return None if it's just chatter.
+    
+    This is the core of Summary RAG - we only store meaningful facts, not raw logs.
+    
+    Examples:
+    - "Hiep: I'm working on a Discord bot" → "Hiep is developing a Discord bot."
+    - "Hiep: lol k" → None (no meaningful fact)
+    - "Hiep: I prefer Korean food" → "Hiep prefers Korean food."
+    """
+    prompt = f"""Extract ONE factual statement about {username} from this conversation, or respond with exactly "NONE" if there's no meaningful fact to remember.
+
+Conversation:
+[{username}]: {user_message}
+[Astra]: {astra_response}
+
+Rules:
+- Extract facts about the USER, not about Astra
+- Facts should be useful for future reference (preferences, projects, relationships, interests)
+- "lol", "k", "brb", greetings, and small talk are NOT facts - return NONE
+- Generic statements like "User is chatting" are NOT useful - return NONE
+- Format: "{username} [fact about them]" (e.g., "Hiep is developing a Discord bot called GemGem")
+- One fact only, or NONE
+
+Respond with the fact or NONE:"""
+
+    try:
+        payload = {
+            "model": CHAT_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,  # Low temp for consistent extraction
+            "max_tokens": 100
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{LMSTUDIO_HOST}/v1/chat/completions",
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=30)
+            ) as resp:
+                if resp.status != 200:
+                    return None
+                data = await resp.json()
+                result = data["choices"][0]["message"]["content"].strip()
+                
+                # Check if it's a valid fact (not NONE or empty)
+                if not result or result.upper() == "NONE" or len(result) < 10:
+                    return None
+                
+                # Clean up any think tags that might leak through
+                import re
+                result = re.sub(r'<think>.*?</think>\s*', '', result, flags=re.DOTALL)
+                result = result.strip()
+                
+                if result.upper() == "NONE" or len(result) < 10:
+                    return None
+                    
+                print(f"[RAG] Extracted fact: {result[:80]}...")
+                return result
+                
+    except Exception as e:
+        print(f"[RAG] Fact extraction failed: {e}")
+        return None
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -140,7 +215,7 @@ async def store_knowledge(
         conn.close()
 
 
-# ============== CONVERSATION STORAGE ==============
+# ============== CONVERSATION STORAGE (SUMMARY RAG) ==============
 
 async def store_conversation(
     user_message: str,
@@ -151,45 +226,48 @@ async def store_conversation(
     guild_id: str = None
 ) -> Optional[str]:
     """
-    Store a complete conversation exchange for context and learning.
+    Store a conversation exchange as a FACT, not a raw log.
+    
+    This is Summary RAG - we extract meaningful facts and discard chatter.
     
     Args:
         user_message: What the user said
-        gemgem_response: What GemGem replied
+        gemgem_response: What Astra replied
         user_id: Discord user ID
-        username: Discord display name (for human-readable memory)
+        username: Discord display name
         channel_id: Discord channel ID
         guild_id: Discord server ID
     
     Returns:
-        Conversation ID if successful
+        Knowledge ID if a fact was stored, None if no meaningful fact
     """
-    # Create combined content for embedding - include username for better recall
     name = username or "User"
-    combined = f"{name}: {user_message}\nAstra: {gemgem_response}"
-    embedding = await get_embedding(combined)
     
-    conv_id = f"conv_{hashlib.md5(combined.encode()).hexdigest()[:12]}_{int(datetime.now().timestamp())}"
-    
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute(
-            """INSERT INTO conversations 
-               (id, user_id, username, channel_id, guild_id, user_message, gemgem_response, embedding) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (conv_id, user_id, username, channel_id, guild_id, user_message, gemgem_response, 
-             json.dumps(embedding) if embedding else None)
-        )
-        conn.commit()
-        print(f"[RAG] Stored conversation from {username} ({len(user_message)} + {len(gemgem_response)} chars)")
-        return conv_id
-    except Exception as e:
-        print(f"[RAG Conversation Error] {e}")
+    # Skip very short messages (likely chatter)
+    if len(user_message.strip()) < 15 and len(gemgem_response.strip()) < 50:
+        print(f"[RAG] Skipping short exchange (no facts to extract)")
         return None
-    finally:
-        conn.close()
+    
+    # Extract fact from conversation
+    fact = await _extract_fact_from_conversation(name, user_message, gemgem_response)
+    
+    if not fact:
+        print(f"[RAG] No meaningful fact in conversation with {name}")
+        return None
+    
+    # Store the fact as knowledge (not raw conversation)
+    return await store_knowledge(
+        content=fact,
+        knowledge_type="user_fact",
+        source=f"conversation_{name}",
+        metadata={
+            "username": name,
+            "user_id": user_id,
+            "channel_id": channel_id,
+            "guild_id": guild_id,
+            "original_message": user_message[:200]  # Keep truncated original for reference
+        }
+    )
 
 
 # ============== SEARCH STORAGE ==============

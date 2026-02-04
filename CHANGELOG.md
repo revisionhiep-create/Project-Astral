@@ -13,6 +13,11 @@ All notable changes to Project Astral will be documented in this file.
 - **Stop Sequences Added**: Prevents model from roleplaying other users
   - Stops on: `\n[`, `[Hiep]`, `[User]`, `<end_of_turn>`, `<start_of_turn>`
   - Crucial for uncensored models prone to user impersonation
+- **Summary RAG**: Conversations stored as facts, not raw logs
+  - Before: Raw "Hiep: hey\nAstra: sup" chat logs polluted memory
+  - Now: LLM extracts meaningful facts like "Hiep is developing a Discord bot"
+  - Chatter/small talk is discarded, only useful facts are stored
+  - Prevents "context poisoning" and reasoning model confusion
 - **Think Tag Stripping**: `<think>...</think>` blocks stripped from output (already existed)
 
 ---
