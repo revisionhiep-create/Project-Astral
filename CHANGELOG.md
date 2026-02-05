@@ -2,6 +2,18 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.9.4] - 2026-02-05
+
+### Changed
+- **Anti-Hallucination Search Grounding**: Perplexity-style citation system
+  - **Citation Format**: Search results now use `[1]`, `[2]` style numbering
+  - **Grounding Constraint**: Model must only state facts from sources, no "extra" info from memory
+  - **Confidence Fallback**: If search doesn't have the answer, says "couldn't find that" instead of guessing
+  - **Result Reranking**: Search results sorted by content quality (longer snippets = more useful) before LLM sees them
+- Personality preserved - citations only affect factual claims, not vibes/reactions
+
+---
+
 ## [1.9.3] - 2026-02-04
 
 ### Changed

@@ -43,28 +43,32 @@ async def search(query: str, num_results: int = 5, time_range: str = None) -> li
                 data = await resp.json()
                 results = []
                 
-                for item in data.get("results", [])[:num_results]:
+                for item in data.get("results", []):
                     results.append({
                         "title": item.get("title", ""),
                         "url": item.get("url", ""),
                         "content": item.get("content", "")
                     })
                 
-                return results
+                # Rerank by content quality (longer snippets = more useful info)
+                results = sorted(results, key=lambda x: len(x.get('content', '')), reverse=True)
+                
+                return results[:num_results]
     except Exception as e:
         print(f"[Search Error] {e}")
         return []
 
 
 def format_search_results(results: list[dict]) -> str:
-    """Format search results for injection into LLM context with sources."""
+    """Format search results with numbered citations for LLM grounding."""
     if not results:
         return ""
     
-    formatted = []
+    # Header instructs model to use citations
+    formatted = ["SEARCH RESULTS - Cite with [1], [2] etc when using these facts:\n"]
     for i, r in enumerate(results, 1):
-        # Include URL so model can reference sources
-        formatted.append(f"{i}. [{r['title']}]({r['url']})\n   {r['content']}")
+        # Numbered citation format
+        formatted.append(f"[{i}] {r['title']}\n    URL: {r['url']}\n    {r['content']}")
     
     return "\n\n".join(formatted)
 
