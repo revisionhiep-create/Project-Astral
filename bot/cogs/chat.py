@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from typing import Optional
+import pytz
 
 from ai.router import process_message, decide_tools_and_query
 
@@ -16,6 +17,9 @@ from tools.search import search, format_search_results
 from tools.vision import analyze_image, can_see_images, get_recent_image_context
 from tools.discord_context import fetch_recent_messages, format_discord_context
 from tools.voice_handler import get_voice_handler
+
+# Timezone for user-facing timestamps
+PST = pytz.timezone("America/Los_Angeles")
 
 
 class ChatCog(commands.Cog):
@@ -69,8 +73,8 @@ class ChatCog(commands.Cog):
                         # Only label THIS bot as "Astra" - other bots (like GemGem) keep their names
                         if msg.author.id == self.bot.user.id:
                             author_name = "Astra"
-                        # Format timestamp as relative or simple time
-                        timestamp = msg.created_at.strftime("%I:%M %p")
+                        # Format timestamp as relative or simple time (convert UTC to PST)
+                        timestamp = msg.created_at.astimezone(PST).strftime("%I:%M %p")
                         discord_messages.append({
                             "author": author_name,
                             "content": msg.content[:500],

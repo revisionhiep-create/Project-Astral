@@ -2,6 +2,16 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.9.5] - 2026-02-05
+
+### Fixed
+- **Chat History Timezone Bug**: Timestamps in chat context now display PST instead of UTC
+  - Discord's `msg.created_at` was showing UTC times in context (e.g., 2:05 AM instead of 6:05 PM)
+  - Now converts to PST using `astimezone(pytz.timezone("America/Los_Angeles"))`
+  - Astra now sees correct Pacific time in conversation history
+
+---
+
 ## [1.9.4] - 2026-02-05
 
 ### Changed
