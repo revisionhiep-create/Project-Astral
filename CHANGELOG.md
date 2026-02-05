@@ -2,6 +2,16 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.9.6] - 2026-02-05
+
+### Fixed
+- **Search Result Markdown Pollution**: Stripped `**bold**` and `*italic*` markdown from search snippets
+  - SearXNG sometimes returns content with markdown from source pages
+  - Astra was echoing `**` or outputting empty bold markers
+  - Now sanitized before feeding to LLM
+
+---
+
 ## [1.9.5] - 2026-02-05
 
 ### Fixed

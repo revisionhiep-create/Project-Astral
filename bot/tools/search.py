@@ -64,11 +64,26 @@ def format_search_results(results: list[dict]) -> str:
     if not results:
         return ""
     
+    import re
+    
+    def _sanitize(text: str) -> str:
+        """Strip markdown formatting that confuses the model."""
+        if not text:
+            return ""
+        # Remove **bold** and *italic* markdown
+        text = re.sub(r'\*\*([^*]*)\*\*', r'\1', text)  # **text** -> text
+        text = re.sub(r'\*([^*]*)\*', r'\1', text)      # *text* -> text
+        # Remove empty ** that sometimes appear
+        text = re.sub(r'\*\*', '', text)
+        return text.strip()
+    
     # Header instructs model to use citations
     formatted = ["SEARCH RESULTS - Cite with [1], [2] etc when using these facts:\n"]
     for i, r in enumerate(results, 1):
+        title = _sanitize(r['title'])
+        content = _sanitize(r['content'])
         # Numbered citation format
-        formatted.append(f"[{i}] {r['title']}\n    URL: {r['url']}\n    {r['content']}")
+        formatted.append(f"[{i}] {title}\n    URL: {r['url']}\n    {content}")
     
     return "\n\n".join(formatted)
 
