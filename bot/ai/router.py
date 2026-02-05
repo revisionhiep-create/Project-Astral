@@ -32,8 +32,13 @@ def _strip_roleplay_actions(text: str) -> str:
     # Remove (action) style narration - matches parentheses with lowercase text inside
     # Examples: (pauses), (blinks slowly), (sighs dramatically)
     cleaned = re.sub(r'\([a-z][^)]*\)\s*', '', text)
-    # Also remove *action* style if present
-    cleaned = re.sub(r'\*[^*]+\*\s*', '', cleaned)
+    # Strip asterisks from *italic* text but PRESERVE the content
+    # This handles both roleplay (*sighs*) and formatted data (*162 cm*)
+    cleaned = re.sub(r'\*([^*]+)\*', r'\1', cleaned)
+    # Strip any remaining orphaned asterisks (from **bold** markers etc)
+    cleaned = re.sub(r'\*+', '', cleaned)
+    # Clean up double spaces
+    cleaned = re.sub(r'  +', ' ', cleaned)
     return cleaned.strip()
 
 

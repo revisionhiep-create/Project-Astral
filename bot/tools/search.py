@@ -70,11 +70,14 @@ def format_search_results(results: list[dict]) -> str:
         """Strip markdown formatting that confuses the model."""
         if not text:
             return ""
-        # Remove **bold** and *italic* markdown
-        text = re.sub(r'\*\*([^*]*)\*\*', r'\1', text)  # **text** -> text
-        text = re.sub(r'\*([^*]*)\*', r'\1', text)      # *text* -> text
-        # Remove empty ** that sometimes appear
-        text = re.sub(r'\*\*', '', text)
+        # Remove **bold** markdown (greedy to handle nested content)
+        text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)  # **text** -> text
+        # Remove *italic* markdown
+        text = re.sub(r'\*(.+?)\*', r'\1', text)      # *text* -> text
+        # Remove any orphaned ** or * markers (including spaced like ** or * *)
+        text = re.sub(r'\*+', '', text)
+        # Clean up any double spaces left behind
+        text = re.sub(r'  +', ' ', text)
         return text.strip()
     
     # Header instructs model to use citations

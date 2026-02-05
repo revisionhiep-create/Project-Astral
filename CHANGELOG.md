@@ -2,6 +2,18 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.9.7] - 2026-02-05
+
+### Fixed
+- **Content Stripped with Bold Markers**: Fixed `_strip_roleplay_actions()` eating content between asterisks
+  - **Root Cause**: Regex `\*[^*]+\*` was deleting `*text*` entirely (including the content)
+  - **Fix**: Changed to `\*([^*]+)\*` → `\1` (preserves content, removes only asterisks)
+  - Search results now display correctly: "5 feet 4 inches" instead of blank
+- **Docker Volume Mount**: Fixed `./bot:/app/bot` not overlaying running code
+  - Changed to `./bot:/app` so code changes are reflected without rebuild
+
+---
+
 ## [1.9.6] - 2026-02-05
 
 ### Fixed
