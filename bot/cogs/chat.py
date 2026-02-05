@@ -137,25 +137,26 @@ class ChatCog(commands.Cog):
                     response = vision_response
                 else:
                     # Regular chat with optional search/vision context
-                    # Combine: search results + Discord short-term context
+                    # Combine: search results FIRST (high attention zone), then Discord context
                     combined_context = ""
                     
-                    # Short-term context FIRST (so speaker reminder at END has recency bias)
+                    # ⚠️ SEARCH RESULTS FIRST (highest priority - attention is strongest at start)
+                    if search_context:
+                        combined_context += f"⚠️ [SEARCH RESULTS - YOU MUST USE THIS INFO]:\n{search_context}\n\n"
+                    
+                    # Short-term context
                     if short_term_context:
                         combined_context += f"=== RECENT CHAT ===\n{short_term_context}\n"
                         combined_context += f"--- END OF CHAT ---\n\n"
-                    
-                    # === CURRENT SPEAKER (AT END for recency bias) ===
-                    speaker_name = message.author.display_name
-                    combined_context += f">>> {speaker_name} IS NOW TALKING TO YOU <<<"
                     
                     # Inject cached image descriptions so Astra remembers what she saw
                     image_context = get_recent_image_context()
                     if image_context:
                         combined_context += f"{image_context}\n\n"
                     
-                    if search_context:
-                        combined_context += f"[Search Results]:\n{search_context}"
+                    # === CURRENT SPEAKER (AT END for recency bias) ===
+                    speaker_name = message.author.display_name
+                    combined_context += f">>> {speaker_name} IS NOW TALKING TO YOU <<<"
                     
                     # RAG memory is separate - only use for things NOT in recent chat
                     rag_context = ""

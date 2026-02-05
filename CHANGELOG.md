@@ -11,6 +11,12 @@ All notable changes to Project Astral will be documented in this file.
   - **User-Agent Headers**: Prevents search engines from blocking requests
   - **Improved Formatting**: Results now include numbered sources with URLs
   - Well-known concepts (Stoicism, basic science) skip search, use model knowledge
+- **Search Priority Fix**: Search results now placed at TOP of context (high attention zone)
+  - Fixes "Lost in the Middle" problem where model ignored search results
+  - Added `SEARCH PRIORITY` rule: must use search results for factual questions
+- **Anti-Hallucination Rule**: Added `HONESTY RULE` to personality
+  - Never fabricate or paraphrase user quotes
+  - Admit confusion instead of inventing statements to justify errors
 - **Draw Commands**: Removed embeds from `draw`, `gdraw`, and `edit` commands
   - Embeds were cutting off enhanced prompts at 500 chars
   - Now uses plain text formatting with full prompt display
