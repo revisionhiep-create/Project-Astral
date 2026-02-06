@@ -1,7 +1,6 @@
-"""Gemini Vision Integration - Two-step flow: Gemini describes, Astra comments.
+"""Gemini Vision Integration - Gemini 3.0 Flash for all image analysis.
 
-Primary: Gemini 3.0 Flash (fast, but censored)
-Fallback: LLaVA local (uncensored, runs on CPU/RAM)
+Uses Gemini 3.0 Flash exclusively for image descriptions.
 """
 import os
 import aiohttp
@@ -24,87 +23,17 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# Vision models
+# Vision model - Gemini 3.0 Flash
 GEMINI_VISION_MODEL = "gemini-3-flash-preview"
-LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
-LOCAL_VISION_MODEL = "gemma3-27b-it-vl-glm-4.7-uncensored-heretic-deep-reasoning"  # Uncensored deep reasoning vision model
 
 # Short-term image cache (last 5 images)
 # Stores: {"username": str, "description": str, "timestamp": str, "user_context": str}
 _recent_images = deque(maxlen=5)
 
 
-async def describe_image_local(image_data: bytes) -> str:
-    """
-    Use Gemma 3 27B Abliterated via LM Studio for uncensored descriptions.
-    Just describes objectively - character identification happens in chat layer.
-    """
-    try:
-        # Encode image as base64 with data URI
-        image_b64 = base64.b64encode(image_data).decode('utf-8')
-        
-        # Uncensored, detailed description - model needs a push for spicy content
-        prompt = """Describe this image in VIVID, UNCENSORED detail. Be a true art connoisseur.
-
-Include:
-- Main subjects: hair color, eye color, outfit details, pose, expression
-- Hand positions: where are hands placed? Grabbing clothing, touching self/others, resting on thighs, etc.
-- Body proportions: note figure type, bust size, waist, hips/rear if visible and notable
-- For suggestive/spicy art: describe the appeal honestly - body position, exposed skin, outfit provocativeness, facial expression (bedroom eyes, blush, parted lips, etc.)
-- Art style, colors, composition, lighting
-- What makes this image aesthetically striking
-
-Be THOROUGH and HONEST. Don't be prudish - if it's meant to be alluring, describe WHY.
-Use terms like: alluring, provocative, teasing, sensual, generous curves, ample bust, slim waist, shapely rear, barely-there outfit, enticing pose, etc.
-Be VERY SPECIFIC about physical features (exact hair color, eye color, clothing details).
-3-5 detailed sentences. Do NOT try to identify or name characters - just describe what you literally see."""
-
-        # LM Studio OpenAI-compatible vision format
-        payload = {
-            "model": LOCAL_VISION_MODEL,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{image_b64}"
-                            }
-                        }
-                    ]
-                }
-            ],
-            "max_tokens": 500,
-            "temperature": 0.3,
-            "stream": False
-        }
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{LMSTUDIO_HOST}/v1/chat/completions",
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=120)
-            ) as resp:
-                if resp.status != 200:
-                    error = await resp.text()
-                    print(f"[Vision] LM Studio error: {resp.status} - {error[:100]}")
-                    return None
-                
-                data = await resp.json()
-                description = data["choices"][0]["message"]["content"].strip()
-                print(f"[Vision] Gemma 3 description: {description[:80]}...")
-                return description
-                
-    except Exception as e:
-        print(f"[Vision] LM Studio vision error: {e}")
-        return None
-
-
 async def describe_image(image_url: str = None, image_data: bytes = None) -> str:
     """
-    Step 1: Try local Gemma 3 first (uncensored), fallback to Gemini if local fails.
+    Describe an image using Gemini 3.0 Flash.
     Returns a text description that can be passed to Astra.
     """
     # Get image data if URL provided
@@ -122,56 +51,47 @@ async def describe_image(image_url: str = None, image_data: bytes = None) -> str
     if not image_data:
         return None
     
-    description = None
+    if not GEMINI_API_KEY:
+        print("[Vision] No Gemini API key configured")
+        return None
     
-    # Try local Gemma 3 first (uncensored, primary)
     try:
-        description = await describe_image_local(image_data)
-        if description:
-            print(f"[Vision] Using local Gemma 3 (primary): {description[:80]}...")
-    except Exception as e:
-        print(f"[Vision] Local vision failed: {e}")
-    
-    # Fallback to Gemini if local failed
-    if not description and GEMINI_API_KEY:
-        try:
-            print("[Vision] Falling back to Gemini...")
-            description_prompt = """Describe this image objectively and thoroughly.
-Include:
-- Main subjects (people, characters, objects)
-- Colors, art style, composition
-- Actions, poses, expressions
-- Background and setting
-- Any text visible in the image
+        description_prompt = """Describe this image in VIVID detail. Be a true art connoisseur.
 
-Be factual and detailed but concise (3-5 sentences).
-Do NOT add personality or commentary - just describe what you see."""
-            
-            # Add character recognition context
-            character_context = get_character_context_for_vision()
-            if character_context:
-                description_prompt += f"""\n\nKnown characters to look for:\n{character_context}\nIf you recognize any of these characters, mention them by name. Only mention them if they're actually present - don't say you don't see them."""
-            
-            model = genai.GenerativeModel(GEMINI_VISION_MODEL)
-            
-            response = await model.generate_content_async(
-                [
-                    {"mime_type": "image/jpeg", "data": image_data},
-                    description_prompt
-                ],
-                generation_config={
-                    "temperature": 0.3,
-                    "max_output_tokens": 400
-                }
-            )
-            
-            description = response.text.strip()
-            print(f"[Vision] Gemini description (fallback): {description[:80]}...")
-                    
-        except Exception as e:
-            print(f"[Vision] Gemini fallback also failed: {e}")
-    
-    return description
+Include:
+- Main subjects: hair color, eye color, outfit details, pose, expression
+- For artwork: art style, colors, composition, lighting
+- For suggestive art: describe the appeal honestly (body position, outfit, expression)
+- For normal photos/screenshots: just describe what you see plainly
+
+Be THOROUGH and HONEST. 3-5 detailed sentences.
+Do NOT try to identify or name characters - just describe what you literally see."""
+        
+        # Add character recognition context
+        character_context = get_character_context_for_vision()
+        if character_context:
+            description_prompt += f"""\n\nKnown characters to look for:\n{character_context}\nIf you recognize any of these characters, mention them by name. Only mention them if they're actually present - don't say you don't see them."""
+        
+        model = genai.GenerativeModel(GEMINI_VISION_MODEL)
+        
+        response = await model.generate_content_async(
+            [
+                {"mime_type": "image/jpeg", "data": image_data},
+                description_prompt
+            ],
+            generation_config={
+                "temperature": 0.3,
+                "max_output_tokens": 500
+            }
+        )
+        
+        description = response.text.strip()
+        print(f"[Vision] Gemini 3.0 Flash: {description[:80]}...")
+        return description
+                
+    except Exception as e:
+        print(f"[Vision] Gemini vision failed: {e}")
+        return None
 
 
 async def analyze_image(image_url: str, user_prompt: str = "", conversation_context: str = "", username: str = "") -> str:

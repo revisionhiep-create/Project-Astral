@@ -2,6 +2,28 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [1.9.9] - 2026-02-06
+
+### Changed
+- **Vision Routed to Gemini 3.0 Flash**: Removed local Gemma 3 vision entirely
+  - All image analysis now uses `gemini-3-flash-preview` exclusively
+  - Removed `describe_image_local()` function and LM Studio code
+  - No more LM Studio dependency for vision tasks
+  - Cleaner, simpler vision pipeline
+
+---
+
+## [1.9.8] - 2026-02-05
+
+### Fixed
+- **Search Repetition Loop**: Astra was getting stuck repeating search citations in a loop
+  - **Root Cause**: Model latching onto citation pattern and repeating same content
+  - **Fix 1**: Added `repeat_penalty: 1.15` to LM Studio API calls
+  - **Fix 2**: Added `_strip_repeated_content()` post-processing to dedupe output lines
+  - **Fix 3**: Reduced `max_tokens` from 6000 → 1500 for search responses (less room for looping)
+
+---
+
 ## [1.9.7] - 2026-02-05
 
 ### Fixed

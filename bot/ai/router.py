@@ -42,6 +42,28 @@ def _strip_roleplay_actions(text: str) -> str:
     return cleaned.strip()
 
 
+def _strip_repeated_content(text: str) -> str:
+    """
+    Remove repeated lines/paragraphs that indicate a generation loop.
+    This catches the model getting stuck repeating search citations.
+    """
+    if not text:
+        return text
+    lines = text.split('\n')
+    seen = set()
+    result = []
+    for line in lines:
+        # Normalize for comparison (lowercase, strip whitespace)
+        normalized = line.strip().lower()
+        # Allow empty lines through, but dedupe content lines
+        if normalized and normalized in seen:
+            continue
+        if normalized:
+            seen.add(normalized)
+        result.append(line)
+    return '\n'.join(result)
+
+
 
 def _extract_json(text: str) -> dict:
     """
@@ -94,14 +116,15 @@ LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "gemma3-27b-it-vl-glm-4.7-uncensored-heretic-deep-reasoning")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 2048, stop: list = None) -> str:
+async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 2048, stop: list = None, repeat_penalty: float = 1.15) -> str:
     """Make a request to LM Studio's OpenAI-compatible API."""
     payload = {
         "model": CHAT_MODEL,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
-        "stream": False
+        "stream": False,
+        "repeat_penalty": repeat_penalty  # Prevents repetition loops
     }
     # Add stop sequences if provided (prevents model from roleplaying users)
     if stop:
@@ -293,17 +316,25 @@ async def generate_response(
     try:
         print(f"[Router] Query: '{user_message[:50]}' | Search: {len(search_context)} chars | History: {len(transcript_lines)} msgs")
         
+        # Use lower max_tokens if search context is present (less room for looping)
+        tokens = 1500 if search_context else 4000
+        
         response = await _call_lmstudio(
             messages=messages,
             temperature=0.65,
-            max_tokens=6000,
-            stop=stop_sequences
+            max_tokens=tokens,
+            stop=stop_sequences,
+            repeat_penalty=1.15  # Explicitly set to prevent citation loops
         )
         
         if not response:
             return "something broke on my end, try again?"
         
-        return _strip_roleplay_actions(_strip_think_tags(response))
+        # Chain all post-processing: think tags -> roleplay -> dedup
+        cleaned = _strip_think_tags(response)
+        cleaned = _strip_roleplay_actions(cleaned)
+        cleaned = _strip_repeated_content(cleaned)
+        return cleaned
     except Exception as e:
         print(f"[LMStudio Error] {e}")
         return "something broke on my end, try again?"
