@@ -5,13 +5,22 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.9.9] - 2026-02-06
 
 ### Changed
-- **Vision Routed to Gemini 3.0 Flash**: Removed local Gemma 3 vision entirely
+- **Vision Routed to Gemini 3.0 Flash**: Complete vision overhaul
   - All image analysis now uses `gemini-3-flash-preview` exclusively
-  - Removed `describe_image_local()` function and LM Studio code
-  - No more LM Studio dependency for vision tasks
-  - Cleaner, simpler vision pipeline
+  - Removed `describe_image_local()` and all LM Studio vision code
+  - Gemini now does both image analysis AND character matching (can see and compare)
+  - Astra only reacts to Gemini's analysis - no more hallucinated character matches
+  - Stricter matching rules: requires multiple features to match, not just one
+  - New comprehensive prompt covering all image types (art, photos, memes, screenshots)
+
+- **Docker Container Renamed**: `gemgem-bot` → `astral-bot`
+  - Service renamed from `gemgem-bot` to `astral-bot`
+  - Container renamed from `gemgem-bot` to `astral-bot`
+  - SearXNG container renamed from `gemgem-searxng` to `astral-searxng`
+  - Network renamed from `gemgem-network` to `astral-network`
 
 ---
+
 
 ## [1.9.8] - 2026-02-05
 

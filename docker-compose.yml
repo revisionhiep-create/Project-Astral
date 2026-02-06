@@ -1,8 +1,8 @@
 services:
-  # GemGem Discord Bot
-  gemgem-bot:
+  # Astral Discord Bot
+  astral-bot:
     build: ./bot
-    container_name: gemgem-bot
+    container_name: astral-bot
     env_file: .env
     environment:
       # Use host Ollama (models already downloaded locally)
@@ -22,7 +22,7 @@ services:
       - ./db:/app/data/db  # Persist RAG database
     restart: unless-stopped
     networks:
-      - gemgem-network
+      - astral-network
     # Allow access to host network on Windows Docker
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -30,7 +30,7 @@ services:
   # SearXNG - Free Unlimited Search
   searxng:
     image: searxng/searxng:latest
-    container_name: gemgem-searxng
+    container_name: astral-searxng
     ports:
       - "8080:8080"
     volumes:
@@ -39,8 +39,8 @@ services:
       - SEARXNG_BASE_URL=http://localhost:8080
     restart: unless-stopped
     networks:
-      - gemgem-network
+      - astral-network
 
 networks:
-  gemgem-network:
+  astral-network:
     driver: bridge

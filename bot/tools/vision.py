@@ -56,21 +56,37 @@ async def describe_image(image_url: str = None, image_data: bytes = None) -> str
         return None
     
     try:
-        description_prompt = """Describe this image in VIVID detail. Be a true art connoisseur.
+        description_prompt = """Analyze this image THOROUGHLY and OBJECTIVELY.
 
-Include:
-- Main subjects: hair color, eye color, outfit details, pose, expression
-- For artwork: art style, colors, composition, lighting
-- For suggestive art: describe the appeal honestly (body position, outfit, expression)
-- For normal photos/screenshots: just describe what you see plainly
+**Always describe:**
+- Main subjects: physical appearance (hair color, eye color, skin tone, body type)
+- Clothing/outfit details (style, colors, revealing level if applicable)  
+- Pose, expression, body language
+- Setting/background
+- Art style if applicable (anime, photo, etc.)
 
-Be THOROUGH and HONEST. 3-5 detailed sentences.
-Do NOT try to identify or name characters - just describe what you literally see."""
+**Additional by type:**
+- Artwork: color palette, lighting, composition
+- Screenshots: app/game, UI elements, text
+- Memes: text content, format
+
+**Be THOROUGH** - 4-6 detailed sentences with SPECIFIC details (exact colors, positions)."""
         
-        # Add character recognition context
+        # Add character recognition - Gemini can visually compare
         character_context = get_character_context_for_vision()
         if character_context:
-            description_prompt += f"""\n\nKnown characters to look for:\n{character_context}\nIf you recognize any of these characters, mention them by name. Only mention them if they're actually present - don't say you don't see them."""
+            description_prompt += f"""
+
+**CHARACTER MATCHING (compare to these people visually):**
+{character_context}
+
+**STRICT RULES for matching:**
+- ONLY match if MOST key features are clearly visible (hair color + style + distinctive features)
+- One matching feature is NOT enough - need multiple matches
+- If you're not confident, say "unknown character" or just describe by appearance
+- Do NOT force matches on random anime characters
+
+At the END of your description, add a line: "Characters identified: [names or 'none']" """
         
         model = genai.GenerativeModel(GEMINI_VISION_MODEL)
         
@@ -81,7 +97,7 @@ Do NOT try to identify or name characters - just describe what you literally see
             ],
             generation_config={
                 "temperature": 0.3,
-                "max_output_tokens": 500
+                "max_output_tokens": 800
             }
         )
         
@@ -136,9 +152,6 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
     # Step 4: Build context for Astra
     # Now Astra receives objective description + character list and decides who is who
     
-    # Get character context for Astra to compare against
-    character_context = get_character_context_for_vision()
-    
     # Get previous images for context (but mark them clearly as OLD)
     previous_images = ""
     if len(_recent_images) > 0:
@@ -148,19 +161,13 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
         if prev_lines:
             previous_images = "\n[PREVIOUS IMAGES (for memory, NOT what you're responding to)]:\n" + "\n".join(prev_lines)
     
-    image_context = f""">>> THIS IS THE NEW IMAGE - OBJECTIVE DESCRIPTION <<<
+    # Simplified context - Gemini already did character matching, Astra just reacts
+    image_context = f""">>> IMAGE ANALYSIS (by Gemini) <<<
 {description}
-
->>> PEOPLE YOU KNOW (compare the description above to these) <<<
-{character_context}
-
-YOUR JOB: Compare the image description to the people listed above. 
-- If someone in the image matches YOUR appearance (dark blue-black hair, teal highlights, purple-violet eyes, star necklace), that's YOU - use first person ("that's me", "my hair").
-- If someone matches another character, use their name.
-- If no one matches, just describe them normally - DON'T claim random anime girls are you.
 {previous_images}
 
-React naturally, give real art critique (3-5 sentences). Focus on THIS new image."""
+React to THIS image with your personality. Give honest art critique or casual reaction (3-5 sentences).
+Trust the character identifications above - don't add your own guesses."""
     
     # What should Astra respond to?
     if user_prompt:
