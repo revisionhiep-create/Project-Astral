@@ -2,6 +2,22 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.0.0] - 2026-02-07
+
+### Changed
+- **Model Upgrade**: Switched chat brain from `Gemma3-27B-it-vl-GLM-4.7-Uncensored-Heretic-Deep-Reasoning` to `Qwen3-VL-32B-Instruct-Heretic-v2-i1`
+  - Qwen3 VL 32B with vision-language capabilities
+  - Updated `docker-compose.yml` with `LMSTUDIO_CHAT_MODEL` env var for centralized model config
+  - Updated fallback defaults in `router.py` and `rag.py`
+- **Context Window Expansion (16K)**: Optimized for Qwen3's larger context
+  - Discord history: 25 → 50 messages (restored from 8K-era reduction)
+  - Router context for search decisions: 1,500 → 3,000 chars
+  - Default max_tokens: 2,048 → 4,000
+  - Stop sequences updated from Gemma to Qwen3 format
+  - `format_discord_context` expanded to match 50-message fetch
+
+---
+
 ## [1.9.9] - 2026-02-06
 
 ### Changed

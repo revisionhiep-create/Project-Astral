@@ -19,7 +19,7 @@ from memory.embeddings import get_embedding, get_query_embedding
 
 DATABASE_PATH = os.getenv("RAG_DATABASE", "/app/data/memory.db")
 LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
-CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "gemma3-27b-it-vl-glm-4.7-uncensored-heretic-deep-reasoning")
+CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 
 async def _extract_fact_from_conversation(username: str, user_message: str, astra_response: str) -> Optional[str]:

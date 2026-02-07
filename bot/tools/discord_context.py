@@ -67,7 +67,7 @@ async def fetch_recent_messages(
         return []
 
 
-def format_discord_context(messages: list[dict], max_messages: int = 25) -> str:
+def format_discord_context(messages: list[dict], max_messages: int = 50) -> str:
     """
     Format messages for LLM context injection.
     

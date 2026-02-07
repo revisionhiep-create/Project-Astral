@@ -113,10 +113,10 @@ def _extract_json(text: str) -> dict:
 LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 
 # Model identifiers from LM Studio
-CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "gemma3-27b-it-vl-glm-4.7-uncensored-heretic-deep-reasoning")
+CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 2048, stop: list = None, repeat_penalty: float = 1.15) -> str:
+async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.15) -> str:
     """Make a request to LM Studio's OpenAI-compatible API."""
     payload = {
         "model": CHAT_MODEL,
@@ -172,7 +172,7 @@ async def decide_tools_and_query(
     prompt = f"""Analyze this Discord message and decide what tools are needed.
 
 Recent chat context:
-{conversation_context[:1500] if conversation_context else "(no context)"}
+{conversation_context[:3000] if conversation_context else "(no context)"}
 
 Current message: {user_message}
 Has image attachment: {has_image}
@@ -311,7 +311,7 @@ async def generate_response(
     messages = [{"role": "user", "content": full_prompt}]
     
     # Stop sequences to prevent roleplaying other users (crucial for uncensored models)
-    stop_sequences = ["\n[", "[Hiep]", "[User]", "<end_of_turn>", "<start_of_turn>"]
+    stop_sequences = ["\n[", "[Hiep]", "[User]", "<|im_end|>", "<|endoftext|>"]
     
     try:
         print(f"[Router] Query: '{user_message[:50]}' | Search: {len(search_context)} chars | History: {len(transcript_lines)} msgs")

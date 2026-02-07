@@ -4,6 +4,7 @@ from discord.ext import commands
 from discord import app_commands
 from typing import Optional
 import pytz
+import re
 
 from ai.router import process_message, decide_tools_and_query
 
@@ -42,8 +43,8 @@ class ChatCog(commands.Cog):
         if not (is_mentioned or is_dm):
             return
         
-        # Clean the message (remove bot mention)
-        content = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
+        # Clean the message (remove bot mention - handle both <@id> and <@!id> formats)
+        content = re.sub(r'<@!?\d+>', '', message.content).strip()
         if not content and not message.attachments:
             return
         
@@ -68,7 +69,7 @@ class ChatCog(commands.Cog):
                 # Use message.channel.history() directly (same as GemGem) for reliability
                 discord_messages = []
                 try:
-                    async for msg in message.channel.history(limit=25):
+                    async for msg in message.channel.history(limit=50):
                         author_name = msg.author.display_name
                         # Only label THIS bot as "Astra" - other bots (like GemGem) keep their names
                         if msg.author.id == self.bot.user.id:
