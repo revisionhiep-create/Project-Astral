@@ -84,10 +84,10 @@ async def describe_image(image_url: str = None, image_data: bytes = None) -> str
 **STRICT RULES for matching:**
 - ONLY match if MOST key features are clearly visible (hair color + style + distinctive features)
 - One matching feature is NOT enough - need multiple matches
-- If you're not confident, say "unknown character" or just describe by appearance
+- If you're not confident, just describe by appearance without naming anyone
 - Do NOT force matches on random anime characters
-
-At the END of your description, add a line: "Characters identified: [names or 'none']" """
+- If you recognize someone, just use their name naturally in the description
+- Do NOT list who is or isn't in the image """
         
         model = genai.GenerativeModel(GEMINI_VISION_MODEL)
         
@@ -103,6 +103,11 @@ At the END of your description, add a line: "Characters identified: [names or 'n
         )
         
         description = response.text.strip()
+        
+        # Strip any "Characters identified:" line so Astra doesn't echo negative matches
+        import re
+        description = re.sub(r'\n*Characters identified:.*$', '', description, flags=re.IGNORECASE | re.MULTILINE).strip()
+        
         print(f"[Vision] Gemini 3.0 Flash: {description[:80]}...")
         return description
                 
@@ -168,7 +173,8 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
 {previous_images}
 
 React to THIS image with your personality. Give honest art critique or casual reaction (3-5 sentences).
-Trust the character identifications above - don't add your own guesses."""
+If someone is identified by name, use their name naturally. Do NOT announce who ISN'T in the image.
+If the user tells you who is in the image, trust them."""
     
     # What should Astra respond to?
     if user_prompt:
