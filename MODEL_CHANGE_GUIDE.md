@@ -106,18 +106,17 @@ Add a new version entry documenting the model switch.
 
 ## Vision System (Separate from Chat)
 
-Vision uses the **same model** (Qwen3 VL) for image analysis, but with a different prompt. If switching to a model that does **NOT** support vision (no VL/vision variant):
+> [!CAUTION]
+> **Heretic/abliterated fine-tunes strip the vision encoder!** Even if the base model is "VL" (vision-language), the Heretic abliteration process only operates on text layers — the GGUF output is **text-only**. Do NOT assume a model with "VL" in its heretic name supports images.
 
-1. Set `vision.py` to skip the local Qwen3 path
-2. Rely on Gemini Flash fallback (cloud, requires `GEMINI_API_KEY` in `.env`)
-3. Or swap to another vision-capable local model
+Vision uses **Gemini 3.0 Flash** (cloud) for image analysis. The chat model (Qwen3) is text-only due to Heretic abliteration.
 
 The vision flow is:
 ```
-Image → Qwen3 VL (describe, local) → text description → Qwen3 (personality response)
-                                              ↓
-                         Gemini Flash fallback if local fails
+Image → Gemini 3.0 Flash (describe, cloud) → text description → Qwen3 (personality response)
 ```
+
+If you want local vision, you need a **non-heretic** VL model loaded separately in LM Studio.
 
 ---
 
@@ -140,8 +139,8 @@ These files reference models by name in docs/comments only:
 ## Current Model (as of 2026-02-07)
 
 ```
-Chat + Vision: qwen3-vl-32b-instruct-heretic-v2-i1
-Embeddings:    Gemini (gemini-embedding-001)
-Search Agent:  N/A (delegated to router)
-Vision Fallback: Gemini 3.0 Flash (gemini-3-flash-preview)
+Chat:           qwen3-vl-32b-instruct-heretic-v2-i1 (text-only, Heretic strips VL)
+Vision:         Gemini 3.0 Flash (gemini-3-flash-preview, cloud API)
+Embeddings:     Gemini (gemini-embedding-001)
+Search Agent:   N/A (delegated to router)
 ```
