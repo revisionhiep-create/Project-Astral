@@ -53,7 +53,7 @@ This document explains how Astra processes each message.
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  STEP 5: Generate Response                                  │
-│  • Mistral Small 24B with personality prompt                │
+│  • Qwen3 VL 32B with personality prompt (via LM Studio)     │
 │  • Few-shot examples injected                               │
 │  • Context in system prompt                                 │
 └─────────────────────────────────────────────────────────────┘
@@ -80,7 +80,7 @@ This document explains how Astra processes each message.
 | `ai/router.py` | Decides search/vision, generates response |
 | `memory/rag.py` | Long-term memory storage & retrieval |
 | `tools/searxng.py` | Web search integration |
-| `tools/vision.py` | Image analysis with Gemini |
+| `tools/vision.py` | Image analysis with Qwen3 VL (Gemini fallback) |
 
 ## Context Types
 

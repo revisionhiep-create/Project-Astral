@@ -2,6 +2,21 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.1.0] - 2026-02-07
+
+### Changed
+- **Vision Switch**: Image analysis now uses **Qwen3 VL 32B** (local via LM Studio) instead of Gemini 3.0 Flash
+  - Same two-step flow: VL model describes → personality model reacts
+  - Gemini Flash kept as automatic fallback if LM Studio is down
+  - Everything stays local — no cloud API dependency for vision
+- **Text Attribution Prompt**: Added instruction to treat text in images as character dialogue/thoughts
+  - "Treat text within the image as the character's dialogue, internal thoughts, or a message they are reacting to"
+  - Better handling of memes, comics, and text-heavy images
+- **Shared Vision Prompt**: `_build_vision_prompt()` function centralizes the prompt for both Qwen3 VL and Gemini fallback
+- **`can_see_images()`** now always returns `True` (LM Studio is always available locally)
+
+---
+
 ## [2.0.0] - 2026-02-07
 
 ### Changed
