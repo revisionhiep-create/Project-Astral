@@ -13,14 +13,14 @@ services:
       - RAG_DATABASE=/app/data/db/memory.db
       - CHARACTERS_FILE=/app/data/characters.json
       - ASSETS_DIR=/app/data/assets
-      - KOKORO_TTS_URL=http://192.168.1.16:8000
+      - KOKORO_TTS_URL=http://host.docker.internal:8000
       - PYTHONUNBUFFERED=1 # Enable real-time logging
     depends_on:
       searxng:
         condition: service_started
     volumes:
-      - ./bot:/app         # Live code mount (overlay entire app for hot reload)
-      - ./db:/app/data/db  # Persist RAG database
+      - ./bot:/app # Live code mount (overlay entire app for hot reload)
+      - ./db:/app/data/db # Persist RAG database
     restart: unless-stopped
     networks:
       - astral-network
