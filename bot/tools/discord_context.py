@@ -1,6 +1,7 @@
 """Discord History Fetcher - Short-term context from channel."""
 from typing import Optional
 import discord
+import re
 
 
 # General chat channel for short-term context
@@ -8,6 +9,10 @@ GENERAL_CHANNEL_ID = 1466420202563703088
 
 # Known bot IDs for proper labeling
 GEMGEM_BOT_ID = 1458550716225425560
+
+# Pattern to strip citation markers from bot messages in context
+# Matches [🔍1], [💡2], [1], [2] etc.
+_CITATION_RE = re.compile(r'\s*\[(?:🔍|💡)?\d+\]')
 
 
 async def fetch_recent_messages(
@@ -67,6 +72,11 @@ async def fetch_recent_messages(
         return []
 
 
+def _strip_citations(text: str) -> str:
+    """Strip citation markers like [🔍1], [💡2], [1] from text."""
+    return _CITATION_RE.sub('', text)
+
+
 def format_discord_context(messages: list[dict], max_messages: int = 50) -> str:
     """
     Format messages for LLM context injection.
@@ -86,12 +96,16 @@ def format_discord_context(messages: list[dict], max_messages: int = 50) -> str:
     
     lines = []
     for msg in recent:
+        content = msg['content']
+        # Strip citation markers from Astra's own messages so she doesn't copy the pattern
+        if msg['author'] == 'Astra':
+            content = _strip_citations(content)
         # Format: [Time] [Username]: message content
         time = msg.get('time', '')
         if time:
-            lines.append(f"[{time}] [{msg['author']}]: {msg['content']}")
+            lines.append(f"[{time}] [{msg['author']}]: {content}")
         else:
-            lines.append(f"[{msg['author']}]: {msg['content']}")
+            lines.append(f"[{msg['author']}]: {content}")
     
     return "\n".join(lines)
 

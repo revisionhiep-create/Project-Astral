@@ -2,6 +2,23 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.2.2] - 2026-02-08
+
+### Changed
+- **Citation Emoji System**: Visual distinction for citation sources
+  - Search citations: `[🔍1]`, `[🔍2]` — facts from live SearXNG search
+  - Memory citations: `[💡1]`, `[💡2]` — facts from RAG knowledge base
+  - Previously both used plain `[1]`, `[2]` with no way to tell the source
+- **Anti-Hallucination Citation Stripping**: Astra no longer fakes citations
+  - Strips `[🔍N]`, `[💡N]`, and `[N]` markers from Astra's own messages in chat history context
+  - Model was seeing its own past citations and mimicking the pattern with no actual source
+  - `discord_context.py`: Added `_strip_citations()` helper applied to Astra's messages
+- **RAG Memory Formatting**: Knowledge facts now use numbered `[💡N]` format
+  - Previously injected as unstructured `- [type] content` bullets
+  - Now formatted as `MEMORY FACTS - Cite with [💡1], [💡2]` with numbered entries
+
+---
+
 ## [2.2.1] - 2026-02-08
 
 ### Added
