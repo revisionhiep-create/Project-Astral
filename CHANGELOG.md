@@ -2,6 +2,17 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.2.0] - 2026-02-08
+
+### Removed
+- **Slash Commands Cleanup**: Removed all slash commands except `/join` and `/leave`
+  - Deleted: `/search`, `/time`, `/ping`, `/clear`, `/draw`, `/gdraw`
+  - `@Astral draw` and `@Astral gdraw` mention commands still work as before
+  - Deleted `commands.py` cog entirely (search, time, ping, clear)
+  - Removed slash methods from `draw.py` (kept `on_message` draw/gdraw handlers)
+
+---
+
 ## [2.1.0] - 2026-02-07
 
 ### Changed

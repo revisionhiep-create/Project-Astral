@@ -1,7 +1,6 @@
 """Draw Commands - Discord cog for image generation."""
 import discord
 from discord.ext import commands
-from discord import app_commands
 import re
 
 from tools.drawing import get_drawing_handler
@@ -13,89 +12,6 @@ class DrawCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.handler = get_drawing_handler(bot)
-    
-    @app_commands.command(name="draw", description="Generate an image from your prompt")
-    @app_commands.describe(prompt="What do you want me to draw?")
-    async def draw_slash(self, interaction: discord.Interaction, prompt: str):
-        """Slash command for drawing."""
-        await interaction.response.defer(thinking=True)
-        
-        try:
-            # Create a fake message for the handler
-            image_data, engine_name, commentary = await self.handler.handle_draw_request(
-                message=interaction,  # Will use interaction.user instead of message.author
-                subject=prompt
-            )
-            
-            if not image_data:
-                await interaction.followup.send(commentary)
-                return
-            
-            # Send image with plain text header (no embed to avoid text cutoff)
-            file = discord.File(image_data, filename="drawing.png")
-            
-            # Create edit button view
-            view = EditButtonView(prompt, image_data.getvalue(), self.handler, interaction.user.id)
-            
-            # Build plain text header
-            header = f"✨ **{engine_name}**\n**Prompt:** {prompt}"
-            
-            # Send image with header, then commentary
-            await interaction.followup.send(
-                content=header,
-                file=file,
-                view=view
-            )
-            
-            # Send commentary as follow-up (appears after image)
-            await interaction.followup.send(content=commentary)
-            
-        except Exception as e:
-            print(f"[Draw Error] {e}")
-            import traceback
-            traceback.print_exc()
-            await interaction.followup.send("Something went wrong with the drawing, try again?")
-    
-    @app_commands.command(name="gdraw", description="AI-enhanced drawing - I'll improve your prompt!")
-    @app_commands.describe(idea="Give me a basic idea and I'll enhance it")
-    async def gdraw_slash(self, interaction: discord.Interaction, idea: str):
-        """Guided draw with AI prompt enhancement."""
-        await interaction.response.defer(thinking=True)
-        
-        try:
-            image_data, engine_name, enhanced_prompt, commentary = await self.handler.handle_guided_draw_request(
-                message=interaction,
-                basic_prompt=idea
-            )
-            
-            if not image_data:
-                await interaction.followup.send(commentary)
-                return
-            
-            # Send image with plain text (no embed to avoid text cutoff)
-            file = discord.File(image_data, filename="drawing.png")
-            
-            # Create edit button view
-            view = EditButtonView(idea, image_data.getvalue(), self.handler, interaction.user.id)
-            
-            # Build plain text header showing idea and enhanced prompt
-            header = f"✨ **{engine_name} | Guided Draw**\n**Your Idea:** {idea}\n**Enhanced:** {enhanced_prompt if enhanced_prompt else 'N/A'}"
-            
-            # Send image with header
-            await interaction.followup.send(
-                content=header,
-                file=file,
-                view=view
-            )
-            
-            # Then commentary (appears after image)
-            await interaction.followup.send(content=commentary)
-            
-        except Exception as e:
-            print(f"[GDraw Error] {e}")
-            import traceback
-            traceback.print_exc()
-            await interaction.followup.send("Something went wrong with the drawing, try again?")
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
