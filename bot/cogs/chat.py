@@ -11,6 +11,7 @@ from ai.router import process_message, decide_tools_and_query
 from memory.rag import (
     retrieve_relevant_knowledge, 
     store_conversation,
+    store_full_search,
     store_image_knowledge,
     format_knowledge_for_context
 )
@@ -94,6 +95,10 @@ class ChatCog(commands.Cog):
                 # Step 2: Query long-term memory (RAG - conversations only)
                 long_term_knowledge = await retrieve_relevant_knowledge(content, limit=5)
                 memory_context = format_knowledge_for_context(long_term_knowledge)
+                if memory_context:
+                    print(f"[RAG] Injecting {len(long_term_knowledge)} facts into context: {memory_context[:200]}")
+                else:
+                    print(f"[RAG] No relevant memories found for: '{content[:50]}'")
                 
                 # Step 3: Ask Logic AI what tools are needed
                 tool_decision = await decide_tools_and_query(
@@ -114,7 +119,10 @@ class ChatCog(commands.Cog):
                     search_results = await search(search_query, num_results=5, time_range=time_range)
                     search_context = format_search_results(search_results)
                     print(f"[Chat] Got {len(search_results)} results")
-                    # NOTE: No RAG storage for searches anymore!
+                    # Store search results as facts in RAG for long-term knowledge
+                    if search_results:
+                        await store_full_search(search_query, search_results)
+                        print(f"[RAG] Stored {len(search_results)} search results as knowledge")
                 
                 # Vision if image is attached (always analyze images)
                 if image_url:

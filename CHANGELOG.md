@@ -2,6 +2,20 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.2.1] - 2026-02-08
+
+### Added
+- **Search Results → RAG Storage**: Search results now stored as long-term knowledge facts
+  - Every SearXNG search gets embedded and saved to `knowledge` + `search_knowledge` tables
+  - Previously search results were ephemeral (used once and discarded)
+  - Astra can now recall previously searched topics via RAG retrieval
+- **RAG Debug Logging**: Added visibility into RAG memory hits
+  - Logs when facts are injected: `[RAG] Injecting N facts into context: ...`
+  - Logs when no matches found: `[RAG] No relevant memories found for: '...'`
+  - Logs when search results are stored: `[RAG] Stored N search results as knowledge`
+
+---
+
 ## [2.2.0] - 2026-02-08
 
 ### Removed
