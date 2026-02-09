@@ -116,7 +116,7 @@ LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.15) -> str:
+async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.05) -> str:
     """Make a request to LM Studio's OpenAI-compatible API."""
     payload = {
         "model": CHAT_MODEL,
@@ -124,7 +124,10 @@ async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: i
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": False,
-        "repeat_penalty": repeat_penalty  # Prevents repetition loops
+        "repeat_penalty": repeat_penalty,  # Qwen3: 1.05 (was 1.15, too aggressive)
+        "top_p": 0.8,             # Qwen3 recommended nucleus sampling
+        "top_k": 20,              # Qwen3 recommended top-k
+        "presence_penalty": 0.15  # Encourages vocabulary diversity
     }
     # Add stop sequences if provided (prevents model from roleplaying users)
     if stop:
@@ -311,7 +314,8 @@ async def generate_response(
     messages = [{"role": "user", "content": full_prompt}]
     
     # Stop sequences to prevent roleplaying other users (crucial for uncensored models)
-    stop_sequences = ["\n[", "[Hiep]", "[User]", "<|im_end|>", "<|endoftext|>"]
+    stop_sequences = ["\n[", "[Hiep]", "[User]", "<|im_end|>", "<|endoftext|>"]
+
     
     try:
         print(f"[Router] Query: '{user_message[:50]}' | Search: {len(search_context)} chars | History: {len(transcript_lines)} msgs")
@@ -321,10 +325,10 @@ async def generate_response(
         
         response = await _call_lmstudio(
             messages=messages,
-            temperature=0.65,
+            temperature=0.7,
             max_tokens=tokens,
             stop=stop_sequences,
-            repeat_penalty=1.15  # Explicitly set to prevent citation loops
+            repeat_penalty=1.05  # Qwen3 optimized (was 1.15, caused mhm loops)
         )
         
         if not response:

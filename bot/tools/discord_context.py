@@ -14,6 +14,12 @@ GEMGEM_BOT_ID = 1458550716225425560
 # Matches [🔍1], [💡2], [1], [2] etc.
 _CITATION_RE = re.compile(r'\s*\[(?:🔍|💡)?\d+\]')
 
+# Pattern to match standalone ✨ emoji (with optional surrounding whitespace)
+_SPARKLE_RE = re.compile(r'\s*\[?✨\]?\s*')
+
+# Pattern to match bare "mhm" responses (case-insensitive, with optional punctuation)
+_MHM_RE = re.compile(r'^\s*mhm[.!?]*\s*$', re.IGNORECASE)
+
 
 async def fetch_recent_messages(
     bot: discord.Client, 
@@ -77,6 +83,22 @@ def _strip_citations(text: str) -> str:
     return _CITATION_RE.sub('', text)
 
 
+def _clean_astra_context(text: str) -> str:
+    """
+    Clean Astra's own messages before injecting into context.
+    Strips citations, ✨ emoji, and replaces bare 'mhm' responses
+    so the model doesn't see and reinforce these patterns.
+    """
+    # Strip citations
+    cleaned = _strip_citations(text)
+    # Strip ✨ emoji (the signature tic)
+    cleaned = _SPARKLE_RE.sub(' ', cleaned).strip()
+    # If the entire message is just "mhm", replace it so model doesn't loop
+    if _MHM_RE.match(cleaned):
+        cleaned = "(acknowledged)"
+    return cleaned
+
+
 def format_discord_context(messages: list[dict], max_messages: int = 50) -> str:
     """
     Format messages for LLM context injection.
@@ -97,9 +119,9 @@ def format_discord_context(messages: list[dict], max_messages: int = 50) -> str:
     lines = []
     for msg in recent:
         content = msg['content']
-        # Strip citation markers from Astra's own messages so she doesn't copy the pattern
+        # Strip citations, ✨, and mhm patterns from Astra's own messages so she doesn't copy them
         if msg['author'] == 'Astra':
-            content = _strip_citations(content)
+            content = _clean_astra_context(content)
         # Format: [Time] [Username]: message content
         time = msg.get('time', '')
         if time:

@@ -2,6 +2,26 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.2.3] - 2026-02-08
+
+### Changed
+- **Qwen3-VL Personality Optimization**: Fixed "mhm" loop where Astra collapsed into one-word responses
+  - **Root Cause**: `repeat_penalty: 1.15` was too aggressive for Qwen3 — model got penalized for common words and retreated to minimal tokens
+  - **Sampler Fixes** (`router.py`):
+    - `repeat_penalty`: 1.15 → 1.05 (Qwen3 recommended)
+    - `temperature`: 0.65 → 0.7 (non-thinking mode optimal)
+    - Added `top_p: 0.8`, `top_k: 20` (Qwen3 recommended)
+    - Added `presence_penalty: 0.15` (vocabulary diversity)
+  - **Personality Prompt Rewrite** (`personality.py`):
+    - Added few-shot style examples to anchor "lazy but substantive" tone
+    - Added explicit anti-loop instruction: "NEVER respond with just 'mhm' or single-word replies"
+    - Added anti-repetition awareness: check recent messages and switch it up
+    - Softened brevity from "1-4 sentences" to "concise but substantive"
+    - Added `[SYSTEM NOTE]` to suppress `<think>` tag leakage (Qwen3 RP best practice)
+    - Preserved: VIBE, ADULT/NSFW, HONESTY RULE, SEARCH PRIORITY, image self-recognition guardrails
+
+---
+
 ## [2.2.2] - 2026-02-08
 
 ### Changed
