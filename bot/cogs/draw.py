@@ -4,6 +4,7 @@ from discord.ext import commands
 import re
 
 from tools.drawing import get_drawing_handler
+from tools.admin import whitelist
 
 
 class DrawCog(commands.Cog):
@@ -21,6 +22,10 @@ class DrawCog(commands.Cog):
         
         # Check if bot is mentioned
         if not self.bot.user.mentioned_in(message):
+            return
+        
+        # 🛡️ AUTHORIZATION CHECK
+        if not whitelist.is_authorized(message.author.id):
             return
         
         content = message.content.lower()

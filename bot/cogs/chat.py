@@ -19,13 +19,14 @@ from tools.search import search, format_search_results
 from tools.vision import analyze_image, can_see_images, get_recent_image_context
 from tools.discord_context import fetch_recent_messages, format_discord_context
 from tools.voice_handler import get_voice_handler
+from tools.admin import whitelist, ADMIN_IDS
 
 # Timezone for user-facing timestamps
 PST = pytz.timezone("America/Los_Angeles")
 
 
 class ChatCog(commands.Cog):
-    """Handles all chat interactions with GemGem."""
+    """Handles all chat interactions with Astra."""
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -44,13 +45,26 @@ class ChatCog(commands.Cog):
         if not (is_mentioned or is_dm):
             return
         
+        # 🛡️ AUTHORIZATION CHECK (Silent ignore for unauthorized users)
+        if not whitelist.is_authorized(message.author.id):
+            return
+        
         # Clean the message (remove bot mention - handle both <@id> and <@!id> formats)
         content = re.sub(r'<@!?\d+>', '', message.content).strip()
         if not content and not message.attachments:
             return
         
-        # Skip if it looks like a draw request (let draw cog handle it)
+        # Handle 'access' mention commands (Admin only)
         content_lower = content.lower()
+        if content_lower.startswith("access") and message.author.id in ADMIN_IDS:
+            admin_cog = self.bot.get_cog("AdminCog")
+            if admin_cog:
+                await admin_cog.handle_access_mention(message, content)
+            else:
+                await message.channel.send("⚠️ Access control module is currently unavailable.")
+            return
+        
+        # Skip if it looks like a draw request (let draw cog handle it)
         draw_keywords = ['draw ', 'gdraw ', 'sketch ', 'paint ', 'create an image', 'create a picture', 'guided draw']
         if any(content_lower.startswith(kw) or f' {kw}' in content_lower for kw in draw_keywords):
             return  # Draw cog will handle this

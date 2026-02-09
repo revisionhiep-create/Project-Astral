@@ -2,6 +2,19 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.3.0] - 2026-02-09
+
+### Added
+- **Admin & Whitelist Access Control**: Ported from GemGem-Docker-Live
+  - `tools/admin.py`: `ADMIN_IDS` (4 root admins) + `WhitelistManager` (file-backed `whitelist.txt`)
+  - `cogs/admin.py`: `AdminCog` with `/access add`, `/access remove`, `/access list` slash commands
+  - `@Astra access [add/remove/list]` mention commands for legacy text usage
+  - Root Admins cannot be removed; only admins can add/remove users
+  - Authorization gate added to `chat.py` and `draw.py` — unauthorized users are silently ignored
+  - Whitelist persisted via `./bot:/app` volume mount (no docker-compose changes needed)
+
+---
+
 ## [2.2.3] - 2026-02-08
 
 ### Changed
