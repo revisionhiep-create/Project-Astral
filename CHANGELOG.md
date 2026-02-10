@@ -2,6 +2,17 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.3.3] - 2026-02-10
+
+### Fixed
+- **RAG Retrieval Completely Broken**: 💡 footer never appeared because every retrieval crashed
+  - **Root Cause**: v2.3.1 re-embedded `knowledge` table (768→3072 dim) but missed `image_knowledge` table — 2 old 768-dim entries remained
+  - `retrieve_relevant_knowledge()` had one try/except wrapping ALL table scans, so one 768-dim image entry crashed the entire retrieval
+  - **Fix 1**: Re-embedded all `image_knowledge` entries to 3072-dim (`reembed_images.py`)
+  - **Fix 2**: Added per-entry try/except in `rag.py` — mismatched entries are now skipped with a warning, not a full crash
+
+---
+
 ## [2.3.2] - 2026-02-09
 
 ### Changed

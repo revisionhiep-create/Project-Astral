@@ -495,47 +495,56 @@ async def retrieve_relevant_knowledge(
         cursor.execute("SELECT id, content, embedding, knowledge_type FROM knowledge")
         for row in cursor.fetchall():
             if row[2]:  # Has embedding
-                stored_embedding = json.loads(row[2])
-                similarity = _cosine_similarity(query_embedding, stored_embedding)
-                if similarity >= threshold:
-                    results.append({
-                        "id": row[0],
-                        "content": row[1][:500],  # Truncate for context
-                        "type": row[3],
-                        "source": "knowledge",
-                        "score": similarity
-                    })
+                try:
+                    stored_embedding = json.loads(row[2])
+                    similarity = _cosine_similarity(query_embedding, stored_embedding)
+                    if similarity >= threshold:
+                        results.append({
+                            "id": row[0],
+                            "content": row[1][:500],  # Truncate for context
+                            "type": row[3],
+                            "source": "knowledge",
+                            "score": similarity
+                        })
+                except Exception as dim_err:
+                    print(f"[RAG] Skipping knowledge entry {row[0][:30]} (dimension mismatch): {dim_err}")
         
         # Search conversations
         cursor.execute("SELECT id, user_message, gemgem_response, embedding, username FROM conversations")
         for row in cursor.fetchall():
             if row[3]:
-                stored_embedding = json.loads(row[3])
-                similarity = _cosine_similarity(query_embedding, stored_embedding)
-                if similarity >= threshold:
-                    username = row[4] or "Someone"
-                    results.append({
-                        "id": row[0],
-                        "content": f"Previous chat - {username}: {row[1][:200]} | Astra: {row[2][:200]}",
-                        "type": "conversation",
-                        "source": "conversations",
-                        "score": similarity
-                    })
+                try:
+                    stored_embedding = json.loads(row[3])
+                    similarity = _cosine_similarity(query_embedding, stored_embedding)
+                    if similarity >= threshold:
+                        username = row[4] or "Someone"
+                        results.append({
+                            "id": row[0],
+                            "content": f"Previous chat - {username}: {row[1][:200]} | Astra: {row[2][:200]}",
+                            "type": "conversation",
+                            "source": "conversations",
+                            "score": similarity
+                        })
+                except Exception as dim_err:
+                    print(f"[RAG] Skipping conversation entry {row[0][:30]} (dimension mismatch): {dim_err}")
         
         # Search image knowledge
         cursor.execute("SELECT id, gemini_description, user_context, embedding FROM image_knowledge")
         for row in cursor.fetchall():
             if row[3]:
-                stored_embedding = json.loads(row[3])
-                similarity = _cosine_similarity(query_embedding, stored_embedding)
-                if similarity >= threshold:
-                    results.append({
-                        "id": row[0],
-                        "content": f"Image context: {row[1][:300]}",
-                        "type": "image",
-                        "source": "image_knowledge",
-                        "score": similarity
-                    })
+                try:
+                    stored_embedding = json.loads(row[3])
+                    similarity = _cosine_similarity(query_embedding, stored_embedding)
+                    if similarity >= threshold:
+                        results.append({
+                            "id": row[0],
+                            "content": f"Image context: {row[1][:300]}",
+                            "type": "image",
+                            "source": "image_knowledge",
+                            "score": similarity
+                        })
+                except Exception as dim_err:
+                    print(f"[RAG] Skipping image entry {row[0][:30]} (dimension mismatch): {dim_err}")
         
         # Sort by score and return top results
         results.sort(key=lambda x: x["score"], reverse=True)
