@@ -2,6 +2,31 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.3.2] - 2026-02-09
+
+### Changed
+- **Deterministic Citation Footers**: Removed LLM-driven citation markers in favor of programmatic footers
+  - `💡N` appended when RAG found N memory facts, `🔍N` when search returned N results
+  - Removed `[🔍1]`, `[💡1]` citation instructions from personality prompt (`personality.py`)
+  - Removed `[💡N]` prefix from RAG knowledge formatting (`rag.py`)
+  - Removed `[🔍N]` prefix from search result formatting (`search.py`)
+  - Footers added deterministically in `chat.py` after response generation
+  - Footers stripped before RAG storage to prevent fact contamination
+  - Footers stripped from Astra's own messages in Discord history context
+
+---
+
+## [2.3.1] - 2026-02-09
+
+### Fixed
+- **Embeddings Model Shutdown**: Google shut down `text-embedding-004` on Jan 14, 2026 — all RAG was silently broken
+  - **Root Cause**: Every `genai.embed_content()` call returned 404, breaking both fact storage AND retrieval
+  - **Fix**: Switched to `gemini-embedding-001` in `embeddings.py` (3072-dim vectors, same free API)
+  - Re-embedded all 67 existing knowledge entries with new model (0 failures)
+  - This was the real reason facts stopped storing since ~Feb 5 (not the Docker rename)
+
+---
+
 ## [2.3.0] - 2026-02-09
 
 ### Added
