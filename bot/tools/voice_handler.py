@@ -11,6 +11,12 @@ from pathlib import Path
 from typing import Optional
 
 from tools.kokoro_tts import KokoroTTS
+from tools.voice_receiver import VoiceReceiver, VOICE_RECV_AVAILABLE
+
+try:
+    from discord.ext import voice_recv
+except ImportError:
+    voice_recv = None
 
 
 class VoiceHandler:
@@ -26,6 +32,31 @@ class VoiceHandler:
         self.currently_playing = {}  # Guild ID -> bool
         self.temp_audio_dir = Path(__file__).parent.parent / "temp_audio"
         self.temp_audio_dir.mkdir(exist_ok=True)
+        self._receivers = {}  # Guild ID -> VoiceReceiver
+        self._listening = {}  # Guild ID -> bool
+
+    def start_listening(self, guild, on_utterance) -> bool:
+        """Start listening for voice in a guild."""
+        if not guild.voice_client:
+            return False
+
+        receiver = VoiceReceiver(guild.voice_client, on_utterance, guild)
+        success = receiver.start()
+        if success:
+            self._receivers[guild.id] = receiver
+            self._listening[guild.id] = True
+        return success
+
+    def stop_listening(self, guild):
+        """Stop listening for voice in a guild."""
+        receiver = self._receivers.pop(guild.id, None)
+        if receiver:
+            receiver.stop()
+        self._listening[guild.id] = False
+
+    def is_listening(self, guild) -> bool:
+        """Check if listening is active in a guild."""
+        return self._listening.get(guild.id, False)
 
     async def join_voice_channel(self, voice_channel) -> Optional[discord.VoiceClient]:
         """
@@ -45,8 +76,9 @@ class VoiceHandler:
                     await voice_channel.guild.voice_client.move_to(voice_channel)
                 return voice_channel.guild.voice_client
 
-            # Connect to voice channel
-            voice_client = await voice_channel.connect()
+            # Connect with VoiceRecvClient for listen support
+            connect_cls = voice_recv.VoiceRecvClient if VOICE_RECV_AVAILABLE else discord.VoiceClient
+            voice_client = await voice_channel.connect(cls=connect_cls)
             print(f"✅ Joined voice channel: {voice_channel.name}")
 
             # Initialize queue for this guild

@@ -2,6 +2,20 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.4.1] - 2026-02-10
+
+### Changed
+- **STT Fallback Priority**: Swapped STT order — Gemini cloud is now primary, local faster-whisper is fallback
+  - Mirrors GemGem's STT config for consistency across bots
+
+### Fixed
+- **Double Prompting on Voice**: Single utterances were split into multiple LLM prompts
+  - **Root Cause**: VAD silence threshold (1.5s) too aggressive — natural breath pauses split speech into sub-second fragments (e.g. "The", "If you're not") that each triggered a full LLM call
+  - **Fix 1**: Raised `SILENCE_THRESHOLD_SEC` 1.5→2.0s, `MIN_UTTERANCE_SEC` 0.5→1.5s in `voice_receiver.py`
+  - **Fix 2**: Added 3-word minimum filter in `voice.py` `_on_utterance` — short fragments logged and dropped
+
+---
+
 ## [2.3.4] - 2026-02-10
 
 ### Fixed
