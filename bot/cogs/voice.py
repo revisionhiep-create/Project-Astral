@@ -1,12 +1,31 @@
 """
 Voice Commands Cog for Astra
-Provides /join, /leave commands for voice channel control
+Provides /join, /leave, /listen commands for voice channel control and STT
 """
 
+import re
 import discord
 from discord import app_commands
 from discord.ext import commands
 from tools.voice_handler import get_voice_handler
+from tools import stt
+
+
+class VoiceMessage:
+    """
+    Fake message wrapper so voice utterances can be processed
+    through the same on_message pipeline as text messages.
+    """
+
+    def __init__(self, user: discord.User, content: str, guild: discord.Guild, text_channel: discord.TextChannel, bot_user):
+        self.author = user
+        self.content = f"<@{bot_user.id}> {content}"  # Prepend mention so on_message picks it up
+        self.guild = guild
+        self.channel = text_channel
+        self.attachments = []
+        self.mentions = [bot_user]  # Simulate bot being mentioned
+        self.id = None
+        self.created_at = discord.utils.utcnow()
 
 
 class VoiceCommands(commands.Cog):
@@ -61,6 +80,10 @@ class VoiceCommands(commands.Cog):
             )
             return
 
+        # Stop listening if active
+        if self.voice_handler.is_listening(interaction.guild):
+            self.voice_handler.stop_listening(interaction.guild)
+
         # Say goodbye in voice first
         if (
             interaction.guild.voice_client
@@ -78,6 +101,90 @@ class VoiceCommands(commands.Cog):
         await interaction.response.send_message(
             "👋 Left the voice channel! Call me back with `/join` anytime!"
         )
+
+    @app_commands.command(
+        name="listen",
+        description="Toggle voice listening — Astra will hear and respond to you!",
+    )
+    async def listen(self, interaction: discord.Interaction):
+        """Toggle voice-to-text listening."""
+
+        # Must be in a voice channel
+        if not self.voice_handler.is_in_voice(interaction.guild):
+            await interaction.response.send_message(
+                "❌ I need to be in a voice channel first! Use `/join` first.",
+                ephemeral=True,
+            )
+            return
+
+        # Toggle
+        if self.voice_handler.is_listening(interaction.guild):
+            # Turn off
+            self.voice_handler.stop_listening(interaction.guild)
+            await interaction.response.send_message(
+                "🔇 **Listening disabled.** I'll stop transcribing voice. "
+                "I can still speak my responses though! ✨",
+            )
+
+            # Announce in voice
+            await self.voice_handler.speak_text(
+                interaction.guild, "Okay, I'll stop listening now!"
+            )
+        else:
+            # Turn on
+            success = self.voice_handler.start_listening(
+                interaction.guild, self._on_utterance
+            )
+
+            if success:
+                await interaction.response.send_message(
+                    "🎧 **Listening enabled!** I can hear you now! "
+                    "Just talk and I'll respond. Use `/listen` again to stop.",
+                )
+
+                # Announce in voice
+                await self.voice_handler.speak_text(
+                    interaction.guild,
+                    "I'm all ears! Go ahead and talk to me!",
+                )
+            else:
+                await interaction.response.send_message(
+                    "❌ Couldn't start listening. Voice receive module may not be available.",
+                    ephemeral=True,
+                )
+
+    async def _on_utterance(self, user: discord.User, wav_bytes: bytes, guild: discord.Guild):
+        """
+        Called when a complete utterance is detected from a user.
+        Transcribes via local whisper (or cloud fallback), then feeds into Astra's chat pipeline.
+        """
+        try:
+            # Transcribe
+            text = await stt.transcribe(wav_bytes)
+            if not text:
+                return
+
+            # Find a text channel to send the response (use first text channel)
+            text_channel = None
+            for channel in guild.text_channels:
+                if channel.permissions_for(guild.me).send_messages:
+                    text_channel = channel
+                    break
+
+            if not text_channel:
+                print("❌ [Voice] No text channel found for voice response")
+                return
+
+            # Create a fake message and dispatch it through the bot's on_message
+            voice_msg = VoiceMessage(user, text, guild, text_channel, self.bot.user)
+
+            # Dispatch to the chat cog via the bot's event system
+            self.bot.dispatch("message", voice_msg)
+
+        except Exception as e:
+            print(f"❌ [Voice] Utterance processing error: {e}")
+            import traceback
+            traceback.print_exc()
 
 
 async def setup(bot):

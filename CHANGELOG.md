@@ -2,6 +2,27 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.4.0] - 2026-02-10
+
+### Added
+- **Voice STT (Speech-to-Text)**: Astra can now hear and respond to voice in real-time
+  - `/listen` command toggles voice listening on/off (visible to all users)
+  - Audio captured per-user with Voice Activity Detection (silence gap = 1.5s)
+  - Transcription via local `faster-whisper` server (port 8200), Gemini cloud fallback
+  - Voice utterances routed through full chat pipeline (RAG, search, vision, personality)
+  - `VoiceMessage` wrapper dispatches transcribed text as synthetic `on_message` events
+  - Watchdog auto-restarts audio listener on `PacketRouter` crashes
+- **New Files**: `tools/stt.py`, `tools/voice_receiver.py`
+- **Voice Handler**: Added `start_listening()`, `stop_listening()`, `is_listening()` to `tools/voice_handler.py`
+  - Voice channel now connects with `VoiceRecvClient` (required for `.listen()` support)
+- **Dependencies**: Added `discord-ext-voice-recv==0.5.2a179`
+- **Intents**: Added `voice_states` intent to `main.py`
+
+### Changed
+- **Discord History Reduced**: 50 → 25 messages to prevent context window overflow with rapid voice utterances
+
+---
+
 ## [2.3.3] - 2026-02-10
 
 ### Fixed
