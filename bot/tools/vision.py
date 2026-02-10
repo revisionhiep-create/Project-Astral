@@ -144,16 +144,10 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
     })
     print(f"[Vision] Cached image from {username} (total cached: {len(_recent_images)})")
     
-    # Step 3: Store in RAG for long-term memory
-    try:
-        await store_image_knowledge(
-            gemini_description=description,
-            user_context=user_prompt,
-            user_id=username
-        )
-        print(f"[Vision] Stored to RAG: {description[:50]}...")
-    except Exception as e:
-        print(f"[Vision] RAG storage failed: {e}")
+    # Step 3: Skip RAG storage for images — descriptions pollute fact pool
+    # Images are already in the 5-minute short-term cache above
+    # (Previous behavior stored image descriptions as permanent "facts" which
+    #  caused Astra to say "that's me" on every message)
     
     # Step 4: Build context for Astra
     # Now Astra receives objective description + character list and decides who is who

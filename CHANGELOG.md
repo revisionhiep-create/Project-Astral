@@ -2,6 +2,20 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.3.4] - 2026-02-10
+
+### Fixed
+- **"That's me" Loop**: Astra was starting every response with "that's me." even without images
+  - **Root Cause**: Image descriptions stored in RAG as permanent facts (e.g. "you, Astra, depicted as...") matched every query at 65%+ similarity
+  - **Fix 1**: Disabled RAG storage of image descriptions in `vision.py` and `chat.py` — 5-minute short-term cache is sufficient
+  - **Fix 2**: Purged all 30 `image_knowledge` entries from database
+  - **Fix 3**: Added temp regex strip of "that's me" prefix in `router.py` until old messages roll out of chat history
+- **RAG Noise**: Facts were injected into every response regardless of relevance
+  - **Root Cause**: Similarity thresholds too low for `gemini-embedding-001` (3072-dim vectors score 50-70% even for unrelated text)
+  - **Fix**: Raised threshold from 0.65 → 0.78 in `rag.py`
+
+---
+
 ## [2.3.3] - 2026-02-10
 
 ### Fixed

@@ -157,14 +157,8 @@ class ChatCog(commands.Cog):
                         username=message.author.display_name
                     )
                     
-                    # Store image knowledge for learning
-                    await store_image_knowledge(
-                        gemini_description=vision_response,
-                        image_url=image_url,
-                        user_context=content if content else None,
-                        gemgem_response=vision_response,
-                        user_id=str(message.author.id)
-                    )
+                    # Skip RAG image storage — descriptions pollute fact pool
+                    # (caused "that's me" on every response)
                 
                 # Step 5: Generate response
                 if vision_response:

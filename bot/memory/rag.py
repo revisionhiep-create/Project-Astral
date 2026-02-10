@@ -469,7 +469,7 @@ async def store_drawing_knowledge(
 async def retrieve_relevant_knowledge(
     query: str,
     limit: int = 5,
-    threshold: float = 0.65
+    threshold: float = 0.78
 ) -> list[dict]:
     """
     Retrieve relevant knowledge from ALL tables for context.

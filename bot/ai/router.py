@@ -338,6 +338,8 @@ async def generate_response(
         cleaned = _strip_think_tags(response)
         cleaned = _strip_roleplay_actions(cleaned)
         cleaned = _strip_repeated_content(cleaned)
+        # TEMP: Strip "that's me" prefix until old messages roll out of history
+        cleaned = re.sub(r'^that[\'\u2019]s me\.?\s*\n?', '', cleaned, flags=re.IGNORECASE).strip()
         return cleaned
     except Exception as e:
         print(f"[LMStudio Error] {e}")
