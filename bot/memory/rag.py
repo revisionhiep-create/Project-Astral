@@ -545,9 +545,9 @@ def format_knowledge_for_context(knowledge: list[dict]) -> str:
     if not knowledge:
         return ""
     
-    formatted = ["MEMORY FACTS - Cite with [💡1], [💡2] etc when using these:"]
+    formatted = ["MEMORY FACTS:"]
     for i, item in enumerate(knowledge, 1):
-        formatted.append(f"[💡{i}] {item['content']}")
+        formatted.append(f"- {item['content']}")
     
     return "\n".join(formatted)
 

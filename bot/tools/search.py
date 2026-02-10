@@ -80,13 +80,12 @@ def format_search_results(results: list[dict]) -> str:
         text = re.sub(r'  +', ' ', text)
         return text.strip()
     
-    # Header instructs model to use citations
-    formatted = ["SEARCH RESULTS - Cite with [🔍1], [🔍2] etc when using these facts:\n"]
+    # Header for search context
+    formatted = ["SEARCH RESULTS:\n"]
     for i, r in enumerate(results, 1):
         title = _sanitize(r['title'])
         content = _sanitize(r['content'])
-        # Numbered citation format
-        formatted.append(f"[🔍{i}] {title}\n    URL: {r['url']}\n    {content}")
+        formatted.append(f"{i}. {title}\n    URL: {r['url']}\n    {content}")
     
     return "\n\n".join(formatted)
 

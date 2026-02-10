@@ -24,6 +24,9 @@ from tools.admin import whitelist, ADMIN_IDS
 # Timezone for user-facing timestamps
 PST = pytz.timezone("America/Los_Angeles")
 
+# Regex to strip deterministic footers from Astra's own messages in history
+FOOTER_REGEX = re.compile(r'\n\n[💡🔍🧠]\d+', re.DOTALL)
+
 
 class ChatCog(commands.Cog):
     """Handles all chat interactions with Astra."""
@@ -86,14 +89,17 @@ class ChatCog(commands.Cog):
                 try:
                     async for msg in message.channel.history(limit=50):
                         author_name = msg.author.display_name
+                        msg_content = msg.content
                         # Only label THIS bot as "Astra" - other bots (like GemGem) keep their names
                         if msg.author.id == self.bot.user.id:
                             author_name = "Astra"
+                            # Strip footers from Astra's own messages when adding to context
+                            msg_content = FOOTER_REGEX.sub('', msg_content)
                         # Format timestamp as relative or simple time (convert UTC to PST)
                         timestamp = msg.created_at.astimezone(PST).strftime("%I:%M %p")
                         discord_messages.append({
                             "author": author_name,
-                            "content": msg.content[:500],
+                            "content": msg_content[:500],
                             "time": timestamp
                         })
                     discord_messages.reverse()  # Chronological order
@@ -109,6 +115,7 @@ class ChatCog(commands.Cog):
                 # Step 2: Query long-term memory (RAG - conversations only)
                 long_term_knowledge = await retrieve_relevant_knowledge(content, limit=5)
                 memory_context = format_knowledge_for_context(long_term_knowledge)
+                rag_count = len(long_term_knowledge)  # Track for footer
                 if memory_context:
                     print(f"[RAG] Injecting {len(long_term_knowledge)} facts into context: {memory_context[:200]}")
                 else:
@@ -124,6 +131,7 @@ class ChatCog(commands.Cog):
                 # Step 4: Execute tools based on Logic AI decision
                 search_context = ""
                 vision_response = None
+                search_count = 0  # Track for footer
                 
                 # Search if Logic AI decided
                 if tool_decision.get("search"):
@@ -132,6 +140,7 @@ class ChatCog(commands.Cog):
                     print(f"[Chat] Logic AI triggered search: '{search_query}' (time_range={time_range})")
                     search_results = await search(search_query, num_results=5, time_range=time_range)
                     search_context = format_search_results(search_results)
+                    search_count = len(search_results)  # Track for footer
                     print(f"[Chat] Got {len(search_results)} results")
                     # Store search results as facts in RAG for long-term knowledge
                     if search_results:
@@ -198,10 +207,27 @@ class ChatCog(commands.Cog):
                         memory_context=rag_context  # RAG is deprioritized
                     )
                 
+                # === DETERMINISTIC ATTRIBUTION FOOTERS ===
+                # Build footer based on what tools actually ran
+                footer = ""
+                if rag_count > 0:
+                    footer += f"\n\n💡{rag_count}"
+                if tool_decision.get("search") and search_count > 0:
+                    footer += f"\n\n🔍{search_count}"
+                
+                if footer:
+                    # Truncate if needed to fit footer
+                    if len(response) + len(footer) > 2000:
+                        response = response[:2000 - len(footer) - 5] + "..."
+                    response += footer
+                
                 # Step 6: Store conversation to RAG (long-term memory)
+                # Strip footers before saving — they're display-only
+                clean_response = re.sub(r'\n\n💡\d+$', '', response)
+                clean_response = re.sub(r'\n\n🔍\d+$', '', clean_response)
                 await store_conversation(
                     user_message=content,
-                    gemgem_response=response,
+                    gemgem_response=clean_response,
                     user_id=str(message.author.id),
                     username=message.author.display_name,
                     channel_id=str(message.channel.id),
