@@ -9,25 +9,27 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
+# Model: gemini-embedding-001 (text-embedding-004 was shut down Jan 14 2026)
+EMBEDDING_MODEL = "models/gemini-embedding-001"
+
 
 async def get_embedding(text: str) -> Optional[list[float]]:
     """
-    Get embedding vector for text using Google's free embedding model.
+    Get embedding vector for text using Google's embedding model.
     
     Args:
         text: Text to embed
     
     Returns:
-        768-dimensional embedding vector, or None on error
+        Embedding vector, or None on error
     """
     if not GEMINI_API_KEY:
         print("[Embeddings] No GEMINI_API_KEY set")
         return None
     
     try:
-        # Use the embedding model
         result = genai.embed_content(
-            model="models/text-embedding-004",
+            model=EMBEDDING_MODEL,
             content=text,
             task_type="retrieval_document"
         )
@@ -44,7 +46,7 @@ async def get_query_embedding(text: str) -> Optional[list[float]]:
     
     try:
         result = genai.embed_content(
-            model="models/text-embedding-004",
+            model=EMBEDDING_MODEL,
             content=text,
             task_type="retrieval_query"
         )

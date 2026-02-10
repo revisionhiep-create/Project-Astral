@@ -68,8 +68,12 @@ Respond with the fact or NONE:"""
                 data = await resp.json()
                 result = data["choices"][0]["message"]["content"].strip()
                 
+                # DEBUG: Log raw Qwen response
+                print(f"[RAG] Qwen raw response: '{result[:200]}'")
+                
                 # Check if it's a valid fact (not NONE or empty)
                 if not result or result.upper() == "NONE" or len(result) < 10:
+                    print(f"[RAG] Filtered out (NONE/empty/short): '{result[:50]}'")
                     return None
                 
                 # Clean up any think tags that might leak through
@@ -78,6 +82,7 @@ Respond with the fact or NONE:"""
                 result = result.strip()
                 
                 if result.upper() == "NONE" or len(result) < 10:
+                    print(f"[RAG] Filtered out after think-strip: '{result[:50]}'")
                     return None
                     
                 print(f"[RAG] Extracted fact: {result[:80]}...")
@@ -249,11 +254,14 @@ async def store_conversation(
         return None
     
     # Extract fact from conversation
+    print(f"[RAG] Attempting fact extraction for {name}: msg='{user_message[:60]}' resp='{gemgem_response[:60]}'")
     fact = await _extract_fact_from_conversation(name, user_message, gemgem_response)
     
     if not fact:
         print(f"[RAG] No meaningful fact in conversation with {name}")
         return None
+    
+    print(f"[RAG] ✅ Extracted fact: {fact[:100]}")
     
     # Store the fact as knowledge (not raw conversation)
     return await store_knowledge(
