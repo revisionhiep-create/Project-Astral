@@ -23,38 +23,12 @@ ui:
   static_use_hash: true
 
 engines:
-  # === General Search (Primary) ===
+  # === General Search ===
   - name: google
     disabled: false
-  - name: duckduckgo
-    disabled: false
-  - name: brave
-    disabled: false
   - name: bing
-    disabled: false
-  - name: startpage
     disabled: false
 
   # === Knowledge/Facts ===
   - name: wikipedia
-    disabled: false
-  - name: wikidata
-    disabled: false
-
-  # === Social/Community (VTuber/Anime) ===
-  - name: reddit
-    disabled: false
-  - name: youtube
-    disabled: false
-
-  # === News ===
-  - name: google news
-    disabled: false
-  - name: bing news
-    disabled: false
-
-  # === Images (for reference) ===
-  - name: google images
-    disabled: false
-  - name: bing images
     disabled: false
