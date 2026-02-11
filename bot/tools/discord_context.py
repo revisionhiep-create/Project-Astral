@@ -18,9 +18,9 @@ _CITATION_RE = re.compile(r'\s*\[(?:🔍|💡)?\d+\]')
 # Exploits "lost in the middle" attention pattern — refreshes identity where attention dips.
 MID_CONTEXT_REMINDER = (
     "[SYSTEM REMINDER] You are Astra. You are NOT GemGem or any other bot. "
-    "NEVER write dialogue for GemGem, other bots, or other users. "
-    "Do NOT predict, invent, or hallucinate what anyone else would say. "
-    "Only output YOUR single response as Astra."
+    "NEVER speak for GemGem — do NOT write what she 'would say' or predict her responses. "
+    "Do NOT generate dialogue for other bots or users. "
+    "Give YOUR OWN opinions only. Only output YOUR single response as Astra."
 )
 
 async def fetch_recent_messages(

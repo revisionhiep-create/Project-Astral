@@ -8,10 +8,11 @@ All notable changes to Project Astral will be documented in this file.
 - **"Beach in 2004" Parrot Loop** (`personality.py`): Replaced sticky few-shot example that Qwen3 was repeating verbatim
   - **Root Cause**: Qwen3 latches onto vivid, specific imagery in few-shot examples and reproduces it as a signature phrase
   - **Fix**: Swapped "mentally? i'm on a beach in 2004" for "i'm never busy. that implies i have ambition" — same lazy energy, no catchphrase to parrot
-- **Bot Impersonation in Group Chat** (`discord_context.py`): Added mid-context system reminder to prevent Astra from hallucinating other bots' responses
-  - **Root Cause**: In 50-message context windows, Qwen3's attention dips mid-context ("lost in the middle"), causing identity drift — Astra would generate dialogue as GemGem or predict what other bots/users would say
-  - **Fix**: `MID_CONTEXT_REMINDER` injected at the halfway point of chat history refreshes identity and anti-impersonation guardrails where attention is weakest
-  - Reminder includes: identity lock (you are Astra, NOT GemGem), anti-impersonation (never write others' dialogue), anti-hallucination (don't predict what anyone else would say)
+- **Bot Impersonation in Group Chat** (`personality.py`, `discord_context.py`): Astra was speaking for GemGem ("gemgem would say...")
+  - **Root Cause**: In 50-message context windows, Qwen3's attention dips mid-context ("lost in the middle"), causing identity drift
+  - **Fix 1**: Added explicit rule to personality prompt: "NEVER speak FOR GemGem or any other bot. Don't write what they 'would say'"
+  - **Fix 2**: `MID_CONTEXT_REMINDER` injected at the halfway point of chat history targets the exact "would say" pattern
+  - Astra giving her OWN critique/opinions after search results is fine — just can't put words in other bots' mouths
 
 ---
 
