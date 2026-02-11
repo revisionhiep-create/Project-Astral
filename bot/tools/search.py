@@ -50,9 +50,8 @@ async def search(query: str, num_results: int = 5, time_range: str = None) -> li
                         "content": item.get("content", "")
                     })
                 
-                # Rerank by content quality (longer snippets = more useful info)
-                results = sorted(results, key=lambda x: len(x.get('content', '')), reverse=True)
-                
+                # Use SearXNG's native relevance ranking (no length-based reranking)
+                # Length-bias promoted verbose junk sites over accurate short snippets
                 return results[:num_results]
     except Exception as e:
         print(f"[Search Error] {e}")

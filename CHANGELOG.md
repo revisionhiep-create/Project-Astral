@@ -2,6 +2,21 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.5.0] - 2026-02-10
+
+### Changed
+- **Proper ChatML Role Separation** (`router.py`): Switched from single-message transcript format to proper `system`/`user` message roles
+  - System message: personality + search results + memory (instruction-following priority)
+  - User message: conversation transcript + current question
+  - LM Studio's OpenAI API handles ChatML tokenization — no more manual prompt embedding
+  - Previously everything was in one giant `user` message, making the model treat search results as conversational context rather than authoritative instructions
+- **Removed Length-Based Search Reranking** (`search.py`): Stopped sorting results by snippet length
+  - **Root Cause**: Longer snippets from low-quality SEO sites (e.g., `thetechylife.com`) were promoted over shorter but accurate snippets from reputable sources
+  - **Evidence**: SearXNG returned "RX 6900 XT has 24GB VRAM" (wrong — it's 16GB) from a junk site with a long snippet, and Astra faithfully repeated it
+  - Now uses SearXNG's native relevance ordering instead
+
+---
+
 ## [2.4.1] - 2026-02-10
 
 ### Changed

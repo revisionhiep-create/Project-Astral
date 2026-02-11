@@ -1,4 +1,4 @@
-"""AI Router - Single model orchestration with LM Studio (Mistral Small 24B)."""
+"""AI Router - Single model orchestration with LM Studio (Qwen3-VL-32B)."""
 import os
 import json
 import aiohttp
@@ -263,10 +263,12 @@ async def generate_response(
     current_speaker: str = None
 ) -> str:
     """
-    Generate an Astra response using transcript format for Gemma 3 reasoning model.
+    Generate an Astra response using proper system/user ChatML roles.
     
-    Uses single-message transcript format instead of ChatML to prevent confusion
-    in group chat scenarios with reasoning models.
+    System message: personality + search results + memory (high instruction priority)
+    User message: conversation transcript + current question
+    
+    LM Studio's OpenAI-compatible API handles ChatML tokenization automatically.
     """
     # Build system prompt with context AND speaker identity
     system_prompt = build_system_prompt(search_context, memory_context, current_speaker)
@@ -302,19 +304,20 @@ async def generate_response(
     
     transcript = "\n".join(transcript_lines)
     
-    # Build single-message prompt in transcript format
-    full_prompt = f"""[System Prompt]
-{system_prompt}
-
-[Transcript - Last {len(transcript_lines)} Messages]
+    # Build user message with transcript only (system prompt is in system role)
+    user_prompt = f"""[Transcript - Last {len(transcript_lines)} Messages]
 {transcript}
 
-[Instruction]: Reply to the last message as Astra. Do not output internal thoughts."""
+Reply to the last message as Astra. Do not output internal thoughts."""
     
-    messages = [{"role": "user", "content": full_prompt}]
+    # Proper system/user role separation — LM Studio handles ChatML tokenization
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
     
     # Stop sequences to prevent roleplaying other users (crucial for uncensored models)
-    stop_sequences = ["\n[", "[Hiep]", "[User]", "<|im_end|>", "<|endoftext|>"]
+    stop_sequences = ["\n[", "[Hiep]", "[User]"]
 
     
     try:
@@ -339,7 +342,7 @@ async def generate_response(
         cleaned = _strip_roleplay_actions(cleaned)
         cleaned = _strip_repeated_content(cleaned)
         # TEMP: Strip "that's me" prefix until old messages roll out of history
-        cleaned = re.sub(r'^that[\'\u2019]s me\.?\s*\n?', '', cleaned, flags=re.IGNORECASE).strip()
+        cleaned = re.sub(r'^that[\'\\u2019]s me\\.?\\s*\\n?', '', cleaned, flags=re.IGNORECASE).strip()
         return cleaned
     except Exception as e:
         print(f"[LMStudio Error] {e}")
