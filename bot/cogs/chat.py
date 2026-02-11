@@ -25,7 +25,7 @@ from tools.admin import whitelist, ADMIN_IDS
 PST = pytz.timezone("America/Los_Angeles")
 
 # Regex to strip deterministic footers from Astra's own messages in history
-FOOTER_REGEX = re.compile(r'\n\n[💡🔍🧠]\d+', re.DOTALL)
+FOOTER_REGEX = re.compile(r'\n\n[💡🔍]\d+(?:\s[💡🔍]\d+)*$', re.DOTALL)
 
 
 class ChatCog(commands.Cog):
@@ -202,14 +202,15 @@ class ChatCog(commands.Cog):
                     )
                 
                 # === DETERMINISTIC ATTRIBUTION FOOTERS ===
-                # Build footer based on what tools actually ran
-                footer = ""
+                # Build footer based on what tools actually ran (same line)
+                footer_parts = []
                 if rag_count > 0:
-                    footer += f"\n\n💡{rag_count}"
+                    footer_parts.append(f"💡{rag_count}")
                 if tool_decision.get("search") and search_count > 0:
-                    footer += f"\n\n🔍{search_count}"
+                    footer_parts.append(f"🔍{search_count}")
                 
-                if footer:
+                if footer_parts:
+                    footer = "\n\n" + " ".join(footer_parts)
                     # Truncate if needed to fit footer
                     if len(response) + len(footer) > 2000:
                         response = response[:2000 - len(footer) - 5] + "..."
@@ -217,8 +218,7 @@ class ChatCog(commands.Cog):
                 
                 # Step 6: Store conversation to RAG (long-term memory)
                 # Strip footers before saving — they're display-only
-                clean_response = re.sub(r'\n\n💡\d+$', '', response)
-                clean_response = re.sub(r'\n\n🔍\d+$', '', clean_response)
+                clean_response = re.sub(r'\n\n[💡🔍]\d+(?:\s[💡🔍]\d+)*$', '', response)
                 await store_conversation(
                     user_message=content,
                     gemgem_response=clean_response,
@@ -244,7 +244,10 @@ class ChatCog(commands.Cog):
                 if message.guild and message.guild.voice_client:
                     try:
                         voice_handler = get_voice_handler(self.bot)
-                        await voice_handler.speak_text(message.guild, response)
+                        # Strip citation markers and footer emojis so TTS doesn't read them
+                        tts_text = re.sub(r'\[(?:🔍|💡)?\d+\]', '', response)  # [1], [🔍1], [💡2]
+                        tts_text = re.sub(r'\n\n[💡🔍]\d+(?:\s[💡🔍]\d+)*$', '', tts_text)  # footer line
+                        await voice_handler.speak_text(message.guild, tts_text.strip())
                     except Exception as ve:
                         print(f"[Voice] TTS error: {ve}")
                     

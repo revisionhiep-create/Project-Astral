@@ -13,6 +13,8 @@ All notable changes to Project Astral will be documented in this file.
   - **Fix 1**: Added explicit rule to personality prompt: "NEVER speak FOR GemGem or any other bot. Don't write what they 'would say'"
   - **Fix 2**: `MID_CONTEXT_REMINDER` injected at the halfway point of chat history targets the exact "would say" pattern
   - Astra giving her OWN critique/opinions after search results is fine — just can't put words in other bots' mouths
+- **Footer Emojis on Separate Lines** (`chat.py`): Attribution footers (💡, 🔍) now appear on the same line instead of stacking vertically
+- **TTS Reading Citation Numbers** (`chat.py`): Kokoro TTS no longer reads citation markers (`[1]`, `[🔍1]`) or footer emojis aloud — stripped before sending to voice
 
 ---
 
