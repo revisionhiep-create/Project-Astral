@@ -2,6 +2,18 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.5.3] - 2026-02-11
+
+### Changed
+- **Centralized Model Configuration** (`docker-compose.yml`, `.env`):
+  - Model selection is now controlled via a single `.env` variable: `LMSTUDIO_CHAT_MODEL`
+  - `docker-compose.yml` passes this variable to the container
+  - `router.py`, `rag.py` updated to use `os.getenv("LMSTUDIO_CHAT_MODEL")`
+  - No more hardcoded model names in Python code
+  - Default model remains: `qwen3-vl-32b-instruct-heretic-v2-i1`
+
+---
+
 ## [2.5.2] - 2026-02-11
 
 ### Changed
