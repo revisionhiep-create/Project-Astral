@@ -56,9 +56,19 @@ class VoiceCommands(commands.Cog):
         voice_client = await self.voice_handler.join_voice_channel(voice_channel)
 
         if voice_client:
-            await interaction.followup.send(
-                f"🎤 Joined **{voice_channel.name}**! I'll speak my responses here now! ✨"
+            # Auto-start listening
+            listening_started = self.voice_handler.start_listening(
+                interaction.guild, self._on_utterance
             )
+
+            if listening_started:
+                await interaction.followup.send(
+                    f"🎤 Joined **{voice_channel.name}** and started listening! 🎧 I'm all ears! ✨"
+                )
+            else:
+                await interaction.followup.send(
+                    f"🎤 Joined **{voice_channel.name}**! (Note: Listening couldn't be auto-started, try `/listen` manually)"
+                )
 
             # Greet in voice
             await self.voice_handler.speak_text(
@@ -102,56 +112,7 @@ class VoiceCommands(commands.Cog):
             "👋 Left the voice channel! Call me back with `/join` anytime!"
         )
 
-    @app_commands.command(
-        name="listen",
-        description="Toggle voice listening — Astra will hear and respond to you!",
-    )
-    async def listen(self, interaction: discord.Interaction):
-        """Toggle voice-to-text listening."""
 
-        # Must be in a voice channel
-        if not self.voice_handler.is_in_voice(interaction.guild):
-            await interaction.response.send_message(
-                "❌ I need to be in a voice channel first! Use `/join` first.",
-                ephemeral=True,
-            )
-            return
-
-        # Toggle
-        if self.voice_handler.is_listening(interaction.guild):
-            # Turn off
-            self.voice_handler.stop_listening(interaction.guild)
-            await interaction.response.send_message(
-                "🔇 **Listening disabled.** I'll stop transcribing voice. "
-                "I can still speak my responses though! ✨",
-            )
-
-            # Announce in voice
-            await self.voice_handler.speak_text(
-                interaction.guild, "Okay, I'll stop listening now!"
-            )
-        else:
-            # Turn on
-            success = self.voice_handler.start_listening(
-                interaction.guild, self._on_utterance
-            )
-
-            if success:
-                await interaction.response.send_message(
-                    "🎧 **Listening enabled!** I can hear you now! "
-                    "Just talk and I'll respond. Use `/listen` again to stop.",
-                )
-
-                # Announce in voice
-                await self.voice_handler.speak_text(
-                    interaction.guild,
-                    "I'm all ears! Go ahead and talk to me!",
-                )
-            else:
-                await interaction.response.send_message(
-                    "❌ Couldn't start listening. Voice receive module may not be available.",
-                    ephemeral=True,
-                )
 
     async def _on_utterance(self, user: discord.User, wav_bytes: bytes, guild: discord.Guild):
         """

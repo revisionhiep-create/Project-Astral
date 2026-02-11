@@ -2,6 +2,16 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.5.2] - 2026-02-11
+
+### Changed
+- **Combined Voice Commands** (`voice.py`):
+  - `/join` now automatically enables listening (STT) — no separate command needed
+  - Removed independent `/listen` command (redundant)
+  - `/leave` handles cleanup of both voice connection and listening state
+
+---
+
 ## [2.5.1] - 2026-02-11
 
 ### Fixed
