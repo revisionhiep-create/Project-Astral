@@ -64,6 +64,24 @@ def _strip_repeated_content(text: str) -> str:
     return '\n'.join(result)
 
 
+def _strip_specific_hallucinations(text: str) -> str:
+    """
+    Remove specific recurring hallucinations/catchphrases the model latches onto.
+    """
+    if not text:
+        return text
+    
+    # "GemGem's rolling dice in the background" - model trained on something that spammed this
+    # Matches: "gemgem's rolling dice", "gemgem's still rolling dice", etc.
+    # Also handles capitalization and smart quotes
+    text = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', text, flags=re.IGNORECASE)
+    
+    # Cleanup any resulting double punctuation/spaces
+    text = re.sub(r'\s+,', ',', text)
+    text = re.sub(r'  +', ' ', text)
+    return text.strip()
+
+
 
 def _extract_json(text: str) -> dict:
     """
@@ -341,6 +359,7 @@ Reply to the last message as Astra. Do not output internal thoughts."""
         cleaned = _strip_think_tags(response)
         cleaned = _strip_roleplay_actions(cleaned)
         cleaned = _strip_repeated_content(cleaned)
+        cleaned = _strip_specific_hallucinations(cleaned)
         return cleaned
     except Exception as e:
         print(f"[LMStudio Error] {e}")
