@@ -2,6 +2,17 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.5.4] - 2026-02-12
+
+### Added
+- **Advanced RAG (Hybrid Search + Re-ranking)**: Upgraded memory retrieval pipeline to fix "Precision vs Recall" trade-off
+  - **Hybrid Search**: Combines Vector Search (semantic) + BM25 (keyword) to catch specific terms like error codes
+  - **Cross-Encoder Re-ranking**: Uses `ms-marco-MiniLM-L-6-v2` to strictly judge relevance of top candidates
+  - **Query Normalization**: Uses LLM to rewrite "omg help python broken" -> "how to fix python installation" keyphrases
+  - **Result**: Drastically improved recall for specific technical queries while maintaining semantic understanding
+
+---
+
 ## [2.5.3] - 2026-02-11
 
 ### Changed

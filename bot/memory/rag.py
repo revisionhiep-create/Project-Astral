@@ -13,6 +13,8 @@ import aiohttp
 from datetime import datetime
 from typing import Optional
 import numpy as np
+from rank_bm25 import BM25Okapi
+from sentence_transformers import CrossEncoder
 
 from memory.embeddings import get_embedding, get_query_embedding
 
@@ -20,6 +22,12 @@ from memory.embeddings import get_embedding, get_query_embedding
 DATABASE_PATH = os.getenv("RAG_DATABASE", "/app/data/memory.db")
 LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
+
+# Search Models
+BM25_INDEX = None
+BM25_CORPUS = []
+BM25_IDS = []
+CROSS_ENCODER = None
 
 
 async def _extract_fact_from_conversation(username: str, user_message: str, astra_response: str) -> Optional[str]:
@@ -91,6 +99,84 @@ Respond with the fact or NONE:"""
     except Exception as e:
         print(f"[RAG] Fact extraction failed: {e}")
         return None
+
+
+def _init_search_models():
+    """Initialize CrossEncoder and build BM25 index."""
+    global CROSS_ENCODER
+    try:
+        # Load Cross-Encoder (fast, small model)
+        CROSS_ENCODER = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        print("[RAG] Cross-Encoder loaded successfully")
+    except Exception as e:
+        print(f"[RAG] Failed to load Cross-Encoder: {e}")
+    
+    # Build BM25 from existing DB
+    _rebuild_bm25_index()
+
+
+def _rebuild_bm25_index():
+    """Rebuild BM25 index from knowledge table."""
+    global BM25_INDEX, BM25_CORPUS, BM25_IDS
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+        
+        # Fetch all textual knowledge (facts, search results, drawings)
+        cursor.execute("SELECT id, content FROM knowledge WHERE content IS NOT NULL")
+        rows = cursor.fetchall()
+        
+        if not rows:
+            print("[RAG] No knowledge found for BM25 index.")
+            return
+
+        BM25_IDS = [r[0] for r in rows]
+        BM25_CORPUS = [r[1] for r in rows]
+        
+        # Tokenize (simple whitespace split is fine for BM25)
+        tokenized_corpus = [doc.lower().split() for doc in BM25_CORPUS]
+        BM25_INDEX = BM25Okapi(tokenized_corpus)
+        
+        print(f"[RAG] Rebuilt BM25 index with {len(rows)} documents")
+        
+    except Exception as e:
+        print(f"[RAG] BM25 Build Error: {e}")
+    finally:
+        if 'conn' in locals(): conn.close()
+
+
+async def _standardize_query(query: str) -> str:
+    """Use LLM to rewrite query for better retrieval."""
+    prompt = f"""Rewrite this user search into a concise, standard keyword query.
+Remove conversational filler ("omg help", "can you tell me").
+Keep specific error codes, version numbers, and technical terms.
+Output ONLY the rewritten query.
+
+Input: {query}
+Output:"""
+
+    try:
+        payload = {
+            "model": "gemini-1.5-flash",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,
+            "max_tokens": 50
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{LMSTUDIO_HOST}/v1/chat/completions",
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=5)
+            ) as resp:
+                if resp.status != 200: return query
+                data = await resp.json()
+                clean = data["choices"][0]["message"]["content"].strip().replace('"', '')
+                # If model hallucinates or fails, fallback to original
+                if len(clean) < 3 or len(clean) > len(query) * 2: return query
+                return clean
+    except:
+        return query
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -168,6 +254,9 @@ def _init_db():
     
     conn.commit()
     conn.close()
+    
+    # Initialize search models (BM25 + Cross-Encoder)
+    _init_search_models()
 
 
 # Initialize on import
@@ -212,6 +301,7 @@ async def store_knowledge(
         )
         conn.commit()
         print(f"[RAG] Stored knowledge: {knowledge_type} ({len(content)} chars)")
+        _rebuild_bm25_index()  # Keep keyword index fresh
         return knowledge_id
     except Exception as e:
         print(f"[RAG Store Error] {e}")
@@ -466,89 +556,115 @@ async def store_drawing_knowledge(
 
 # ============== RETRIEVAL ==============
 
+
 async def retrieve_relevant_knowledge(
     query: str,
     limit: int = 5,
     threshold: float = 0.78
 ) -> list[dict]:
     """
-    Retrieve relevant knowledge from ALL tables for context.
+    Retrieve relevant knowledge using Hybrid Search + Re-ranking.
     
-    Args:
-        query: Search query
-        limit: Max results to return
-        threshold: Minimum similarity score
-    
-    Returns:
-        List of relevant knowledge items with scores
+    1. Standardize Query (LLM rewrite)
+    2. Vector Search (Semantic)
+    3. Keyword Search (BM25)
+    4. RRF Merge (Reciprocal Rank Fusion)
+    5. Re-rank (Cross-Encoder)
     """
-    query_embedding = await get_query_embedding(query)
-    if not query_embedding:
-        return []
+    # 1. Standardize Query
+    clean_query = await _standardize_query(query)
+    # print(f"[RAG] Raw: '{query}' -> Clean: '{clean_query}'")
+    
+    query_embedding = await get_query_embedding(clean_query)
+    if not query_embedding: return []
+    
+    candidates = {}  # Map ID -> Item
     
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
-    results = []
     
     try:
-        # Search knowledge table
+        # --- VECTOR SEARCH (Semantic) ---
+        # Scan Knowledge
         cursor.execute("SELECT id, content, embedding, knowledge_type FROM knowledge")
         for row in cursor.fetchall():
-            if row[2]:  # Has embedding
+            if row[2]:
                 try:
-                    stored_embedding = json.loads(row[2])
-                    similarity = _cosine_similarity(query_embedding, stored_embedding)
-                    if similarity >= threshold:
-                        results.append({
+                    score = _cosine_similarity(query_embedding, json.loads(row[2]))
+                    if score >= threshold - 0.15: # Lower threshold for hybrid candidates
+                        candidates[row[0]] = {
                             "id": row[0],
-                            "content": row[1][:500],  # Truncate for context
+                            "content": row[1],
                             "type": row[3],
                             "source": "knowledge",
-                            "score": similarity
-                        })
-                except Exception as dim_err:
-                    print(f"[RAG] Skipping knowledge entry {row[0][:30]} (dimension mismatch): {dim_err}")
-        
-        # Search conversations
+                            "vector_score": score
+                        }
+                except: pass
+                
+        # Scan Conversations (Summary RAG)
         cursor.execute("SELECT id, user_message, gemgem_response, embedding, username FROM conversations")
         for row in cursor.fetchall():
             if row[3]:
                 try:
-                    stored_embedding = json.loads(row[3])
-                    similarity = _cosine_similarity(query_embedding, stored_embedding)
-                    if similarity >= threshold:
+                    score = _cosine_similarity(query_embedding, json.loads(row[3]))
+                    if score >= threshold - 0.15:
                         username = row[4] or "Someone"
-                        results.append({
+                        content = f"Chat - {username}: {row[1]} | Astra: {row[2]}"
+                        candidates[row[0]] = {
                             "id": row[0],
-                            "content": f"Previous chat - {username}: {row[1][:200]} | Astra: {row[2][:200]}",
+                            "content": content,
                             "type": "conversation",
                             "source": "conversations",
-                            "score": similarity
-                        })
-                except Exception as dim_err:
-                    print(f"[RAG] Skipping conversation entry {row[0][:30]} (dimension mismatch): {dim_err}")
+                            "vector_score": score
+                        }
+                except: pass
+
+        # --- KEYWORD SEARCH (BM25) ---
+        if BM25_INDEX:
+            tokenized_query = clean_query.lower().split()
+            bm25_scores = BM25_INDEX.get_scores(tokenized_query)
+            top_n = np.argsort(bm25_scores)[::-1][:20] # Top 20 BM25
+            
+            for idx in top_n:
+                score = bm25_scores[idx]
+                if score > 0:
+                    doc_id = BM25_IDS[idx]
+                    # Fetch content if not in candidates
+                    if doc_id not in candidates:
+                        content = BM25_CORPUS[idx]
+                        candidates[doc_id] = {
+                            "id": doc_id,
+                            "content": content,
+                            "type": "knowledge", # BM25 only tracks knowledge table
+                            "source": "bm25",
+                            "vector_score": 0.0 # No vector match
+                        }
+                    candidates[doc_id]["bm25_score"] = score
+
+        # --- RE-RANKING (Cross-Encoder) ---
+        if not candidates: return []
         
-        # Search image knowledge
-        cursor.execute("SELECT id, gemini_description, user_context, embedding FROM image_knowledge")
-        for row in cursor.fetchall():
-            if row[3]:
-                try:
-                    stored_embedding = json.loads(row[3])
-                    similarity = _cosine_similarity(query_embedding, stored_embedding)
-                    if similarity >= threshold:
-                        results.append({
-                            "id": row[0],
-                            "content": f"Image context: {row[1][:300]}",
-                            "type": "image",
-                            "source": "image_knowledge",
-                            "score": similarity
-                        })
-                except Exception as dim_err:
-                    print(f"[RAG] Skipping image entry {row[0][:30]} (dimension mismatch): {dim_err}")
+        final_results = list(candidates.values())
         
-        # Sort by score and return top results
-        results.sort(key=lambda x: x["score"], reverse=True)
-        return results[:limit]
+        if CROSS_ENCODER:
+            pairs = [[clean_query, item["content"]] for item in final_results]
+            rerank_scores = CROSS_ENCODER.predict(pairs)
+            
+            for i, item in enumerate(final_results):
+                item["rerank_score"] = float(rerank_scores[i])
+                
+            # Filter by Re-rank Score (Logits > 0 means likely relevant)
+            final_results = [item for item in final_results if item["rerank_score"] > 0.0]
+            
+            # Sort by Re-rank Score
+            final_results.sort(key=lambda x: x["rerank_score"], reverse=True)
+            
+            # print(f"[RAG] Re-ranked top match: {final_results[0]['rerank_score']:.2f} | {final_results[0]['content'][:50]}")
+        else:
+            # Fallback to Vector Score
+            final_results.sort(key=lambda x: x.get("vector_score", 0), reverse=True)
+
+        return final_results[:limit]
     
     except Exception as e:
         print(f"[RAG Retrieve Error] {e}")
