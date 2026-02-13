@@ -10,6 +10,7 @@ import json
 import sqlite3
 import hashlib
 import aiohttp
+import google.generativeai as genai
 from datetime import datetime
 from typing import Optional
 import numpy as np
@@ -32,15 +33,11 @@ CROSS_ENCODER = None
 
 async def _extract_fact_from_conversation(username: str, user_message: str, astra_response: str) -> Optional[str]:
     """
-    Extract a factual statement from a conversation, or return None if it's just chatter.
-    
-    This is the core of Summary RAG - we only store meaningful facts, not raw logs.
-    
-    Examples:
-    - "Hiep: I'm working on a Discord bot" → "Hiep is developing a Discord bot."
-    - "Hiep: lol k" → None (no meaningful fact)
-    - "Hiep: I prefer Korean food" → "Hiep prefers Korean food."
+    Extract a factual statement from a conversation using Gemini 2.0 Flash.
     """
+    if not os.getenv("GEMINI_API_KEY"):
+        return None
+
     prompt = f"""Extract ONE factual statement about {username} from this conversation, or respond with exactly "NONE" if there's no meaningful fact to remember.
 
 Conversation:
@@ -58,43 +55,30 @@ Rules:
 Respond with the fact or NONE:"""
 
     try:
-        payload = {
-            "model": CHAT_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1,  # Low temp for consistent extraction
-            "max_tokens": 100
-        }
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = await model.generate_content_async(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1,
+                max_output_tokens=100
+            )
+        )
+        result = response.text.strip()
         
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{LMSTUDIO_HOST}/v1/chat/completions",
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=30)
-            ) as resp:
-                if resp.status != 200:
-                    return None
-                data = await resp.json()
-                result = data["choices"][0]["message"]["content"].strip()
-                
-                # DEBUG: Log raw Qwen response
-                print(f"[RAG] Qwen raw response: '{result[:200]}'")
-                
-                # Check if it's a valid fact (not NONE or empty)
-                if not result or result.upper() == "NONE" or len(result) < 10:
-                    print(f"[RAG] Filtered out (NONE/empty/short): '{result[:50]}'")
-                    return None
-                
-                # Clean up any think tags that might leak through
-                import re
-                result = re.sub(r'<think>.*?</think>\s*', '', result, flags=re.DOTALL)
-                result = result.strip()
-                
-                if result.upper() == "NONE" or len(result) < 10:
-                    print(f"[RAG] Filtered out after think-strip: '{result[:50]}'")
-                    return None
-                    
-                print(f"[RAG] Extracted fact: {result[:80]}...")
-                return result
+        # Check if it's a valid fact (not NONE or empty)
+        if not result or result.upper() == "NONE" or len(result) < 10:
+            return None
+        
+        # Clean up any think tags that might leak through
+        import re
+        result = re.sub(r'<think>.*?</think>\s*', '', result, flags=re.DOTALL)
+        result = result.strip()
+        
+        if result.upper() == "NONE" or len(result) < 10:
+            return None
+            
+        print(f"[RAG] Extracted fact: {result[:80]}...")
+        return result
                 
     except Exception as e:
         print(f"[RAG] Fact extraction failed: {e}")
@@ -146,7 +130,10 @@ def _rebuild_bm25_index():
 
 
 async def _standardize_query(query: str) -> str:
-    """Use LLM to rewrite query for better retrieval."""
+    """Use Gemini 2.0 Flash to rewrite query for better retrieval."""
+    if not os.getenv("GEMINI_API_KEY"):
+        return query
+
     prompt = f"""Rewrite this user search into a concise, standard keyword query.
 Remove conversational filler ("omg help", "can you tell me").
 Keep specific error codes, version numbers, and technical terms.
@@ -156,25 +143,18 @@ Input: {query}
 Output:"""
 
     try:
-        payload = {
-            "model": "gemini-1.5-flash",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1,
-            "max_tokens": 50
-        }
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{LMSTUDIO_HOST}/v1/chat/completions",
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=5)
-            ) as resp:
-                if resp.status != 200: return query
-                data = await resp.json()
-                clean = data["choices"][0]["message"]["content"].strip().replace('"', '')
-                # If model hallucinates or fails, fallback to original
-                if len(clean) < 3 or len(clean) > len(query) * 2: return query
-                return clean
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = await model.generate_content_async(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1,
+                max_output_tokens=50
+            )
+        )
+        clean = response.text.strip().replace('"', '')
+        if len(clean) < 3 or len(clean) > len(query) * 2:
+            return query
+        return clean
     except:
         return query
 

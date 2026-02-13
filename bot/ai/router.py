@@ -5,9 +5,15 @@ import aiohttp
 from typing import Optional
 
 import re
+import google.generativeai as genai
 
 from ai.personality import build_system_prompt
 from tools.time_utils import get_date_context
+
+# Configure Google AI
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 
 def _strip_think_tags(text: str) -> str:
@@ -370,10 +376,10 @@ Reply to the last message as Astra. Do not output internal thoughts."""
 
 async def summarize_text(text: str) -> str:
     """
-    Summarize text using the lightweight summarizer model.
+    Summarize text using Gemini 2.0 Flash.
     Focus on: Topics, Mood, Key Events.
     """
-    if not text:
+    if not text or not GEMINI_API_KEY:
         return ""
         
     system_prompt = (
@@ -382,19 +388,16 @@ async def summarize_text(text: str) -> str:
         "Do not lose important details but remove repetition."
     )
     
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": text}
-    ]
-    
     try:
-        # Use lower temp for factual summary
-        summary = await _call_lmstudio(
-            messages, 
-            temperature=0.3, 
-            max_tokens=600  # slightly more room for 32B model to be articulate
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = await model.generate_content_async(
+            f"{system_prompt}\n\nConversation History:\n{text}",
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.3,
+                max_output_tokens=600
+            )
         )
-        return summary.strip()
+        return response.text.strip()
     except Exception as e:
         print(f"[Summarizer Error] {e}")
         return ""  # Fallback to empty summary on failure (safe fail)

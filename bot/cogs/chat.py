@@ -89,16 +89,16 @@ class ChatCog(commands.Cog):
                 
                 # Step 0: Background Summary Update
                 self.msgs_since_summary += 1
-                if self.msgs_since_summary >= 50 and not self.is_summarizing:
+                if self.msgs_since_summary >= 100 and not self.is_summarizing:
                     print(f"[Chat] Triggering background summary update (msgs since: {self.msgs_since_summary})")
                     self.msgs_since_summary = 0
                     asyncio.create_task(self._update_summary(message.channel))
 
                 # Step 1: Fetch short-term context from Discord
-                # We fetch 25 messages for immediate context, but summarizer covers older history
+                # We fetch 100 messages for immediate context, but summarizer covers older history
                 discord_messages = []
                 try:
-                    async for msg in message.channel.history(limit=25):
+                    async for msg in message.channel.history(limit=100):
                         author_name = msg.author.display_name
                         msg_content = msg.content
                         if msg.author.id == self.bot.user.id:
@@ -303,8 +303,8 @@ class ChatCog(commands.Cog):
                 self.is_summarizing = False
                 return
             
-            # Slice: Remove the recent 25 messages
-            older_msgs = history[:-25]
+            # Slice: Remove the recent 100 messages
+            older_msgs = history[:-100]
             
             # Format generic transcript for summarizer
             transcript_lines = []
