@@ -95,30 +95,22 @@ class ChatCog(commands.Cog):
                     asyncio.create_task(self._update_summary(message.channel))
 
                 # Step 1: Fetch short-term context from Discord
-                # We fetch 100 messages for immediate context, but summarizer covers older history
+                # We fetch 30 messages for immediate context, but summarizer covers older history
                 discord_messages = []
                 try:
-                    async for msg in message.channel.history(limit=100):
+                    async for msg in message.channel.history(limit=30):
                         author_name = msg.author.display_name
                         msg_content = msg.content
                         if msg.author.id == self.bot.user.id:
                             author_name = "Astra"
                             msg_content = FOOTER_REGEX.sub('', msg_content)
                             
-<<<<<<< HEAD
                             # Strip hallucinations
                             msg_content = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', msg_content, flags=re.IGNORECASE)
                             msg_content = re.sub(r'\s+,', ',', msg_content)
                             msg_content = re.sub(r'  +', ' ', msg_content).strip()
 
-=======
-                            # Strip "GemGem's rolling dice" hallucination from history to stop loops
-                            msg_content = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', msg_content, flags=re.IGNORECASE)
-                            msg_content = re.sub(r'\s+,', ',', msg_content) 
-                            msg_content = re.sub(r'  +', ' ', msg_content).strip()
-
                         # Format timestamp as relative or simple time (convert UTC to PST)
->>>>>>> 688c9e109dbe3d71e8777af78ac46d24a0595003
                         timestamp = msg.created_at.astimezone(PST).strftime("%I:%M %p")
                         discord_messages.append({
                             "author": author_name,
@@ -292,19 +284,19 @@ class ChatCog(commands.Cog):
             self.is_summarizing = True
             print("[Summarizer] Starting background summary update...")
             
-            # Fetch last 125 messages
-            # We skip the LAST 25 (which are covered by "Recent Chat")
-            # We summarize messages 26-125
-            history = [msg async for msg in channel.history(limit=125)]
+            # Fetch last 130 messages
+            # We skip the LAST 30 (which are covered by "Recent Chat")
+            # We summarize messages 31-130
+            history = [msg async for msg in channel.history(limit=130)]
             history.reverse()
             
-            if len(history) <= 25:
-                print("[Summarizer] Not enough history to summarize (<25 msgs).")
+            if len(history) <= 30:
+                print("[Summarizer] Not enough history to summarize (<30 msgs).")
                 self.is_summarizing = False
                 return
             
-            # Slice: Remove the recent 100 messages
-            older_msgs = history[:-100]
+            # Slice: Remove the recent 30 messages
+            older_msgs = history[:-30]
             
             # Format generic transcript for summarizer
             transcript_lines = []
