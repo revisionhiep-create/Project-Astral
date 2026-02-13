@@ -11,7 +11,23 @@ All notable changes to Project Astral will be documented in this file.
 
 ---
 
-## [3.0.2] - 2026-02-13
+## [3.0.4] - 2026-02-13
+
+### Added
+- **Loop Killer (Dynamic Temperature Spiking)**: Implemented self-healing anti-repetition logic in `router.py`.
+  - **Mechanism**: Checks if the bot's intended response is structurally similar to previous messages.
+  - **Action**: If a loop is detected (e.g., "you're not wrong" pattern), `temperature` spikes to 1.2 and `presence_penalty` to 0.8 for that turn.
+  - **Result**: Shatters repetition loops deterministically without needing hardcoded regex filters.
+
+### Fixed
+- **Vision Context Integration**: Fixed issue where image analysis bypassed the main chat personality.
+  - **Root Cause**: Vision responses were returned directly from Gemini, skipping Qwen3's personality processing.
+  - **Fix**: Gemini's image description is now injected into the main chat context as `[IMAGE ANALYSIS DATA]`.
+  - **Result**: Astra now sees the image *and* the user's text, allowing for personality-rich responses that address both.
+
+---
+
+## [3.0.3] - 2026-02-13
 
 ### Changed
 - **Infinite Context via Summarization**: Astral now uses a rolling context window (30 messages) + background summary of 100 older messages, powered by Gemini 2.0 Flash (`router.py`).
