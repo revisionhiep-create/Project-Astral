@@ -2,6 +2,15 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [3.0.3] - 2026-02-13
+
+### Fixed
+- **Reverted Personality Regression**: Restored `personality.py` to full instruction-based version (v2.2.3 state).
+  - The v3.0.0 LoRA optimization stripped instructions which caused personality degradation when the LoRA failed.
+  - Restored full appearance, personality, and "how you talk" guidelines.
+
+---
+
 ## [3.0.2] - 2026-02-13
 
 ### Changed
