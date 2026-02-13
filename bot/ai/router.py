@@ -64,6 +64,24 @@ def _strip_repeated_content(text: str) -> str:
     return '\n'.join(result)
 
 
+def _strip_specific_hallucinations(text: str) -> str:
+    """
+    Remove specific recurring hallucinations/catchphrases the model latches onto.
+    """
+    if not text:
+        return text
+    
+    # "GemGem's rolling dice in the background" - model trained on something that spammed this
+    # Matches: "gemgem's rolling dice", "gemgem's still rolling dice", etc.
+    # Also handles capitalization and smart quotes
+    text = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', text, flags=re.IGNORECASE)
+    
+    # Cleanup any resulting double punctuation/spaces
+    text = re.sub(r'\s+,', ',', text)
+    text = re.sub(r'  +', ' ', text)
+    return text.strip()
+
+
 
 def _extract_json(text: str) -> dict:
     """
@@ -113,13 +131,14 @@ def _extract_json(text: str) -> dict:
 LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 
 # Model identifiers from LM Studio
+# Model identifiers from LM Studio
 CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.05) -> str:
+async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.05, model: str = None) -> str:
     """Make a request to LM Studio's OpenAI-compatible API."""
     payload = {
-        "model": CHAT_MODEL,
+        "model": model or CHAT_MODEL,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
@@ -341,10 +360,44 @@ Reply to the last message as Astra. Do not output internal thoughts."""
         cleaned = _strip_think_tags(response)
         cleaned = _strip_roleplay_actions(cleaned)
         cleaned = _strip_repeated_content(cleaned)
+        cleaned = _strip_specific_hallucinations(cleaned)
         return cleaned
+    
     except Exception as e:
         print(f"[LMStudio Error] {e}")
         return "something broke on my end, try again?"
+
+
+async def summarize_text(text: str) -> str:
+    """
+    Summarize text using the lightweight summarizer model.
+    Focus on: Topics, Mood, Key Events.
+    """
+    if not text:
+        return ""
+        
+    system_prompt = (
+        "You are a helpful assistant. Summarize the following conversation history concisely (3-4 sentences). "
+        "Focus on: 1. Current topics 2. The mood/vibe 3. Key events/facts. "
+        "Do not lose important details but remove repetition."
+    )
+    
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": text}
+    ]
+    
+    try:
+        # Use lower temp for factual summary
+        summary = await _call_lmstudio(
+            messages, 
+            temperature=0.3, 
+            max_tokens=600  # slightly more room for 32B model to be articulate
+        )
+        return summary.strip()
+    except Exception as e:
+        print(f"[Summarizer Error] {e}")
+        return ""  # Fallback to empty summary on failure (safe fail)
 
 
 async def process_message(

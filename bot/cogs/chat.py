@@ -6,7 +6,7 @@ from typing import Optional
 import pytz
 import re
 
-from ai.router import process_message, decide_tools_and_query
+from ai.router import process_message, decide_tools_and_query, summarize_text
 
 from memory.rag import (
     retrieve_relevant_knowledge, 
@@ -20,6 +20,7 @@ from tools.vision import analyze_image, can_see_images, get_recent_image_context
 from tools.discord_context import fetch_recent_messages, format_discord_context
 from tools.voice_handler import get_voice_handler
 from tools.admin import whitelist, ADMIN_IDS
+import asyncio
 
 # Timezone for user-facing timestamps
 PST = pytz.timezone("America/Los_Angeles")
@@ -33,6 +34,9 @@ class ChatCog(commands.Cog):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.summary_cache = ""
+        self.msgs_since_summary = 48  # Trigger soon (3rd msg) but not instantly
+        self.is_summarizing = False  # Lock to prevent concurrent summaries
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -83,34 +87,40 @@ class ChatCog(commands.Cog):
                 
                 # ============ NEW LOGIC AI FLOW ============
                 
-                # Step 1: Fetch short-term context from Discord (last 25 msgs - reduced from 50 to prevent name dilution)
-                # Use message.channel.history() directly (same as GemGem) for reliability
+                # Step 0: Background Summary Update
+                self.msgs_since_summary += 1
+                if self.msgs_since_summary >= 50 and not self.is_summarizing:
+                    print(f"[Chat] Triggering background summary update (msgs since: {self.msgs_since_summary})")
+                    self.msgs_since_summary = 0
+                    asyncio.create_task(self._update_summary(message.channel))
+
+                # Step 1: Fetch short-term context from Discord
+                # We fetch 25 messages for immediate context, but summarizer covers older history
                 discord_messages = []
                 try:
-                    async for msg in message.channel.history(limit=50):
+                    async for msg in message.channel.history(limit=25):
                         author_name = msg.author.display_name
                         msg_content = msg.content
-                        # Only label THIS bot as "Astra" - other bots (like GemGem) keep their names
                         if msg.author.id == self.bot.user.id:
                             author_name = "Astra"
-                            # Strip footers from Astra's own messages when adding to context
                             msg_content = FOOTER_REGEX.sub('', msg_content)
-                        # Format timestamp as relative or simple time (convert UTC to PST)
+                            
+                            # Strip hallucinations
+                            msg_content = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', msg_content, flags=re.IGNORECASE)
+                            msg_content = re.sub(r'\s+,', ',', msg_content)
+                            msg_content = re.sub(r'  +', ' ', msg_content).strip()
+
                         timestamp = msg.created_at.astimezone(PST).strftime("%I:%M %p")
                         discord_messages.append({
                             "author": author_name,
                             "content": msg_content[:500],
                             "time": timestamp
                         })
-                    discord_messages.reverse()  # Chronological order
+                    discord_messages.reverse()
                 except Exception as e:
                     print(f"[Chat] Failed to fetch channel history: {e}")
                 
                 short_term_context = format_discord_context(discord_messages)
-                print(f"[Chat] Discord context: {len(discord_messages)} msgs, {len(short_term_context)} chars")
-                # Debug: show first 5 authors
-                authors = [m.get('author', '?') for m in discord_messages[:10]]
-                print(f"[Chat] Sample authors: {authors}")
                 
                 # Step 2: Query long-term memory (RAG - conversations only)
                 long_term_knowledge = await retrieve_relevant_knowledge(content, limit=5)
@@ -174,6 +184,10 @@ class ChatCog(commands.Cog):
                     if search_context:
                         combined_context += f"⚠️ [SEARCH RESULTS - YOU MUST USE THIS INFO]:\n{search_context}\n\n"
                     
+                    # === PREVIOUS CONTEXT SUMMARY (High level recall) ===
+                    if self.summary_cache:
+                        combined_context += f"⚠️ [PREVIOUS CONTEXT SUMMARY - READ THIS FIRST]:\n{self.summary_cache}\n\n"
+
                     # Short-term context
                     if short_term_context:
                         combined_context += f"=== RECENT CHAT ===\n{short_term_context}\n"
@@ -256,6 +270,52 @@ class ChatCog(commands.Cog):
                 import traceback
                 traceback.print_exc()
                 await message.channel.send("uh something broke lol, try again?")
+
+
+    async def _update_summary(self, channel):
+        """Fetch older messages and update the summary cache."""
+        try:
+            self.is_summarizing = True
+            print("[Summarizer] Starting background summary update...")
+            
+            # Fetch last 125 messages
+            # We skip the LAST 25 (which are covered by "Recent Chat")
+            # We summarize messages 26-125
+            history = [msg async for msg in channel.history(limit=125)]
+            history.reverse()
+            
+            if len(history) <= 25:
+                print("[Summarizer] Not enough history to summarize (<25 msgs).")
+                self.is_summarizing = False
+                return
+            
+            # Slice: Remove the recent 25 messages
+            older_msgs = history[:-25]
+            
+            # Format generic transcript for summarizer
+            transcript_lines = []
+            for msg in older_msgs:
+                if msg.content.strip():
+                    name = msg.author.display_name
+                    if msg.author.id == self.bot.user.id:
+                        name = "Astra"
+                    transcript_lines.append(f"{name}: {msg.content}")
+            
+            transcript = "\n".join(transcript_lines)
+            
+            # Generate summary with 3B model
+            new_summary = await summarize_text(transcript)
+            
+            if new_summary:
+                self.summary_cache = new_summary
+                print(f"[Summarizer] Updated summary ({len(new_summary)} chars):\n{new_summary}")
+            else:
+                print("[Summarizer] Summary generation returned empty string.")
+                
+        except Exception as e:
+            print(f"[Summarizer] Error updating summary: {e}")
+        finally:
+            self.is_summarizing = False
 
 
 async def setup(bot: commands.Bot):

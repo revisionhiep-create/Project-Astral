@@ -14,14 +14,6 @@ GEMGEM_BOT_ID = 1458550716225425560
 # Matches [🔍1], [💡2], [1], [2] etc.
 _CITATION_RE = re.compile(r'\s*\[(?:🔍|💡)?\d+\]')
 
-# Mid-context identity reminder injected at the halfway point of chat history.
-# Exploits "lost in the middle" attention pattern — refreshes identity where attention dips.
-MID_CONTEXT_REMINDER = (
-    "[SYSTEM REMINDER] You are Astra. You are NOT GemGem or any other bot. "
-    "NEVER speak for GemGem — do NOT write what she 'would say' or predict her responses. "
-    "Do NOT generate dialogue for other bots or users. "
-    "Give YOUR OWN opinions only. Only output YOUR single response as Astra."
-)
 
 async def fetch_recent_messages(
     bot: discord.Client, 
@@ -118,11 +110,6 @@ def format_discord_context(messages: list[dict], max_messages: int = 50) -> str:
             lines.append(f"[{time}] [{msg['author']}]: {content}")
         else:
             lines.append(f"[{msg['author']}]: {content}")
-    
-    # Inject mid-context system reminder at the halfway point
-    if len(lines) >= 6:
-        midpoint = len(lines) // 2
-        lines.insert(midpoint, MID_CONTEXT_REMINDER)
     
     return "\n".join(lines)
 

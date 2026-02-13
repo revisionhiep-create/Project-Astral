@@ -2,6 +2,16 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [2.5.5] - 2026-02-13
+
+### Changed
+- **Infinite Context via Summarization**: Astral now uses a rolling context window (30 messages) + background summary, powered by Gemini 2.0 Flash (`router.py`).
+  - **No more cutoffs**: Summaries preserve key details indefinitely.
+  - **Fixed Personality Drift**: The system prompt is always dominant because the raw chat history is kept short.
+- **Removed Mid-System Injection**: The `_inject_mid_context_reminder` was removed from `discord_context.py` as it's no longer needed with the rolling summary (and caused recursion loops).
+
+---
+
 ## [2.5.4] - 2026-02-12
 
 ### Added
@@ -10,6 +20,17 @@ All notable changes to Project Astral will be documented in this file.
   - **Cross-Encoder Re-ranking**: Uses `ms-marco-MiniLM-L-6-v2` to strictly judge relevance of top candidates
   - **Query Normalization**: Uses LLM to rewrite "omg help python broken" -> "how to fix python installation" keyphrases
   - **Result**: Drastically improved recall for specific technical queries while maintaining semantic understanding
+
+---
+
+## [3.0.1] - 2026-02-12
+
+### Fixed
+
+- **Hallucination Stripping**: Added regex stripper for "gemgem's rolling dice in the background" phrase loop.
+  - **Root Cause**: Model latched onto a specific phrase (likely from training data or context leak) and repeated it compulsively.
+  - **Fix**: Added `_strip_specific_hallucinations()` to `router.py` to aggressively remove this phrase and its variations from output.
+  - **Refinement**: Regex updated to handle variations like "still rolling dice" and without "in the background".
 
 ---
 
