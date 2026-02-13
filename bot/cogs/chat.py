@@ -132,11 +132,12 @@ class ChatCog(commands.Cog):
                 else:
                     print(f"[RAG] No relevant memories found for: '{content[:50]}'")
                 
-                # Step 3: Ask Logic AI what tools are needed
+                # Step 3: Ask Logic AI what tools are needed (use lean 5-msg context for speed)
+                decision_context_str = format_discord_context(discord_messages[-5:])
                 tool_decision = await decide_tools_and_query(
                     user_message=content,
                     has_image=bool(image_url),
-                    conversation_context=short_term_context
+                    conversation_context=decision_context_str
                 )
                 
                 # Step 4: Execute tools based on Logic AI decision
