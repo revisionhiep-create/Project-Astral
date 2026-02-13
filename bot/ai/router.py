@@ -3,6 +3,7 @@ import os
 import json
 import aiohttp
 from typing import Optional
+import difflib
 
 import re
 import google.generativeai as genai
@@ -72,19 +73,11 @@ def _strip_repeated_content(text: str) -> str:
 
 def _strip_specific_hallucinations(text: str) -> str:
     """
-    Remove specific recurring hallucinations/catchphrases the model latches onto.
+    Generalized cleanup (no more hardcoded phrase stripping).
+    Let the model handle itself via dynamic temperature.
     """
     if not text:
         return text
-    
-    # "GemGem's rolling dice in the background" - model trained on something that spammed this
-    # Matches: "gemgem's rolling dice", "gemgem's still rolling dice", etc.
-    # Also handles capitalization and smart quotes
-    text = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', text, flags=re.IGNORECASE)
-    
-    # [LOOP FIX] Strip "you're not wrong" and "pay the debt" obsession
-    text = re.sub(r'(?:[a-zA-Z0-9_]+\s*,?\s*)?you[\'’]?re\s+not\s+wrong[—\s\.,-]*', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'pay\s+(?:the\s+)?debt', '', text, flags=re.IGNORECASE)
     
     # Cleanup any resulting double punctuation/spaces
     text = re.sub(r'\s+,', ',', text)
@@ -367,13 +360,42 @@ Reply to the last message as Astra. Do not output internal thoughts."""
         # Use lower max_tokens if search context is present (less room for looping)
         tokens = 1500 if search_context else 4000
         
+        # [DYNAMIC CREATIVITY]
+        # Check if the last bot message was repetitive to break loops naturally
+        temp = 0.75
+        pres_pen = 0.4
+        
+        last_bot_msg = ""
+        for msg in reversed(conversation_history or []):
+            if msg.get("role") == "assistant" or "[Astra]" in msg.get("content", ""):
+                 # Extract content after [Astra]: if formatted
+                 content = msg.get("content", "")
+                 if "[Astra]:" in content:
+                     last_bot_msg = content.split("[Astra]:", 1)[1].strip()
+                 else:
+                     last_bot_msg = content
+                 break
+        
+        # If we have history, check similarity with previous bot output to catch loops early
+        # (This is a heuristic: if she's stuck, she likely output similar structure last turn)
+        is_stuck = False
+        if last_bot_msg and len(last_bot_msg) > 10:
+             # Basic check: did she start with the same 5 words?
+             if last_bot_msg.lower()[:20] in user_prompt.lower(): # Very rough check
+                 is_stuck = True
+
+        if is_stuck:
+            print("[Router] Loop detected! Spiking creativity parameters.")
+            temp = 1.2      # High chaos
+            pres_pen = 0.8  # Force new words
+        
         response = await _call_lmstudio(
             messages=messages,
-            temperature=0.75,
+            temperature=temp,
             max_tokens=tokens,
             stop=stop_sequences,
-            repeat_penalty=1.1,  # Increased to break "hiep you're not wrong" loop
-            presence_penalty=0.4  # Increased to force vocabulary diversity
+            repeat_penalty=1.1,
+            presence_penalty=pres_pen
         )
         
         if not response:

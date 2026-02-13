@@ -107,8 +107,6 @@ class ChatCog(commands.Cog):
                             
                             # Strip hallucinations & obsessive loops (Clean history so model doesn't copy itself)
                             msg_content = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', msg_content, flags=re.IGNORECASE)
-                            msg_content = re.sub(r'(?:[a-zA-Z0-9_]+\s*,?\s*)?you[\'’]?re\s+not\s+wrong[—\s\.,-]*', '', msg_content, flags=re.IGNORECASE)
-                            msg_content = re.sub(r'pay\s+(?:the\s+)?debt', '', msg_content, flags=re.IGNORECASE)
                             msg_content = re.sub(r'\s+,', ',', msg_content)
                             msg_content = re.sub(r'  +', ' ', msg_content).strip()
 
