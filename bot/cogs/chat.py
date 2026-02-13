@@ -185,42 +185,42 @@ class ChatCog(commands.Cog):
                 # Regular chat with optional search/vision context
                 # Combine: search results FIRST (high attention zone), then Discord context
                     
-                    # ⚠️ SEARCH RESULTS FIRST (highest priority - attention is strongest at start)
-                    if search_context:
-                        combined_context += f"⚠️ [SEARCH RESULTS - YOU MUST USE THIS INFO]:\n{search_context}\n\n"
-                    
-                    # === PREVIOUS CONTEXT SUMMARY (High level recall) ===
-                    if self.summary_cache:
-                        combined_context += f"⚠️ [PREVIOUS CONTEXT SUMMARY - READ THIS FIRST]:\n{self.summary_cache}\n\n"
+                # ⚠️ SEARCH RESULTS FIRST (highest priority - attention is strongest at start)
+                if search_context:
+                    combined_context += f"⚠️ [SEARCH RESULTS - YOU MUST USE THIS INFO]:\n{search_context}\n\n"
+                
+                # === PREVIOUS CONTEXT SUMMARY (High level recall) ===
+                if self.summary_cache:
+                    combined_context += f"⚠️ [PREVIOUS CONTEXT SUMMARY - READ THIS FIRST]:\n{self.summary_cache}\n\n"
 
 
-                    # Inject cached image descriptions so Astra remembers what she saw
-                    image_context = get_recent_image_context()
-                    if image_context:
-                        combined_context += f"{image_context}\n\n"
-                    
-                    # === CURRENT SPEAKER (AT END for recency bias) ===
-                    speaker_name = message.author.display_name
-                    
-                    # RAG memory is separate - only use for things NOT in recent chat
-                    rag_context = ""
-                    if memory_context:
-                        rag_context = f"[Old memories - only reference if not covered above]:\n{memory_context}"
-                    
-                    # Convert discord_messages to router-compatible history
-                    formatted_history = []
-                    for m in discord_messages:
-                        # Format as [Name]: Message so router handles it correctly
-                        formatted_content = f"[{m['author']}]: {m['content']}"
-                        formatted_history.append({"role": "user", "content": formatted_content})
+                # Inject cached image descriptions so Astra remembers what she saw
+                image_context = get_recent_image_context()
+                if image_context:
+                    combined_context += f"{image_context}\n\n"
+                
+                # === CURRENT SPEAKER (AT END for recency bias) ===
+                speaker_name = message.author.display_name
+                
+                # RAG memory is separate - only use for things NOT in recent chat
+                rag_context = ""
+                if memory_context:
+                    rag_context = f"[Old memories - only reference if not covered above]:\n{memory_context}"
+                
+                # Convert discord_messages to router-compatible history
+                formatted_history = []
+                for m in discord_messages:
+                    # Format as [Name]: Message so router handles it correctly
+                    formatted_content = f"[{m['author']}]: {m['content']}"
+                    formatted_history.append({"role": "user", "content": formatted_content})
 
-                    response = await process_message(
-                        user_message=content,
-                        current_speaker=speaker_name,  # Pass speaker separately for system prompt
-                        search_context=combined_context,  # System prompt context (Search + Images)
-                        conversation_history=formatted_history, # Transcript (Chat History)
-                        memory_context=rag_context  # RAG is deprioritized
-                    )
+                response = await process_message(
+                    user_message=content,
+                    current_speaker=speaker_name,  # Pass speaker separately for system prompt
+                    search_context=combined_context,  # System prompt context (Search + Images)
+                    conversation_history=formatted_history, # Transcript (Chat History)
+                    memory_context=rag_context  # RAG is deprioritized
+                )
                 
                 # === DETERMINISTIC ATTRIBUTION FOOTERS ===
                 # Build footer based on what tools actually ran (same line)
