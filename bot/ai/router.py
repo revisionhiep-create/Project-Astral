@@ -82,6 +82,10 @@ def _strip_specific_hallucinations(text: str) -> str:
     # Also handles capitalization and smart quotes
     text = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', text, flags=re.IGNORECASE)
     
+    # [LOOP FIX] Strip "you're not wrong" and "pay the debt" obsession
+    text = re.sub(r'(?:[a-zA-Z0-9_]+\s*,?\s*)?you[\'’]?re\s+not\s+wrong[—\s\.,-]*', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'pay\s+(?:the\s+)?debt', '', text, flags=re.IGNORECASE)
+    
     # Cleanup any resulting double punctuation/spaces
     text = re.sub(r'\s+,', ',', text)
     text = re.sub(r'  +', ' ', text)
