@@ -2,7 +2,7 @@
 
 All notable changes to Project Astral will be documented in this file.
 
-## [2.5.5] - 2026-02-13
+## [3.0.2] - 2026-02-13
 
 ### Changed
 - **Infinite Context via Summarization**: Astral now uses a rolling context window (30 messages) + background summary, powered by Gemini 2.0 Flash (`router.py`).
@@ -12,9 +12,29 @@ All notable changes to Project Astral will be documented in this file.
 
 ---
 
+## [3.0.1] - 2026-02-12
+
+### Fixed
+
+- **Hallucination Stripping**: Added regex stripper for "gemgem's rolling dice in the background" phrase loop.
+  - **Root Cause**: Model latched onto a specific phrase (likely from training data or context leak) and repeated it compulsively.
+  - **Fix**: Added `_strip_specific_hallucinations()` to `router.py` to aggressively remove this phrase and its variations from output.
+  - **Refinement**: Regex updated to handle variations like "still rolling dice" and without "in the background".
+
+---
+
+
+- **Search Context Separation**: Fixed "forgot how to search" issue where Astra ignored search results
+  - **Root Cause**: Chat history was being stuffed into the System Prompt's `[CONTEXT]` block along with search results, confusing the model about what was "external info" vs "conversation".
+  - **Fix**: Decoupled chat history. History now goes into the User Message (Transcript), while `[CONTEXT]` is reserved exclusively for Search Results and Images.
+  - **Updated** `personality.py` to explicitly link `[CONTEXT]` to real-time search results.
+
+---
+
 ## [2.5.4] - 2026-02-12
 
 ### Added
+
 - **Advanced RAG (Hybrid Search + Re-ranking)**: Upgraded memory retrieval pipeline to fix "Precision vs Recall" trade-off
   - **Hybrid Search**: Combines Vector Search (semantic) + BM25 (keyword) to catch specific terms like error codes
   - **Cross-Encoder Re-ranking**: Uses `ms-marco-MiniLM-L-6-v2` to strictly judge relevance of top candidates
@@ -37,6 +57,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.5.3] - 2026-02-11
 
 ### Changed
+
 - **Centralized Model Configuration** (`docker-compose.yml`, `.env`):
   - Model selection is now controlled via a single `.env` variable: `LMSTUDIO_CHAT_MODEL`
   - `docker-compose.yml` passes this variable to the container
@@ -49,6 +70,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.5.2] - 2026-02-11
 
 ### Changed
+
 - **Combined Voice Commands** (`voice.py`):
   - `/join` now automatically enables listening (STT) — no separate command needed
   - Removed independent `/listen` command (redundant)
@@ -59,6 +81,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.5.1] - 2026-02-11
 
 ### Fixed
+
 - **"Beach in 2004" Parrot Loop** (`personality.py`): Replaced sticky few-shot example that Qwen3 was repeating verbatim
   - **Root Cause**: Qwen3 latches onto vivid, specific imagery in few-shot examples and reproduces it as a signature phrase
   - **Fix**: Swapped "mentally? i'm on a beach in 2004" for "i'm never busy. that implies i have ambition" — same lazy energy, no catchphrase to parrot
@@ -75,6 +98,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.5.0] - 2026-02-10
 
 ### Changed
+
 - **Proper ChatML Role Separation** (`router.py`): Switched from single-message transcript format to proper `system`/`user` message roles
   - System message: personality + search results + memory (instruction-following priority)
   - User message: conversation transcript + current question
@@ -90,10 +114,12 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.4.1] - 2026-02-10
 
 ### Changed
+
 - **STT Fallback Priority**: Swapped STT order — Gemini cloud is now primary, local faster-whisper is fallback
   - Mirrors GemGem's STT config for consistency across bots
 
 ### Fixed
+
 - **Double Prompting on Voice**: Single utterances were split into multiple LLM prompts
   - **Root Cause**: VAD silence threshold (1.5s) too aggressive — natural breath pauses split speech into sub-second fragments (e.g. "The", "If you're not") that each triggered a full LLM call
   - **Fix 1**: Raised `SILENCE_THRESHOLD_SEC` 1.5→2.0s, `MIN_UTTERANCE_SEC` 0.5→1.5s in `voice_receiver.py`
@@ -104,6 +130,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.3.4] - 2026-02-10
 
 ### Fixed
+
 - **"That's me" Loop**: Astra was starting every response with "that's me." even without images
   - **Root Cause**: Image descriptions stored in RAG as permanent facts (e.g. "you, Astra, depicted as...") matched every query at 65%+ similarity
   - **Fix 1**: Disabled RAG storage of image descriptions in `vision.py` and `chat.py` — 5-minute short-term cache is sufficient
@@ -118,6 +145,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.3.3] - 2026-02-10
 
 ### Fixed
+
 - **RAG Retrieval Completely Broken**: 💡 footer never appeared because every retrieval crashed
   - **Root Cause**: v2.3.1 re-embedded `knowledge` table (768→3072 dim) but missed `image_knowledge` table — 2 old 768-dim entries remained
   - `retrieve_relevant_knowledge()` had one try/except wrapping ALL table scans, so one 768-dim image entry crashed the entire retrieval
@@ -129,6 +157,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.3.2] - 2026-02-09
 
 ### Changed
+
 - **Deterministic Citation Footers**: Removed LLM-driven citation markers in favor of programmatic footers
   - `💡N` appended when RAG found N memory facts, `🔍N` when search returned N results
   - Removed `[🔍1]`, `[💡1]` citation instructions from personality prompt (`personality.py`)
@@ -143,6 +172,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.3.1] - 2026-02-09
 
 ### Fixed
+
 - **Embeddings Model Shutdown**: Google shut down `text-embedding-004` on Jan 14, 2026 — all RAG was silently broken
   - **Root Cause**: Every `genai.embed_content()` call returned 404, breaking both fact storage AND retrieval
   - **Fix**: Switched to `gemini-embedding-001` in `embeddings.py` (3072-dim vectors, same free API)
@@ -154,6 +184,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.3.0] - 2026-02-09
 
 ### Added
+
 - **Admin & Whitelist Access Control**: Ported from GemGem-Docker-Live
   - `tools/admin.py`: `ADMIN_IDS` (4 root admins) + `WhitelistManager` (file-backed `whitelist.txt`)
   - `cogs/admin.py`: `AdminCog` with `/access add`, `/access remove`, `/access list` slash commands
@@ -167,6 +198,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.2.3] - 2026-02-08
 
 ### Changed
+
 - **Qwen3-VL Personality Optimization**: Fixed "mhm" loop where Astra collapsed into one-word responses
   - **Root Cause**: `repeat_penalty: 1.15` was too aggressive for Qwen3 — model got penalized for common words and retreated to minimal tokens
   - **Sampler Fixes** (`router.py`):
@@ -187,6 +219,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.2.2] - 2026-02-08
 
 ### Changed
+
 - **Citation Emoji System**: Visual distinction for citation sources
   - Search citations: `[🔍1]`, `[🔍2]` — facts from live SearXNG search
   - Memory citations: `[💡1]`, `[💡2]` — facts from RAG knowledge base
@@ -204,6 +237,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.2.1] - 2026-02-08
 
 ### Added
+
 - **Search Results → RAG Storage**: Search results now stored as long-term knowledge facts
   - Every SearXNG search gets embedded and saved to `knowledge` + `search_knowledge` tables
   - Previously search results were ephemeral (used once and discarded)
@@ -218,6 +252,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.2.0] - 2026-02-08
 
 ### Removed
+
 - **Slash Commands Cleanup**: Removed all slash commands except `/join` and `/leave`
   - Deleted: `/search`, `/time`, `/ping`, `/clear`, `/draw`, `/gdraw`
   - `@Astral draw` and `@Astral gdraw` mention commands still work as before
@@ -229,20 +264,22 @@ All notable changes to Project Astral will be documented in this file.
 ## [2.1.0] - 2026-02-07
 
 ### Changed
+
 - **Vision**: Stays on **Gemini 3.0 Flash** — Heretic fine-tune strips VL vision encoder from Qwen3
 - **Text Attribution Prompt**: Added instruction to treat text in images as character dialogue/thoughts
   - "Treat text within the image as the character's dialogue, internal thoughts, or a message they are reacting to"
   - Better handling of memes, comics, and text-heavy images
 
 ### Fixed
-- **RAG Image Storage**: Fixed parameter mismatch in `store_image_knowledge()` call (`description` → `gemini_description`)
 
+- **RAG Image Storage**: Fixed parameter mismatch in `store_image_knowledge()` call (`description` → `gemini_description`)
 
 ---
 
 ## [2.0.0] - 2026-02-07
 
 ### Changed
+
 - **Model Upgrade**: Switched chat brain from `Gemma3-27B-it-vl-GLM-4.7-Uncensored-Heretic-Deep-Reasoning` to `Qwen3-VL-32B-Instruct-Heretic-v2-i1`
   - Qwen3 VL 32B with vision-language capabilities
   - Updated `docker-compose.yml` with `LMSTUDIO_CHAT_MODEL` env var for centralized model config
@@ -259,6 +296,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.9.9] - 2026-02-06
 
 ### Changed
+
 - **Vision Routed to Gemini 3.0 Flash**: Complete vision overhaul
   - All image analysis now uses `gemini-3-flash-preview` exclusively
   - Removed `describe_image_local()` and all LM Studio vision code
@@ -275,10 +313,10 @@ All notable changes to Project Astral will be documented in this file.
 
 ---
 
-
 ## [1.9.8] - 2026-02-05
 
 ### Fixed
+
 - **Search Repetition Loop**: Astra was getting stuck repeating search citations in a loop
   - **Root Cause**: Model latching onto citation pattern and repeating same content
   - **Fix 1**: Added `repeat_penalty: 1.15` to LM Studio API calls
@@ -290,6 +328,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.9.7] - 2026-02-05
 
 ### Fixed
+
 - **Content Stripped with Bold Markers**: Fixed `_strip_roleplay_actions()` eating content between asterisks
   - **Root Cause**: Regex `\*[^*]+\*` was deleting `*text*` entirely (including the content)
   - **Fix**: Changed to `\*([^*]+)\*` → `\1` (preserves content, removes only asterisks)
@@ -302,6 +341,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.9.6] - 2026-02-05
 
 ### Fixed
+
 - **Search Result Markdown Pollution**: Stripped `**bold**` and `*italic*` markdown from search snippets
   - SearXNG sometimes returns content with markdown from source pages
   - Astra was echoing `**` or outputting empty bold markers
@@ -312,6 +352,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.9.5] - 2026-02-05
 
 ### Fixed
+
 - **Chat History Timezone Bug**: Timestamps in chat context now display PST instead of UTC
   - Discord's `msg.created_at` was showing UTC times in context (e.g., 2:05 AM instead of 6:05 PM)
   - Now converts to PST using `astimezone(pytz.timezone("America/Los_Angeles"))`
@@ -322,6 +363,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.9.4] - 2026-02-05
 
 ### Changed
+
 - **Anti-Hallucination Search Grounding**: Perplexity-style citation system
   - **Citation Format**: Search results now use `[1]`, `[2]` style numbering
   - **Grounding Constraint**: Model must only state facts from sources, no "extra" info from memory
@@ -334,6 +376,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.9.3] - 2026-02-04
 
 ### Changed
+
 - **Search Intelligence Overhaul**: Smarter search routing and better results
   - **Query Rewriting**: Router now de-contextualizes pronouns (he/she/it → actual entities)
   - **Dynamic Time Range**: Searches use appropriate time filters (`day` for news, `null` for historical facts)
@@ -355,6 +398,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.9.2] - 2026-02-04
 
 ### Changed
+
 - **Transcript Format for Gemma 3 Reasoning**: Refactored prompt construction for group chat stability
   - Switched from ChatML message list to single-message transcript format
   - History expanded to 50 messages (up from 10)
@@ -375,6 +419,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.9.1] - 2026-02-04
 
 ### Fixed
+
 - **Wrong Time Reporting**: Astra was reporting UTC time instead of PST (8 hours ahead)
   - Root cause: Docker container had no timezone set, `datetime.now()` returned UTC
   - Fix: Added `ENV TZ=America/Los_Angeles` to Dockerfile
@@ -385,6 +430,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.9.0] - 2026-02-03
 
 ### Fixed
+
 - **Username Confusion**: Astra no longer calls users by wrong names (e.g., calling Hiep "tei")
   - **Root Cause**: Speaker identity at START of context was getting diluted by 50 messages of chat history
   - **Fix 1**: Added speaker identity to SYSTEM PROMPT itself (highest priority)
@@ -392,6 +438,7 @@ All notable changes to Project Astral will be documented in this file.
   - **Fix 3**: Reduced context from 50→25 messages (less name pollution)
 
 ### Changed
+
 - `ai/personality.py`: `build_system_prompt()` now accepts `current_speaker` param
 - `ai/router.py`: Removed redundant speaker header, passes speaker to system prompt
 - `cogs/chat.py`: Reduced history limit, restructured context with speaker at end
@@ -401,6 +448,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.8.9] - 2026-02-03
 
 ### Changed
+
 - **Adaptive Image Reactions**: Now distinguishes between normal photos and artwork
   - Normal photos (food, pets, memes, screenshots): casual reactions like "nice", "lmao", "oof"
   - Art (anime, digital art, illustrations): aesthetic analysis with pose, lighting, rendering
@@ -412,12 +460,14 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.8.8] - 2026-02-03
 
 ### Fixed
+
 - **Stripped Leading Names**: Removed unwanted `liddo.` style name prefixes from responses
   - Model was mimicking the `[Username]:` pattern from context injection
   - Added `_strip_leading_name()` helper to clean known usernames from response start
   - Covers: liddo, tei, hiep, jason, melon, revision, shiftstep
 
 ### Changed
+
 - **Wiped RAG Memory**: Cleared `memory.db` for fresh start
 
 ---
@@ -425,6 +475,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.8.7] - 2026-02-03
 
 ### Fixed
+
 - **Stripped Roleplay Actions**: Removed unwanted `(pauses, blinks slowly)` style narration from responses
   - Root cause: Abliterated/roleplay-tuned models output action narration by default
   - Added `_strip_roleplay_actions()` helper to `router.py` to clean responses
@@ -436,6 +487,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.8.6] - 2026-02-03
 
 ### Fixed
+
 - **Exposed Think Tags**: Astra's internal `<think>` reasoning blocks were leaking into Discord messages
   - Root cause: Deep Reasoning model outputs chain-of-thought in `<think>...</think>` tags
   - Added `_strip_think_tags()` helper to `router.py` to clean responses before sending
@@ -446,6 +498,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.8.5] - 2026-02-03
 
 ### Changed
+
 - **Personality Rewrite v3**: Tightened Astra's character for sharper, more consistent responses
   - Clearer structure: separated VIBE, ADULT/NSFW TONE, and IMAGE reactions into distinct sections
   - More deadpan energy: "You've seen enough shit to not be impressed easily"
@@ -460,6 +513,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.8.4] - 2026-02-02
 
 ### Changed
+
 - **Model Upgrade**: Switched to `Gemma3-27B-it-vl-GLM-4.7-Uncensored-Heretic-Deep-Reasoning`
   - Fine-tuned with GLM 4.7 reasoning dataset for enhanced "thinking"
   - Improved image intelligence and output generation
@@ -468,25 +522,27 @@ All notable changes to Project Astral will be documented in this file.
 - **Vision Prompt Enhanced**: Updated local vision prompt for richer descriptions
   - Now explicitly asks for vivid, uncensored detail on suggestive art
   - Art connoisseur vocabulary: alluring, provocative, sensual, etc.
-  - Focus on *why* art is aesthetically striking, not just clinical descriptions
+  - Focus on _why_ art is aesthetically striking, not just clinical descriptions
 
 ---
 
 ## [1.8.3] - 2026-02-02
 
 ### Changed
+
 - **Image Reactions Reworked**: Astra now reacts like a "Man of Culture" to shared art
   - Genuine enthusiasm instead of stiff art critiques
   - Leads with the "Wow" factor - what catches her eye first
   - Natural language for aesthetics ("golden hour lighting feels cozy" not clinical descriptions)
   - Technical appreciation for rendering details (skin shading, fabric folds, eye detail)
-  - Unapologetically appreciates spicy art - comments on *how* the artist made it work
+  - Unapologetically appreciates spicy art - comments on _how_ the artist made it work
 
 ---
 
 ## [1.8.2] - 2026-02-02
 
 ### Fixed
+
 - **Identity Confusion on Truncation**: Astra now correctly identifies who's talking even when context is truncated
   - Added `[Username]:` prefix to user messages in router
   - Survives LM Studio context window truncation (8K limit was cutting speaker headers)
@@ -497,6 +553,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.8.1] - 2026-02-02
 
 ### Fixed
+
 - **Image Context Bleed**: Astra no longer mentions old images unprompted
   - Added 5-minute expiry to image context cache
   - Images older than 5 minutes no longer injected into conversation context
@@ -507,6 +564,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.8.0] - 2026-02-02
 
 ### Changed
+
 - **Unified Model Architecture**: Consolidated from two models to one
   - Chat brain: Mistral Small 24B → Gemma 3 27B (abliterated)
   - Vision: Already using Gemma 3 27B
@@ -514,6 +572,7 @@ All notable changes to Project Astral will be documented in this file.
   - Anti-hallucination character recognition preserved (two-step flow intact)
 
 ### Fixed
+
 - **Timezone Bug**: Image timestamps now use PST instead of container UTC
   - `vision.py` was using `datetime.now()` (UTC) instead of `pytz.timezone("America/Los_Angeles")`
 
@@ -522,6 +581,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.7.2] - 2026-02-01
 
 ### Added
+
 - **First-Person Self-Recognition**: Astra uses first person when seeing herself in images
   - "that's me", "my hair", "the spiral around me" - not third person
   - Personality prompt includes explicit first-person examples
@@ -530,6 +590,7 @@ All notable changes to Project Astral will be documented in this file.
   - Not just "nice" or "cute" - actual opinions on what works
 
 ### Changed
+
 - **Vision/Recognition Separation** (KEY FIX):
   - Gemma 3 now outputs **objective descriptions only** (hair color, outfit, etc.)
   - Astra receives description + character list and **decides who matches**
@@ -539,6 +600,7 @@ All notable changes to Project Astral will be documented in this file.
   - Not just any anime girl in a school or with dark hair
 
 ### Fixed
+
 - **False Self-Identification**: No longer claims non-matching characters are her
 - **Image Context Bleed**: Clear separation between current vs previous images
 
@@ -547,6 +609,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.7.1] - 2026-02-01
 
 ### Changed
+
 - **Hybrid Personality**: Combined v1.6.6 lazy vibe with v1.7.0 substance
   - Brought back "low-energy texter" and "half-asleep on the couch" vibe
   - 2-4 sentences baseline still applies
@@ -556,11 +619,12 @@ All notable changes to Project Astral will be documented in this file.
   - It's okay to be unimpressed - not everything needs a reaction
 
 ### Fixed
+
 - **TTS Routing**: Fixed Kokoro TTS routing to correct IP
   - Was: `host.docker.internal:8000` (localhost - wrong)
   - Now: `192.168.1.16:8000` (5090 GPU machine - correct)
 - **Router JSON Parsing**: Added robust `_extract_json()` helper
-  - Handles markdown code blocks (```json {...}```)
+  - Handles markdown code blocks (`json {...}`)
   - Finds JSON buried in LLM text responses
   - Reduces fallback to dumb heuristics
 
@@ -569,9 +633,10 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.7.0] - 2026-02-01
 
 ### Changed
+
 - **Personality System Rewrite v2**: Complete overhaul for natural conversation
   - 2-4 sentences baseline (flexible for deep topics)
-  - Down-to-earth friend vibe - can tease, never condescending  
+  - Down-to-earth friend vibe - can tease, never condescending
   - Medium energy like a normal person
   - Slang/emotes: understood, used rarely
   - Added self-appearance so Astra recognizes herself in images
@@ -583,6 +648,7 @@ All notable changes to Project Astral will be documented in this file.
   - Unicode emoji (😂🔥💀)
 
 ### Removed
+
 - **Persona Manager System**: Removed dynamic persona evolution
   - Deleted `persona_manager.py` and `persona_state.json`
   - Removed Gemini Flash analysis calls
@@ -593,6 +659,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.6.7] - 2026-02-01
 
 ### Changed
+
 - **Anti-Fabrication Rule**: Astra no longer invents fake hobbies/activities
   - Won't claim she was "gaming all night" or "coding"
   - Deflects vaguely ("nothing much", "just vibing") instead of fabricating
@@ -602,6 +669,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.6.6] - 2026-02-01
 
 ### Changed
+
 - **Chill Personality Rewrite**: Complete personality overhaul based on Gemini Pro 3 analysis
   - Removed "add substance" rule that caused walls of text
   - Removed strict "match energy" word count rules (was too restrictive)
@@ -615,8 +683,8 @@ All notable changes to Project Astral will be documented in this file.
 
 ## [1.6.5] - 2026-02-01
 
-
 ### Changed
+
 - **Anti-Copy Rule**: Astra will no longer rephrase GemGem's answers
   - Explicit instruction to form own opinion or react briefly
 - **Proactive Search Trust**: Told model search happens automatically
@@ -632,6 +700,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.6.4] - 2026-02-01
 
 ### Changed
+
 - **Temperature Reduced**: 0.75 → 0.4 (reduces hallucinations)
 - **Prose-Style Prompt**: Rewrote entire personality as paragraphs
   - Removed all bullet point lists
@@ -645,12 +714,14 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.6.3] - 2026-02-01
 
 ### Added
+
 - **Few-Shot Examples**: Injected conversation examples to guide response style
   - 6 curated examples showing ideal 2-3 sentence responses
   - 3 random examples injected before each response
   - Demonstrates empathy + engagement ("Yes, And..." principle)
 
 ### Changed
+
 - **Personality Enhancements**: Updated ASTRA_PROMPT with new guidelines
   - Added "CONVERSATIONAL SUBSTANCE" section - no dead-end responses
   - "Yes, And..." rule: always add substance when agreeing
@@ -663,6 +734,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.6.2] - 2026-02-01
 
 ### Added
+
 - **Unfiltered Personality Mode**: Added explicit instructions for abliterated model behavior
   - No refusals, no safety disclaimers, no hedging
   - Swearing, crude humor, controversial topics - all handled naturally
@@ -672,6 +744,7 @@ All notable changes to Project Astral will be documented in this file.
   - Markdown stripped before TTS (headers, bold, code blocks, etc.)
 
 ### Fixed
+
 - **Router Search Decision**: Fixed LM Studio incompatibility with OpenAI's `json_mode`
   - Router was failing every request with `response_format` error
   - Astra now correctly triggers SearXNG for factual questions
@@ -679,6 +752,7 @@ All notable changes to Project Astral will be documented in this file.
 - **Volume Mount**: Added `./bot:/app/bot` mount for live code reloading
 
 ### Changed
+
 - **Personality Cleanup**: Removed dead code (unused few-shot examples)
   - Deleted `ASTRA_EXAMPLES`, `GEMGEM_EXAMPLES`, `get_all_examples()`
   - Removed specific VTuber names to prevent repetitive mentions
@@ -689,6 +763,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.6.1] - 2026-02-01
 
 ### Changed
+
 - **TTS Routing to 5090**: Moved Kokoro TTS from CPU (localhost) to 5090 GPU (`192.168.1.16:8000`)
   - Faster voice synthesis with GPU acceleration
   - Reduced latency for voice responses
@@ -698,6 +773,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.6.0] - 2026-02-01
 
 ### Changed
+
 - **LM Studio Migration**: Switched from Ollama to LM Studio for all local model inference
   - Chat model: `huihui-ai/mistral-small-24b-instruct-2501-abliterated` (uncensored)
   - Vision model: `gemma-3-27b-it-abliterated` for uncensored image descriptions
@@ -709,6 +785,7 @@ All notable changes to Project Astral will be documented in this file.
 - **Kokoro TTS CPU Mode**: Moved TTS from GPU to CPU, freeing ~2GB VRAM for LLMs
 
 ### Technical
+
 - Router rewritten to use aiohttp + OpenAI API format instead of ollama library
 - Vision uses `/v1/chat/completions` with base64 image data URI format
 - LM Studio server accessible on local network (port 1234)
@@ -718,6 +795,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.5.5] - 2026-01-31
 
 ### Changed
+
 - **Vision Model Upgrade**: Switched from `llama3.2-vision:11b` to `huihui_ai/gemma3-abliterated:27b`
   - Better vision quality benchmarks
   - Fully uncensored image descriptions
@@ -728,6 +806,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.5.4] - 2026-01-31
 
 ### Changed
+
 - **Voice Update**: Switched TTS voice from `af_heart` (Hannah) to `jf_tebukuro` (Japanese female anime voice)
   - Provides a more anime-style voice matching Astra's personality
   - Uses same Kokoro TTS container on 192.168.1.15:8000
@@ -737,6 +816,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.5.3] - 2026-01-31
 
 ### Fixed
+
 - **Vision Context Ignored**: Astra was seeing images but not using the descriptions in her response
   - **Root Cause**: Vision descriptions passed in `memory_context` had no label and said "DO NOT REPEAT"
   - **Fix**: Renamed to `[WHAT YOU SEE IN THE IMAGE]` with clear instructions to react to specific details
@@ -748,6 +828,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.5.2] - 2026-01-31
 
 ### Fixed
+
 - **User Identity Confusion**: Astra now correctly distinguishes between different users
   - Current speaker prominently marked at top of system prompt
   - Visual separators between chat history and current message
@@ -759,6 +840,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.5.1] - 2026-01-31
 
 ### Added
+
 - **Image Memory System**: Astra now remembers images she's seen
   - Short-term cache of last 5 images (injected into every response)
   - Long-term RAG storage for image descriptions
@@ -769,6 +851,7 @@ All notable changes to Project Astral will be documented in this file.
   - Runs on CPU/RAM to preserve VRAM for Mistral
 
 ### Changed
+
 - **Upgraded Gemini Vision to 3.0 Flash** from 2.0
 - **Brief Natural Reactions**: Astra now gives short reactions to images instead of dumping descriptions
 - **Removed Generic Follow-ups**: No more "what's up with you?" or "got anything planned?"
@@ -778,6 +861,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.5.0] - 2026-01-31
 
 ### Added
+
 - **Dynamic Persona System**: Astra's personality now evolves based on conversations
   - Three-layer tracking: Vibe (mood/obsessions), Bond (trust/jokes), Story (events)
   - Gemini Flash analyzes every 10 messages in background
@@ -786,6 +870,7 @@ All notable changes to Project Astral will be documented in this file.
   - Tracks: group mood, intimacy level, inside jokes, shared vocabulary, user preferences
 
 ### New Files
+
 - `bot/ai/persona_manager.py` - Core persona evolution logic
 - `bot/data/persona_state.json` - Persistent persona state
 
@@ -794,6 +879,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.4.7] - 2026-01-31
 
 ### Changed
+
 - **Vision Routes Through Astra's Brain**: Images now use two-step flow
   - Gemini describes what it sees objectively
   - Astra (Mistral) comments in her own voice via router
@@ -812,6 +898,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.4.5] - 2026-01-31
 
 ### Fixed
+
 - **Response Length Issue Resolved**: Astra now speaks naturally instead of ultra-short replies
   - **Root Cause**: Few-shot injection was training her to respond in 1-8 words
   - **Fix**: Removed few-shot injection from router, let system prompt guide personality
@@ -821,6 +908,7 @@ All notable changes to Project Astral will be documented in this file.
   - Prevents confusion between immediate chat and 3-hour-old conversations
 
 ### Changed
+
 - **Expanded Personality Restored**: Full backstory from d146cf0 commit
   - 22-year-old girl, she/her pronouns
   - GemGem context: "also female, like a sister to you"
@@ -835,6 +923,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.4.2] - 2026-01-31
 
 ### Added
+
 - **Reddit Knowledge Scraper**: Pipeline to scrape and import knowledge from Reddit
   - `bot/tools/scraper.py`: Scrapes via public JSON endpoints (no API key needed)
   - `bot/tools/knowledge_processor.py`: Uses Gemini Flash to rephrase posts into facts
@@ -844,11 +933,13 @@ All notable changes to Project Astral will be documented in this file.
 - **Initial Knowledge Base**: 783 entries covering VTubers, tech news, and gaming
 
 ### Fixed
+
 - **Engagement Restored**: Added back ENGAGEMENT section that was removed in v1.3.0
   - "Follow natural conversation flow", "Answer directly first, then add personality"
   - Astra now more engaged instead of ultra-minimal
 
 ### Changed
+
 - `personality.py`: Temperature bumped 0.7 → 0.75 for more expressive responses
 
 ---
@@ -856,6 +947,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.4.1] - 2026-01-31
 
 ### Fixed
+
 - **Smarter Search Triggering**: Router now explicitly triggers search for real-time data needs
   - Weather, prices, sports scores, news, current events → auto-search
   - Added time-word detection: "now", "today", "current", "latest", "recent", "will"
@@ -872,6 +964,7 @@ All notable changes to Project Astral will be documented in this file.
   - Will say "idk tbh", "honestly no idea", or ask for clarification
 
 ### Changed
+
 - `router.py`: Enhanced decision prompt with CRITICAL real-time data rule and better examples
 - `personality.py`: Added "USING YOUR CONTEXT", "RESPONSE LENGTH", and "WHEN YOU DON'T KNOW" sections
 - `personality.py`: Added 6 new few-shot examples for uncertainty, empathy, and factual expansion
@@ -881,16 +974,19 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.4.0] - 2026-01-31
 
 ### Added
+
 - **Username Memory**: Astra now remembers who said what by name, not just user ID
   - Stores display names with each conversation
   - Retrieval shows: "Previous chat - Hiep: ... | Astra: ..."
 - **ARCHITECTURE.md**: Documentation of the conversation flow and system design
 
 ### Fixed
+
 - **RAG Database Persistence**: Fixed volume mount path so memories persist across restarts
   - Database now stored at `./db/memory.db` (mounted to `/app/data/db`)
 
 ### Changed
+
 - `memory/rag.py`: Added username column to conversations table, updated storage and retrieval
 - `cogs/chat.py`: Now passes username to store_conversation
 - `docker-compose.yml`: Fixed volume mount for RAG database
@@ -900,6 +996,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.3.0] - 2026-01-31
 
 ### Added
+
 - **Expanded Personality**: Full character profile with backstory, interests, and emotional intelligence
   - 22-year-old night owl with dry humor
   - Interests: tech, anime, VTubers, games, space
@@ -909,13 +1006,15 @@ All notable changes to Project Astral will be documented in this file.
 - **Time Awareness**: Now shows current time with timezone, not just date
 
 ### Fixed
+
 - **Vision Accuracy**: Lowered temperature from 0.85 to 0.6, added instruction to describe actual colors
   - Applied to both chat vision and drawing critiques (draw/gdraw/edit)
 - **Assistant-speak Prevention**: Added explicit ban list ("I'm here to help", "What can I do for you?", etc.)
 
 ### Changed
+
 - `personality.py`: Expanded from 40 to 90 lines with full character definition
-- `time_utils.py`: Now includes time with timezone (PST)  
+- `time_utils.py`: Now includes time with timezone (PST)
 - `discord_context.py`: Formats messages with timestamps
 - `vision.py`: More accurate image descriptions
 - `router.py`: Injects few-shot examples as conversation history
@@ -925,6 +1024,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.2.0] - 2026-01-31
 
 ### Added
+
 - **Voice Support**: Astra can now join voice channels and speak responses
   - `/join` - Astra joins your voice channel
   - `/leave` - Astra leaves the voice channel
@@ -936,6 +1036,7 @@ All notable changes to Project Astral will be documented in this file.
 - Increased chat history from 50 to 100 messages for better context with local LLM
 
 ### Changed
+
 - `voice_handler.py`: New file for TTS and voice channel management
 - `cogs/voice.py`: New cog with /join and /leave commands
 - `Dockerfile`: Added ffmpeg and libopus for voice support
@@ -947,6 +1048,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.1.0] - 2026-01-31
 
 ### Added
+
 - **Context Awareness**: Astra can now see and reference chat history from the current channel
 - Direct channel history fetching (last 100 messages)
 - Explicit personality instructions for context awareness
@@ -954,11 +1056,13 @@ All notable changes to Project Astral will be documented in this file.
 - More GemGem nickname variations (geminibot, Geminibot, etc.)
 
 ### Fixed
+
 - **Chat History Bug**: Bot messages were all labeled as "Astra" - now only THIS bot is labeled correctly, other bots (like GemGem) keep their real names
 - **Privacy Refusal Override**: Model was incorrectly refusing to reference chat history due to "privacy" training - added explicit instructions that Astra is part of the conversation and CAN see messages
 - Centralized personality prompt now properly used in drawing critiques and image analysis
 
 ### Changed
+
 - `chat.py`: Uses `message.channel.history()` directly instead of separate fetch function
 - `personality.py`: Added CONTEXT AWARENESS section with clear instructions
 - `characters.json`: Added "astral" to Astra's keywords, more GemGem variations
@@ -966,6 +1070,7 @@ All notable changes to Project Astral will be documented in this file.
 ## [1.0.0] - 2026-01-30
 
 ### Added
+
 - Initial Project Astral setup (rebranded from GemGem-LABS)
 - Mistral Small 24B as unified brain
 - SearXNG integration for grounded search

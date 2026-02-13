@@ -105,11 +105,20 @@ class ChatCog(commands.Cog):
                             author_name = "Astra"
                             msg_content = FOOTER_REGEX.sub('', msg_content)
                             
+<<<<<<< HEAD
                             # Strip hallucinations
                             msg_content = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', msg_content, flags=re.IGNORECASE)
                             msg_content = re.sub(r'\s+,', ',', msg_content)
                             msg_content = re.sub(r'  +', ' ', msg_content).strip()
 
+=======
+                            # Strip "GemGem's rolling dice" hallucination from history to stop loops
+                            msg_content = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', msg_content, flags=re.IGNORECASE)
+                            msg_content = re.sub(r'\s+,', ',', msg_content) 
+                            msg_content = re.sub(r'  +', ' ', msg_content).strip()
+
+                        # Format timestamp as relative or simple time (convert UTC to PST)
+>>>>>>> 688c9e109dbe3d71e8777af78ac46d24a0595003
                         timestamp = msg.created_at.astimezone(PST).strftime("%I:%M %p")
                         discord_messages.append({
                             "author": author_name,
@@ -192,7 +201,6 @@ class ChatCog(commands.Cog):
                     if short_term_context:
                         combined_context += f"=== RECENT CHAT ===\n{short_term_context}\n"
                         combined_context += f"--- END OF CHAT ---\n\n"
-                    
                     # Inject cached image descriptions so Astra remembers what she saw
                     image_context = get_recent_image_context()
                     if image_context:
@@ -200,18 +208,24 @@ class ChatCog(commands.Cog):
                     
                     # === CURRENT SPEAKER (AT END for recency bias) ===
                     speaker_name = message.author.display_name
-                    combined_context += f">>> {speaker_name} IS NOW TALKING TO YOU <<<"
                     
                     # RAG memory is separate - only use for things NOT in recent chat
                     rag_context = ""
                     if memory_context:
                         rag_context = f"[Old memories - only reference if not covered above]:\n{memory_context}"
                     
+                    # Convert discord_messages to router-compatible history
+                    formatted_history = []
+                    for m in discord_messages:
+                        # Format as [Name]: Message so router handles it correctly
+                        formatted_content = f"[{m['author']}]: {m['content']}"
+                        formatted_history.append({"role": "user", "content": formatted_content})
+
                     response = await process_message(
                         user_message=content,
                         current_speaker=speaker_name,  # Pass speaker separately for system prompt
-                        search_context=combined_context,  # Discord context + search
-                        conversation_history=None,
+                        search_context=combined_context,  # System prompt context (Search + Images)
+                        conversation_history=formatted_history, # Transcript (Chat History)
                         memory_context=rag_context  # RAG is deprioritized
                     )
                 
