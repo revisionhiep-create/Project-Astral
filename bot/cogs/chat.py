@@ -190,10 +190,7 @@ class ChatCog(commands.Cog):
                     if self.summary_cache:
                         combined_context += f"⚠️ [PREVIOUS CONTEXT SUMMARY - READ THIS FIRST]:\n{self.summary_cache}\n\n"
 
-                    # Short-term context
-                    if short_term_context:
-                        combined_context += f"=== RECENT CHAT ===\n{short_term_context}\n"
-                        combined_context += f"--- END OF CHAT ---\n\n"
+
                     # Inject cached image descriptions so Astra remembers what she saw
                     image_context = get_recent_image_context()
                     if image_context:
