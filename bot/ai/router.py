@@ -247,18 +247,27 @@ Examples:
 - [image attached] "what is this" → {{"search": false, "time_range": null, "vision": true, "reasoning": "user wants image analyzed"}}"""
 
     try:
-        response = await _call_lmstudio(
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=256
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        
+        # System instructions + user message for tool decision
+        full_input = f"{prompt}\n\nCurrent message: {user_message}\nHas image attachment: {has_image}"
+        
+        response = await model.generate_content_async(
+            full_input,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1,
+                max_output_tokens=256,
+                response_mime_type="application/json"
+            )
         )
         
-        if not response:
-            raise Exception("No response from LM Studio")
+        if not response or not response.text:
+            raise Exception("No response from Gemini")
         
-        result = _extract_json(response)
-        print(f"[Router] Decision: search={result.get('search')}, vision={result.get('vision')}, time_range={result.get('time_range')}, query='{result.get('search_query', '')[:50]}'")
-        return result
+        # Extract and parse JSON
+        decision = _extract_json(response.text)
+        print(f"[Router] Decision (Gemini): search={decision.get('search')}, vision={decision.get('vision')}, time_range={decision.get('time_range')}, query='{decision.get('search_query', '')[:50]}'")
+        return decision
         
     except (json.JSONDecodeError, ValueError) as e:
         print(f"[Router] JSON parse error: {e}")

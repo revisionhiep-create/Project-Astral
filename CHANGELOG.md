@@ -17,6 +17,9 @@ All notable changes to Project Astral will be documented in this file.
 - **Infinite Context via Summarization**: Astral now uses a rolling context window (30 messages) + background summary of 100 older messages, powered by Gemini 2.0 Flash (`router.py`).
   - **No more cutoffs**: Summaries preserve key details indefinitely.
   - **Fixed Personality Drift**: The system prompt is always dominant because the raw chat history is kept short.
+- **Latency Optimization**: Offloaded tool/search decision logic (`decide_tools_and_query`) to **Gemini 2.0 Flash**.
+  - Eliminated the 3-5 second "short prompt" delay on local hardware.
+  - Improved JSON formatting reliability for tool triggers.
 - **Removed Mid-System Injection**: The `_inject_mid_context_reminder` was removed from `discord_context.py` as it's no longer needed with the rolling summary (and caused recursion loops).
 
 ---
