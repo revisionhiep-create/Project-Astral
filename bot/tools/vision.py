@@ -82,10 +82,13 @@ async def describe_image(image_url: str = None, image_data: bytes = None) -> str
 {character_context}
 
 **STRICT RULES for matching:**
+- **CRITICAL DISTINCTION:** Do NOT confuse Astra (mature style, PURPLE eyes, STAR necklace) with GemGem (RAINBOW eyes, GEMS/PLANETS in hair).
+- If the character has **RAINBOW/PINK** eyes or is chibi/cute/sticker style -> It is **GemGem**.
+- If the character has **PURPLE-VIOLET** eyes and looks mature/composed -> It is **Astra (you)**.
+- If **BOTH** are present, identify BOTH separately.
 - ONLY match if MOST key features are clearly visible (hair color + style + distinctive features)
-- One matching feature is NOT enough - need multiple matches
 - If you're not confident, just describe by appearance without naming anyone
-- Do NOT force matches on random anime characters
+- Do NOT force matches on random anime girls
 - If you recognize someone, just use their name naturally in the description
 - Do NOT list who is or isn't in the image """
         

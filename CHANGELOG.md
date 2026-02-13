@@ -923,6 +923,25 @@ All notable changes to Project Astral will be documented in this file.
 
 ---
 
+## [4.1.7] - 2026-02-13
+
+### Fixed
+- **Context Loop Poisoning**: Fixed Astra getting stuck in a meta-loop where she kept asking "why do you keep asking about X?"
+  - **Root Cause**: The background summarizer (Gemini 2.0 Flash) was capturing the *fact that a user was repeating themselves* as a "Current Topic". This summary was then fed back into the prompt, convincing Astra that the user was *still* asking about it, causing her to comment on it again, reinforcing the summary loop.
+  - **Fix**: Updated `summarize_text` prompt to explicitly ignore repetition, "loops", and meta-commentary on user behavior. Focuses strictly on factual topics now.
+
+---
+
+## [4.1.6] - 2026-02-13
+
+### 🐛 Fixes
+- **Vision Identity Logic**: Fixed strict differentiation between Astra and GemGem in all art styles.
+  - **Key Differentiator**: Astra = Purple eyes/Star necklace (Mature). GemGem = Rainbow eyes/Gem accessories (Chibi/Cute).
+  - **Multi-Character Support**: Vision prompt now explicitly handles images where BOTH characters appear.
+  - **Personality Fix**: Astra no longer claims "that's me" on GemGem's art just because of blue hair.
+
+---
+
 ## [1.4.5] - 2026-01-31
 
 ### Fixed

@@ -423,8 +423,9 @@ async def summarize_text(text: str) -> str:
         
     system_prompt = (
         "You are a helpful assistant. Summarize the following conversation history concisely (3-4 sentences). "
-        "Focus on: 1. Current topics 2. The mood/vibe 3. Key events/facts. "
-        "Do not lose important details but remove repetition."
+        "Focus on: 1. Factual topics discussed 2. Concrete events. "
+        "CRITICAL: Do NOT summarize repeated questions, 'loops', or meta-commentary on user behavior (e.g. 'user keeps asking about X'). "
+        "Ignore repetitive phrasing. Just capture the core topic."
     )
     
     try:

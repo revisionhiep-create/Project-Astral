@@ -70,7 +70,7 @@ class ChatCog(commands.Cog):
             else:
                 await message.channel.send("⚠️ Access control module is currently unavailable.")
             return
-        
+
         # Skip if it looks like a draw request (let draw cog handle it)
         draw_keywords = ['draw ', 'gdraw ', 'sketch ', 'paint ', 'create an image', 'create a picture', 'guided draw']
         if any(content_lower.startswith(kw) or f' {kw}' in content_lower for kw in draw_keywords):
