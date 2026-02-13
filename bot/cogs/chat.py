@@ -173,14 +173,17 @@ class ChatCog(commands.Cog):
                     # (caused "that's me" on every response)
                 
                 # Step 5: Generate response
+                # Step 5: Generate response
+                
+                # Combine: search results FIRST (high attention zone), then Discord context
+                combined_context = ""
+                
+                # Insert Vision Analysis (if any) - HIGH PRIORITY
                 if vision_response:
-                    # Image was analyzed - use Gemini's vision response directly
-                    # (Gemini already has GemGem personality for image analysis)
-                    response = vision_response
-                else:
-                    # Regular chat with optional search/vision context
-                    # Combine: search results FIRST (high attention zone), then Discord context
-                    combined_context = ""
+                     combined_context += f"⚠️ [USER ATTACHED AN IMAGE - REACT TO THIS]:\n{vision_response}\n(Trust this analysis over your own memory)\n\n"
+
+                # Regular chat with optional search/vision context
+                # Combine: search results FIRST (high attention zone), then Discord context
                     
                     # ⚠️ SEARCH RESULTS FIRST (highest priority - attention is strongest at start)
                     if search_context:

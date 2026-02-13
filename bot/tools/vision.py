@@ -149,42 +149,7 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
     # (Previous behavior stored image descriptions as permanent "facts" which
     #  caused Astra to say "that's me" on every message)
     
-    # Step 4: Build context for Astra
-    # Now Astra receives objective description + character list and decides who is who
-    
-    # Get previous images for context (but mark them clearly as OLD)
-    previous_images = ""
-    if len(_recent_images) > 0:
-        prev_lines = []
-        for img in list(_recent_images)[:-1]:  # All except the one we just added
-            prev_lines.append(f"  - {img['username']} earlier: {img['description'][:80]}...")
-        if prev_lines:
-            previous_images = "\n[PREVIOUS IMAGES (for memory, NOT what you're responding to)]:\n" + "\n".join(prev_lines)
-    
-    # Simplified context - Gemini already did character matching, Astra just reacts
-    image_context = f""">>> IMAGE ANALYSIS (by Gemini) <<<
-{description}
-{previous_images}
-
-React to THIS image with your personality. Give honest art critique or casual reaction (3-5 sentences).
-If someone is identified by name, use their name naturally. Do NOT announce who ISN'T in the image.
-If the user tells you who is in the image, trust them."""
-    
-    # What should Astra respond to?
-    if user_prompt:
-        astra_prompt = f"{username} just shared a NEW image and asked: {user_prompt}"
-    else:
-        astra_prompt = f"{username} just shared a NEW image with you."
-    
-    # Step 5: Let Astra respond naturally through her normal chat flow
-    response = await process_message(
-        user_message=astra_prompt,
-        search_context="",  # Don't put image in search context (she was echoing it)
-        conversation_history=None,
-        memory_context=image_context  # Put in memory so she has context but doesn't echo
-    )
-    
-    return response
+    return f"[IMAGE ANALYSIS DATA]: {description}"
 
 
 def get_recent_image_context() -> str:
