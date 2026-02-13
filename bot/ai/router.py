@@ -141,7 +141,7 @@ LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.05, model: str = None) -> str:
+async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.05, presence_penalty: float = 0.3, model: str = None) -> str:
     """Make a request to LM Studio's OpenAI-compatible API."""
     payload = {
         "model": model or CHAT_MODEL,
@@ -149,10 +149,10 @@ async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: i
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": False,
-        "repeat_penalty": repeat_penalty,  # Qwen3: 1.05 (was 1.15, too aggressive)
-        "top_p": 0.8,             # Qwen3 recommended nucleus sampling
-        "top_k": 20,              # Qwen3 recommended top-k
-        "presence_penalty": 0.15  # Encourages vocabulary diversity
+        "repeat_penalty": repeat_penalty,
+        "top_p": 0.8,
+        "top_k": 20,
+        "presence_penalty": presence_penalty
     }
     # Add stop sequences if provided (prevents model from roleplaying users)
     if stop:
@@ -362,10 +362,11 @@ Reply to the last message as Astra. Do not output internal thoughts."""
         
         response = await _call_lmstudio(
             messages=messages,
-            temperature=0.7,
+            temperature=0.75,
             max_tokens=tokens,
             stop=stop_sequences,
-            repeat_penalty=1.05  # Qwen3 optimized (was 1.15, caused mhm loops)
+            repeat_penalty=1.1,  # Increased to break "hiep you're not wrong" loop
+            presence_penalty=0.4  # Increased to force vocabulary diversity
         )
         
         if not response:
