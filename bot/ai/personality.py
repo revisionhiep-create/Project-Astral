@@ -179,8 +179,8 @@ def build_system_prompt(search_context: str = "", memory_context: str = "", curr
     # Reload characters each time for freshness
     prompt_parts = [get_astra_prompt()]
     
-    # Qwen3 Instruction: Suppress internal thought output
-    prompt_parts.append("\n[SYSTEM NOTE]\nDo not output internal thoughts or <think> tags. Output only the dialogue response.")
+    # Qwen3 Instruction: Allow thinking (handled by router stripping)
+    # prompt_parts.append("\n[SYSTEM NOTE]\nDo not output internal thoughts or <think> tags. Output only the dialogue response.")
     
     # CRITICAL: Speaker identity goes in system prompt for highest priority
     if current_speaker:

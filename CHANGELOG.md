@@ -11,6 +11,17 @@ All notable changes to Project Astral will be documented in this file.
 
 ---
 
+## [3.0.5] - 2026-02-13
+
+### Changed
+- **Re-enabled Thinking Mode**: Removed the "suppress internal thoughts" instruction from `personality.py`.
+  - **Reasoning**: With the new Loop Killer (v3.0.4) active, we can safely allow Qwen3's chain-of-thought capabilities.
+  - **Mechanism**: The model now generates internal `<think>` blocks for better reasoning and vision analysis.
+  - **Safety**: `router.py` automatically strips these blocks before sending to Discord, preventing leakage.
+  - **Status**: Enabled for `Qwen3-VL-32B-Instruct-Heretic-v2-i1`.
+
+---
+
 ## [3.0.4] - 2026-02-13
 
 ### Added
