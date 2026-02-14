@@ -215,7 +215,7 @@ class ChatCog(commands.Cog):
                     formatted_history.append({"role": "user", "content": formatted_content})
 
                 response = await process_message(
-                    user_message=content,
+                    user_message=content if content else "[attached an image]",
                     current_speaker=speaker_name,  # Pass speaker separately for system prompt
                     search_context=combined_context,  # System prompt context (Search + Images)
                     conversation_history=formatted_history, # Transcript (Chat History)

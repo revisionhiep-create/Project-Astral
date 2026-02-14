@@ -380,9 +380,17 @@ Reply to the last message as Astra. Do not output internal thoughts."""
         # (This is a heuristic: if she's stuck, she likely output similar structure last turn)
         is_stuck = False
         if last_bot_msg and len(last_bot_msg) > 10:
-             # Basic check: did she start with the same 5 words?
-             if last_bot_msg.lower()[:20] in user_prompt.lower(): # Very rough check
+             # REAL LOOP CHECK: Did the user copy-paste the BOT'S last message?
+             # (This happens if someone quotes the bot without adding new content)
+             if user_message.strip() == last_bot_msg.strip():
                  is_stuck = True
+             
+             # Did the USER repeat themselves exactly?
+             # Check last 3 user messages for identical content
+             user_history = [m.get("content", "") for m in reversed(conversation_history or []) if m.get("role") == "user"]
+             if len(user_history) >= 2:
+                 if user_message.strip().lower() == user_history[0].strip().lower():
+                     is_stuck = True
 
         if is_stuck:
             print("[Router] Loop detected! Spiking creativity parameters.")

@@ -32,7 +32,7 @@ GEMINI_VISION_MODEL = "gemini-3-flash-preview"
 _recent_images = deque(maxlen=5)
 
 
-async def describe_image(image_url: str = None, image_data: bytes = None) -> str:
+async def describe_image(image_url: str = None, image_data: bytes = None, user_context: str = "") -> str:
     """
     Describe an image using Gemini 3.0 Flash.
     Returns a text description that can be passed to Astra.
@@ -72,6 +72,10 @@ async def describe_image(image_url: str = None, image_data: bytes = None) -> str
 - Memes: text content, format, humor
 
 **Be THOROUGH** - 4-6 detailed sentences with SPECIFIC details (exact colors, positions)."""
+
+        # Add user context if provided (Make vision aware of the question/comment)
+        if user_context:
+            description_prompt += f"\n\n**USER CONTEXT/QUESTION:**\nThe user said this about the image: '{user_context}'\n(Answer this question or address this context specifically in your description if relevant)"
         
         # Add character recognition - Gemini can visually compare
         character_context = get_character_context_for_vision()
@@ -109,7 +113,7 @@ async def describe_image(image_url: str = None, image_data: bytes = None) -> str
         
         # Strip any "Characters identified:" line so Astra doesn't echo negative matches
         import re
-        description = re.sub(r'\n*Characters identified:.*$', '', description, flags=re.IGNORECASE | re.MULTILINE).strip()
+        description = re.sub(r'\\n*Characters identified:.*$', '', description, flags=re.IGNORECASE | re.MULTILINE).strip()
         
         print(f"[Vision] Gemini 3.0 Flash: {description[:80]}...")
         return description
@@ -130,8 +134,8 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
     from ai.router import process_message
     from memory.rag import store_image_knowledge
     
-    # Step 1: Get Gemini's objective description
-    description = await describe_image(image_url=image_url)
+    # Step 1: Get Gemini's objective description WITH user context
+    description = await describe_image(image_url=image_url, user_context=user_prompt)
     
     if not description:
         return "couldn't see that image, try again?"

@@ -923,6 +923,22 @@ All notable changes to Project Astral will be documented in this file.
 
 ---
 
+## [v4.1.8] - 2026-02-13 (Fix - Vision Context & Loop Stability)
+
+### 👁️ Vision System Upgrade
+- **Context-Aware Vision**: Updated the Gemini 3.0 Vision pipeline to receive the user's specific question/comment alongside the image.
+  - *Before*: Generates a generic description. (User: "Is this food?" -> Gemini: "It's a cat." -> Astra: "Why are you asking?")
+  - *Now*: Generates a contextual answer. (User: "Is this food?" -> Gemini: "It's a cat, definitely not food." -> Astra: "No, it's a pet.")
+- **Image-Only Message Fix**: Fixed a bug where sending an image without text caused Astra to complain about "blank messages".
+
+### 🧠 Logic AI & Router Fixes
+- **Loop Detector Code Fix**: Fixed a critical logic error in `router.py` where the bot flagged its own previous message in the *transcript* as a user repetition loop. This was causing `Temperature` to spike to near-max (1.2) on almost every turn, leading to hallucinations like the "star-spider nest" being forced into unrelated topics.
+- **Topic Integrity Instruction**: Added a specific "TOPIC INTEGRITY" section to the system prompt in `personality.py`.
+  - Explicit instruction to *ignore* unrelated background chatter from other users.
+  - Explicit instruction to *drop* old topics when the user changes the subject (prevents forced callbacks to previous jokes like the star-spider).
+
+---
+
 ## [4.1.7] - 2026-02-13
 
 ### Fixed
