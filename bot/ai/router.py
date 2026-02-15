@@ -318,9 +318,6 @@ async def generate_response(
     # Add date awareness
     system_prompt = f"{get_date_context()}\n\n{system_prompt}"
 
-    # [LOOP BREAKER] - Temporary override to stop "you're not wrong" feedback loop
-    system_prompt += "\n\n[SYSTEM OVERRIDE]\nDo NOT start your response with '[Name], you're not wrong'. Do NOT use the phrase 'you're not wrong'. Do NOT mention 'debt' or 'pay up'. FORCE varied sentence structure."
-    
     # Build transcript from conversation history (last 50 messages)
     transcript_lines = []
     if conversation_history:

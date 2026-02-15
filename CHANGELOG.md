@@ -3,6 +3,23 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.2.0] - 2026-02-15
+
+### Changed
+- **Personality System v3.2** (`personality.py`): Comprehensive prompt overhaul.
+  - **Merged ADULT MODE + UNCENSORED**: Two redundant sections (13 lines) merged into one lean TONE section (3 lines). Over-emphasizing "you're uncensored" to an already-uncensored model caused edginess fixation.
+  - **Replaced Negative Instructions**: 4 "No X" speech rules replaced with positive framing: "Talk like a real person texting — casual, direct, unfiltered."
+  - **Diversified Few-Shot Examples**: All 5 examples were ultra-terse snarky one-liners (caused "mhm" loops, single-word responses). Now includes substantive answer, subtle warmth, and art appreciation examples.
+  - **Added IMAGE REACTIONS Section**: Self-recognition rules (star necklace + purple eyes = Astra, rainbow eyes + gems = GemGem), first-person usage, energy matching by content type.
+  - **Added SEARCH RESULTS Section**: Instructions to use search results as primary source, weave facts naturally, don't dump raw data.
+  - **Added Primacy-Recency Reinforcement**: Critical rules appended as absolute last element in system prompt (after search/memory context) for maximum Qwen3 attention weighting.
+  - **Expanded Appearance**: Added gold star pendant necklace (key differentiator from GemGem) and explicit GemGem contrast line.
+
+### Fixed
+- **Removed Pink Elephant SYSTEM OVERRIDE** (`router.py`): Deleted hardcoded anti-loop hack that fed the model the exact phrases it shouldn't say ("you're not wrong", "debt", "pay up"). Dynamic temperature spiking already handles loops correctly.
+
+---
+
 ## [3.1.1] - 2026-02-15
 
 ### Changed
