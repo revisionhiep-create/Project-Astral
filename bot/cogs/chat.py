@@ -279,24 +279,48 @@ class ChatCog(commands.Cog):
                 await message.channel.send("uh something broke lol, try again?")
 
 
-    async def _update_summary(self, channel):
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Build initial summary on startup to fix amnesia."""
+        print("[Chat] Bot ready - Initializing summary...")
+        # Find the main chat channel (heuristic: most active or first available)
+        # For now, we'll wait for the first message or try to find a default channel if configured
+        # Since we don't know the main channel ID, we'll scan guilds
+        for guild in self.bot.guilds:
+            for channel in guild.text_channels:
+                if channel.permissions_for(guild.me).read_messages and channel.permissions_for(guild.me).read_message_history:
+                    # found a readable channel, try to spark memory
+                    # Ideally we'd persist the last active channel, but this is a good start
+                    asyncio.create_task(self._initialize_summary(channel))
+                    return
+
+    async def _initialize_summary(self, channel):
+        """Generate initial summary from history on boot."""
+        print(f"[Summarizer] Bootstrapping summary from {channel.name}...")
+        await self._update_summary(channel, initial=True)
+
+    async def _update_summary(self, channel, initial=False):
         """Fetch older messages and update the summary cache."""
         try:
             self.is_summarizing = True
-            print("[Summarizer] Starting background summary update...")
+            if initial:
+                 print("[Summarizer] Generating STARTUP summary (filling 3am gap)...")
+            else:
+                 print("[Summarizer] Starting background summary update...")
             
-            # Fetch last 130 messages
+            # Fetch last 230 messages (was 130)
             # We skip the LAST 30 (which are covered by "Recent Chat")
-            # We summarize messages 31-130
-            history = [msg async for msg in channel.history(limit=130)]
+            # We summarize messages 31-230 (up to 200 messages of context)
+            limit = 230
+            history = [msg async for msg in channel.history(limit=limit)]
             history.reverse()
             
             if len(history) <= 30:
-                print("[Summarizer] Not enough history to summarize (<30 msgs).")
+                print(f"[Summarizer] Not enough history to summarize ({len(history)} msgs).")
                 self.is_summarizing = False
                 return
             
-            # Slice: Remove the recent 30 messages
+            # Slice: Remove the recent 30 messages that are in the immediate context window
             older_msgs = history[:-30]
             
             # Format generic transcript for summarizer
@@ -306,16 +330,19 @@ class ChatCog(commands.Cog):
                     name = msg.author.display_name
                     if msg.author.id == self.bot.user.id:
                         name = "Astra"
-                    transcript_lines.append(f"{name}: {msg.content}")
+                    # Clean up Discord formatting for the summarizer
+                    clean_content = msg.content.replace('\n', ' ').strip()
+                    transcript_lines.append(f"{name}: {clean_content}")
             
             transcript = "\n".join(transcript_lines)
             
-            # Generate summary with 3B model
+            # Generate summary with Gemini 2.0 Flash
+            # It has a massive context window, so 200 messages is easy
             new_summary = await summarize_text(transcript)
             
             if new_summary:
                 self.summary_cache = new_summary
-                print(f"[Summarizer] Updated summary ({len(new_summary)} chars):\n{new_summary}")
+                print(f"[Summarizer] Updated summary ({len(new_summary)} chars) | Covered {len(older_msgs)} messages")
             else:
                 print("[Summarizer] Summary generation returned empty string.")
                 

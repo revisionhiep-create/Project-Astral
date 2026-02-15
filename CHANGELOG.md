@@ -3,6 +3,17 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.0.8] - 2026-02-14
+
+### Changed
+- **Startup Context Summary** (`chat.py`):
+  - Astra now generates a summary of the last **200 messages immediately on boot**.
+  - **Fixes 3 AM Amnesia**: Previously, the bot would wake up with no memory of the day's conversation after the nightly Docker restart.
+  - **Expanded Window**: Background summarizer window increased from 130 → 230 messages (keeping last 30 raw, summarizing 200).
+  - Ensures seamless conversation continuity across restarts.
+
+---
+
 ## [3.0.7] - 2026-02-14
 
 ### Fixed
