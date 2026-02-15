@@ -18,7 +18,7 @@ from typing import Optional, List, Tuple
 
 from tools.image_gen import generate_image
 from tools.characters import detect_characters, load_character_image, get_all_character_descriptions
-from memory.rag import store_drawing_knowledge
+
 
 
 # Configure Gemini for vision/text analysis
@@ -92,18 +92,6 @@ class DrawingHandler:
         # Store for editing
         self.last_draw_images[user_id] = io.BytesIO(image_data.getvalue())
         
-        # STEP 3: Store to RAG for memory
-        image_description = await self._generate_objective_description(image_data.getvalue(), subject)
-        await store_drawing_knowledge(
-            user_request=subject,
-            enhanced_prompt=enhanced_prompt,
-            image_description=image_description,
-            gemgem_critique=critique,
-            matched_characters=[c['name'] for c in matched_chars],
-            user_id=user_id,
-            is_gdraw=False
-        )
-        
         # Reset position for sending
         image_data.seek(0)
         
@@ -168,18 +156,6 @@ class DrawingHandler:
         # Store for editing
         self.last_draw_images[user_id] = io.BytesIO(image_data.getvalue())
         
-        # STEP 4: Store to RAG for memory
-        image_description = await self._generate_objective_description(image_data.getvalue(), basic_prompt)
-        await store_drawing_knowledge(
-            user_request=basic_prompt,
-            enhanced_prompt=enhanced_prompt,
-            image_description=image_description,
-            gemgem_critique=critique,
-            matched_characters=[c['name'] for c in matched_chars],
-            user_id=user_id,
-            is_gdraw=True
-        )
-        
         # Reset position
         image_data.seek(0)
         
@@ -239,65 +215,12 @@ class DrawingHandler:
         # Store for chain editing
         self.last_draw_images[user_id] = io.BytesIO(image_data.getvalue())
         
-        # Store to RAG for memory
-        image_description = await self._generate_objective_description(image_data.getvalue(), edit_instruction)
-        await store_drawing_knowledge(
-            user_request=edit_instruction,
-            enhanced_prompt=edit_prompt,
-            image_description=image_description,
-            gemgem_critique=critique,
-            matched_characters=[c['name'] for c in matched_chars],
-            user_id=user_id,
-            is_edit=True
-        )
-        
         # Reset position
         image_data.seek(0)
         
         return image_data, engine_name, critique
     
-    async def _generate_objective_description(
-        self,
-        image_data: bytes,
-        original_prompt: str
-    ) -> str:
-        """
-        Generate an objective description of the generated image for RAG storage.
-        This is factual, not personality-driven - used for memory retrieval.
-        """
-        if not GEMINI_API_KEY:
-            return f"Drawing of: {original_prompt}"
-        
-        try:
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            
-            description_prompt = f"""Describe this AI-generated image objectively and factually.
-Focus on:
-- Main subjects and their key features (species, colors, style)
-- Art style (anime, cartoon, realistic, etc.)
-- Color palette
-- Composition
 
-Keep it to 1-2 sentences. No opinions or personality, just factual visual description.
-
-Original prompt was: "{original_prompt}"
-"""
-            
-            response = await model.generate_content_async(
-                [
-                    {"mime_type": "image/png", "data": image_data},
-                    description_prompt
-                ]
-            )
-            
-            description = response.text.strip()
-            print(f"[Draw] Objective description: {description[:60]}...")
-            return description
-            
-        except Exception as e:
-            print(f"[Draw] Description generation failed: {e}")
-            return f"Drawing of: {original_prompt}"
-    
     async def _enhance_prompt_with_ai(
         self,
         basic_prompt: str,

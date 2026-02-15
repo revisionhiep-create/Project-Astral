@@ -3,6 +3,23 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.0.7] - 2026-02-14
+
+### Fixed
+- **RAG Drawing Pollution**: Cleaned up 70+ drawing-related facts that were causing "That's me" loops.
+  - **Root Cause**: Every drawing generated an "objective description" fact stored in long-term memory.
+  - **Fix 1**: Deleted all facts with `knowledge_type='drawing'` from `memory.db`.
+  - **Fix 2**: Modified `draw.py` to stop storing drawing facts entirely (short-term cache is sufficient).
+  - **Maintenance**: Re-embedded all 300+ remaining knowledge entries to ensure vector consistency.
+
+### Changed
+- **Personality Tweaks**:
+  - **Removed "Pinky" Loop**: Generalised the art critique example to avoid obsessing over specific anatomy.
+  - **Removed "Hydrate" Loop**: Swapped specific advice for generic dismissal to prevent repetitive solutions.
+  - **Removed Negative Constraint**: Scrubs "star-spiders" example to prevent the "Pink Elephant" effect.
+
+---
+
 ## [3.0.6] - 2026-02-14
 
 ### Fixed
