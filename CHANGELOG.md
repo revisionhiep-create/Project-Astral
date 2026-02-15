@@ -3,6 +3,24 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.1.0] - 2026-02-15
+
+### Added
+- **TabbyAPI Integration**: Replaced LM Studio with TabbyAPI for faster EXL2 inference.
+  - Updated `docker-compose.yml`, `.env`, and codebases (`router.py`, `rag.py`) to point to `TABBY_HOST`.
+  - Configured TabbyAPI to listen on `0.0.0.0` for cross-container communication.
+  - Resolved `requests` and `huggingface_hub` dependency conflicts in Tabby backend.
+
+### Changed
+- **Personality System v3.1** (`personality.py`):
+  - **Uncensored Optimization**: Fully optimized for `Qwen3-32B-Uncensored` EXL2.
+  - **Cleaner Hierarchy**: Restructured the system prompt into a more logical hierarchy for better instruction adherence.
+  - **Reduced Conflict**: Stripped redundant and conflicting instructions that were causing reasoning drift.
+  - **EXL2 Stability**: Adjusted formatting and examples to better suit the tokenization of quantized EXL2 models.
+  - **Refined Appearance**: Simplified character descriptions for better focus on self-recognition.
+
+---
+
 ## [3.0.8] - 2026-02-14
 
 ### Changed

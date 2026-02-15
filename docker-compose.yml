@@ -7,8 +7,8 @@ services:
     environment:
       # Use host Ollama (models already downloaded locally)
       - OLLAMA_HOST=http://host.docker.internal:11434
-      - OLLAMA_MODEL=${LMSTUDIO_CHAT_MODEL}
-      - LMSTUDIO_CHAT_MODEL=${LMSTUDIO_CHAT_MODEL}
+      - OLLAMA_MODEL=${TABBY_MODEL}
+      - TABBY_MODEL=${TABBY_MODEL}
       - SEARXNG_HOST=http://searxng:8080
       - RAG_DATABASE=/app/data/db/memory.db
       - CHARACTERS_FILE=/app/data/characters.json

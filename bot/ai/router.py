@@ -130,18 +130,18 @@ def _extract_json(text: str) -> dict:
     raise ValueError(f"Could not extract JSON from: {text[:100]}")
 
 
-# LM Studio server (OpenAI-compatible API)
-LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
+# TabbyAPI server (OpenAI-compatible API)
+TABBY_HOST = os.getenv("TABBY_HOST", "http://host.docker.internal:5000")
 
 # Model identifiers from LM Studio
-# Model identifiers from LM Studio
-CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
+# Model identifiers
+TABBY_MODEL = os.getenv("TABBY_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 
 async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.05, presence_penalty: float = 0.3, model: str = None) -> str:
     """Make a request to LM Studio's OpenAI-compatible API."""
     payload = {
-        "model": model or CHAT_MODEL,
+        "model": model or TABBY_MODEL,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
@@ -158,11 +158,18 @@ async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: i
     # The prompt instructs JSON output directly
 
     
+    # TabbyAPI Authentication
+    headers = {"Content-Type": "application/json"}
+    api_key = os.getenv("TABBY_API_KEY")
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{LMSTUDIO_HOST}/v1/chat/completions",
+                f"{TABBY_HOST}/v1/chat/completions",
                 json=payload,
+                headers=headers,
                 timeout=aiohttp.ClientTimeout(total=120)
             ) as resp:
                 if resp.status != 200:
