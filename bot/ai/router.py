@@ -1,6 +1,7 @@
 """AI Router - Single model orchestration with LM Studio (Qwen3-VL-32B)."""
 import os
 import json
+import time
 import aiohttp
 from typing import Optional
 import difflib
@@ -138,8 +139,11 @@ TABBY_HOST = os.getenv("TABBY_HOST", "http://host.docker.internal:5000")
 TABBY_MODEL = os.getenv("TABBY_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.85, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.08, presence_penalty: float = 0.25, frequency_penalty: float = 0.15, model: str = None) -> str:
-    """Make a request to TabbyAPI (OpenAI-compatible API) with Qwen3-32B-Uncensored EXL2 settings."""
+async def _call_lmstudio(messages: list, temperature: float = 0.85, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.08, presence_penalty: float = 0.25, frequency_penalty: float = 0.15, model: str = None) -> dict:
+    """Make a request to TabbyAPI (OpenAI-compatible API) with Qwen3-32B-Uncensored EXL2 settings.
+
+    Returns dict with 'text', 'tokens', 'tps' keys (or None on failure).
+    """
     payload = {
         "model": model or TABBY_MODEL,
         "messages": messages,
@@ -161,7 +165,7 @@ async def _call_lmstudio(messages: list, temperature: float = 0.85, max_tokens: 
     # Note: LM Studio doesn't support json_mode like OpenAI
     # The prompt instructs JSON output directly
 
-    
+
     # TabbyAPI Authentication
     headers = {"Content-Type": "application/json"}
     api_key = os.getenv("TABBY_API_KEY")
@@ -169,6 +173,7 @@ async def _call_lmstudio(messages: list, temperature: float = 0.85, max_tokens: 
         headers["Authorization"] = f"Bearer {api_key}"
 
     try:
+        start_time = time.perf_counter()
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{TABBY_HOST}/v1/chat/completions",
@@ -180,9 +185,20 @@ async def _call_lmstudio(messages: list, temperature: float = 0.85, max_tokens: 
                     error = await resp.text()
                     print(f"[LMStudio] Error {resp.status}: {error[:200]}")
                     return None
-                
+
                 data = await resp.json()
-                return data["choices"][0]["message"]["content"]
+        elapsed = time.perf_counter() - start_time
+
+        text = data["choices"][0]["message"]["content"]
+
+        # Extract token count from usage stats (OpenAI-compatible)
+        usage = data.get("usage", {})
+        completion_tokens = usage.get("completion_tokens", 0)
+        tps = completion_tokens / elapsed if elapsed > 0 and completion_tokens else 0
+
+        print(f"[LMStudio] {completion_tokens} tokens in {elapsed:.2f}s | {tps:.1f} T/s")
+
+        return {"text": text, "tokens": completion_tokens, "tps": round(tps, 1)}
     except Exception as e:
         print(f"[LMStudio] Request failed: {e}")
         return None
@@ -303,7 +319,7 @@ async def generate_response(
     memory_context: str = "",
     conversation_history: list[dict] = None,
     current_speaker: str = None
-) -> str:
+) -> dict:
     """
     Generate an Astra response using proper system/user ChatML roles.
     
@@ -407,7 +423,7 @@ Reply to the last message as Astra. Do not output internal thoughts."""
             pres_pen = 0.35  # Upper recommended range
             freq_pen = 0.25  # Slightly elevated
 
-        response = await _call_lmstudio(
+        result = await _call_lmstudio(
             messages=messages,
             temperature=temp,
             max_tokens=tokens,
@@ -416,20 +432,46 @@ Reply to the last message as Astra. Do not output internal thoughts."""
             presence_penalty=pres_pen,
             frequency_penalty=freq_pen
         )
-        
-        if not response:
-            return "something broke on my end, try again?"
-        
-        # Chain all post-processing: think tags -> roleplay -> dedup
-        cleaned = _strip_think_tags(response)
+
+        if not result:
+            return {"text": "something broke on my end, try again?", "tokens": 0, "tps": 0}
+
+        # Chain all post-processing: think tags -> roleplay -> dedup -> name prefix
+        cleaned = _strip_think_tags(result["text"])
         cleaned = _strip_roleplay_actions(cleaned)
         cleaned = _strip_repeated_content(cleaned)
         cleaned = _strip_specific_hallucinations(cleaned)
-        return cleaned
-    
+        # Strip self-name prefix (model mimics transcript format "[Astra]: ..." or "Astra: ...")
+        cleaned = re.sub(r'^(?:\[?Astra\]?:\s*)', '', cleaned, flags=re.IGNORECASE).strip()
+
+        # OUTPUT LOOP DETECTION: Compare with last bot message
+        # If she generated nearly the same thing, regenerate with spiked creativity
+        if last_bot_msg and len(last_bot_msg) > 10 and len(cleaned) > 10:
+            similarity = difflib.SequenceMatcher(None, cleaned.lower(), last_bot_msg.lower()).ratio()
+            if similarity > 0.6:
+                print(f"[Router] Output loop detected (similarity={similarity:.2f}), regenerating with spiked params")
+                retry = await _call_lmstudio(
+                    messages=messages,
+                    temperature=0.95,
+                    max_tokens=tokens,
+                    stop=stop_sequences,
+                    repeat_penalty=1.15,
+                    presence_penalty=0.45,
+                    frequency_penalty=0.3
+                )
+                if retry:
+                    cleaned = _strip_think_tags(retry["text"])
+                    cleaned = _strip_roleplay_actions(cleaned)
+                    cleaned = _strip_repeated_content(cleaned)
+                    cleaned = _strip_specific_hallucinations(cleaned)
+                    cleaned = re.sub(r'^(?:\[?Astra\]?:\s*)', '', cleaned, flags=re.IGNORECASE).strip()
+                    result = retry  # use retry stats for T/s footer
+
+        return {"text": cleaned, "tokens": result["tokens"], "tps": result["tps"]}
+
     except Exception as e:
         print(f"[LMStudio Error] {e}")
-        return "something broke on my end, try again?"
+        return {"text": "something broke on my end, try again?", "tokens": 0, "tps": 0}
 
 
 async def summarize_text(text: str) -> str:
@@ -468,20 +510,20 @@ async def process_message(
     conversation_history: list[dict] = None,
     memory_context: str = "",
     current_speaker: str = None
-) -> str:
+) -> dict:
     """
     Full message processing pipeline.
     Search context passed through from chat.py.
+
+    Returns dict with 'text', 'tokens', 'tps' keys.
     """
     if search_context:
         print(f"[Router] Using search context ({len(search_context)} chars)")
-    
-    response = await generate_response(
+
+    return await generate_response(
         user_message=user_message,
         search_context=search_context,
         memory_context=memory_context,
         conversation_history=conversation_history,
         current_speaker=current_speaker
     )
-    
-    return response

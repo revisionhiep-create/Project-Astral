@@ -3,6 +3,31 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.2.1] - 2026-02-15
+
+### Added
+- **Generation Speed Footer** (`router.py`, `chat.py`): Tokens-per-second metric displayed in Discord footer.
+  - `_call_lmstudio()` now tracks wall time via `time.perf_counter()` and reads `usage.completion_tokens` from TabbyAPI response.
+  - Returns `{"text", "tokens", "tps"}` dict instead of raw string — propagated through `generate_response()` → `process_message()` → `chat.py`.
+  - Footer shows `⚡24.1 T/s` alongside existing `💡` (RAG) and `🔍` (search) indicators.
+  - Console logs: `[LMStudio] 142 tokens in 3.45s | 41.2 T/s`.
+- **Output Loop Detection** (`router.py`): Post-generation similarity check to break bot-to-bot loops.
+  - After generating, compares output to last bot message using `difflib.SequenceMatcher`.
+  - If similarity >60%, regenerates with spiked params (temp 0.95, rep_penalty 1.15, presence 0.45, freq 0.3).
+  - Catches loops where the bot repeats itself despite different user inputs (previous detector only caught user repetition).
+
+### Fixed
+- **"Astra:" Prefix in Responses** (`personality.py`, `router.py`): Astra was prefixing every response with her own name.
+  - **Root Cause**: Few-shot examples used `Astra: response` format — model mimicked the label.
+  - **Fix 1**: Removed `User:`/`Astra:` labels from few-shot examples. Now uses `>` quote style for user messages and bare text for responses.
+  - **Fix 2**: Added regex safety net in `router.py` post-processing to strip `Astra:` / `[Astra]:` prefix.
+- **Speed Footer Stripping**: Updated all footer-stripping regexes to handle new `⚡T/s` token.
+  - `chat.py`: `FOOTER_REGEX` updated, inline copies replaced with shared regex.
+  - `discord_context.py`: Added `_SPEED_RE` to `_strip_citations()` — prevents model from hallucinating speed stats.
+  - `GemGem-Docker-Live/utils/memory_manager.py`: Added `⚡T/s` strip so GemGem doesn't copy Astra's speed footer.
+
+---
+
 ## [3.2.0] - 2026-02-15
 
 ### Changed

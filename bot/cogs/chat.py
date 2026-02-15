@@ -26,7 +26,8 @@ import asyncio
 PST = pytz.timezone("America/Los_Angeles")
 
 # Regex to strip deterministic footers from Astra's own messages in history
-FOOTER_REGEX = re.compile(r'\n\n[💡🔍]\d+(?:\s[💡🔍]\d+)*$', re.DOTALL)
+# Matches: 💡3 🔍5 ⚡24.1 T/s (any combo)
+FOOTER_REGEX = re.compile(r'\n\n[💡🔍⚡][\d.]+(?:\s+T/s)?(?:\s+[💡🔍⚡][\d.]+(?:\s+T/s)?)*$')
 
 
 class ChatCog(commands.Cog):
@@ -214,14 +215,16 @@ class ChatCog(commands.Cog):
                     formatted_content = f"[{m['author']}]: {m['content']}"
                     formatted_history.append({"role": "user", "content": formatted_content})
 
-                response = await process_message(
+                result = await process_message(
                     user_message=content if content else "[attached an image]",
                     current_speaker=speaker_name,  # Pass speaker separately for system prompt
                     search_context=combined_context,  # System prompt context (Search + Images)
                     conversation_history=formatted_history, # Transcript (Chat History)
                     memory_context=rag_context  # RAG is deprioritized
                 )
-                
+                response = result["text"]
+                gen_tps = result.get("tps", 0)
+
                 # === DETERMINISTIC ATTRIBUTION FOOTERS ===
                 # Build footer based on what tools actually ran (same line)
                 footer_parts = []
@@ -229,7 +232,9 @@ class ChatCog(commands.Cog):
                     footer_parts.append(f"💡{rag_count}")
                 if tool_decision.get("search") and search_count > 0:
                     footer_parts.append(f"🔍{search_count}")
-                
+                if gen_tps > 0:
+                    footer_parts.append(f"⚡{gen_tps} T/s")
+
                 if footer_parts:
                     footer = "\n\n" + " ".join(footer_parts)
                     # Truncate if needed to fit footer
@@ -239,7 +244,7 @@ class ChatCog(commands.Cog):
                 
                 # Step 6: Store conversation to RAG (long-term memory)
                 # Strip footers before saving — they're display-only
-                clean_response = re.sub(r'\n\n[💡🔍]\d+(?:\s[💡🔍]\d+)*$', '', response)
+                clean_response = FOOTER_REGEX.sub('', response)
                 await store_conversation(
                     user_message=content,
                     gemgem_response=clean_response,
@@ -267,7 +272,7 @@ class ChatCog(commands.Cog):
                         voice_handler = get_voice_handler(self.bot)
                         # Strip citation markers and footer emojis so TTS doesn't read them
                         tts_text = re.sub(r'\[(?:🔍|💡)?\d+\]', '', response)  # [1], [🔍1], [💡2]
-                        tts_text = re.sub(r'\n\n[💡🔍]\d+(?:\s[💡🔍]\d+)*$', '', tts_text)  # footer line
+                        tts_text = FOOTER_REGEX.sub('', tts_text)  # footer line
                         await voice_handler.speak_text(message.guild, tts_text.strip())
                     except Exception as ve:
                         print(f"[Voice] TTS error: {ve}")
