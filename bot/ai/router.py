@@ -138,8 +138,8 @@ TABBY_HOST = os.getenv("TABBY_HOST", "http://host.docker.internal:5000")
 TABBY_MODEL = os.getenv("TABBY_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.05, presence_penalty: float = 0.3, model: str = None) -> str:
-    """Make a request to LM Studio's OpenAI-compatible API."""
+async def _call_lmstudio(messages: list, temperature: float = 0.85, max_tokens: int = 512, stop: list = None, repeat_penalty: float = 1.08, presence_penalty: float = 0.25, frequency_penalty: float = 0.15, model: str = None) -> str:
+    """Make a request to TabbyAPI (OpenAI-compatible API) with Qwen3-32B-Uncensored EXL2 settings."""
     payload = {
         "model": model or TABBY_MODEL,
         "messages": messages,
@@ -147,9 +147,13 @@ async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: i
         "max_tokens": max_tokens,
         "stream": False,
         "repeat_penalty": repeat_penalty,
-        "top_p": 0.8,
-        "top_k": 20,
-        "presence_penalty": presence_penalty
+        "top_p": 0.92,
+        "top_k": 40,
+        "min_p": 0.05,
+        "presence_penalty": presence_penalty,
+        "frequency_penalty": frequency_penalty,
+        "typical_p": 1.0,
+        "tfs": 1.0,
     }
     # Add stop sequences if provided (prevents model from roleplaying users)
     if stop:
@@ -365,12 +369,13 @@ Reply to the last message as Astra. Do not output internal thoughts."""
         print(f"[Router] Query: '{user_message[:50]}' | Search: {len(search_context)} chars | History: {len(transcript_lines)} msgs")
         
         # Use lower max_tokens if search context is present (less room for looping)
-        tokens = 1500 if search_context else 4000
-        
+        tokens = 512 if search_context else 512
+
         # [DYNAMIC CREATIVITY]
         # Check if the last bot message was repetitive to break loops naturally
-        temp = 0.75
-        pres_pen = 0.4
+        temp = 0.85
+        pres_pen = 0.25
+        freq_pen = 0.15
         
         last_bot_msg = ""
         for msg in reversed(conversation_history or []):
@@ -401,16 +406,18 @@ Reply to the last message as Astra. Do not output internal thoughts."""
 
         if is_stuck:
             print("[Router] Loop detected! Spiking creativity parameters.")
-            temp = 1.2      # High chaos
-            pres_pen = 0.8  # Force new words
-        
+            temp = 0.95     # Upper recommended range
+            pres_pen = 0.35  # Upper recommended range
+            freq_pen = 0.25  # Slightly elevated
+
         response = await _call_lmstudio(
             messages=messages,
             temperature=temp,
             max_tokens=tokens,
             stop=stop_sequences,
-            repeat_penalty=1.1,
-            presence_penalty=pres_pen
+            repeat_penalty=1.08,
+            presence_penalty=pres_pen,
+            frequency_penalty=freq_pen
         )
         
         if not response:

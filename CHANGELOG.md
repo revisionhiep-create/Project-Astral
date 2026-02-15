@@ -3,6 +3,24 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.1.1] - 2026-02-15
+
+### Changed
+- **Qwen3-32B-Uncensored EXL2 Sampler Optimization** (`router.py`):
+  - Applied official recommended sampler preset for `Qwen3-32B-Uncensored` EXL2.
+  - `temperature`: 0.75 → 0.85 (natural personality, not robotic).
+  - `top_p`: 0.8 → 0.92 (prevents derailment).
+  - `top_k`: 20 → 40 (improves coherence).
+  - `min_p`: Added 0.05 (critical for Qwen3 stability — prevents flat/unstable personality).
+  - `repeat_penalty`: 1.1 → 1.08 (Qwen3 recommended).
+  - `presence_penalty`: 0.4 → 0.25 (Qwen3 responds well to this range).
+  - `frequency_penalty`: Added 0.15 (prevents repeated phrases).
+  - `typical_p`: Added 1.0, `tfs`: Added 1.0 (disabled — Qwen3 performs best without mirostat).
+  - `max_tokens`: 4000/1500 → 512 (ideal quality for chat).
+  - **Loop Breaker Tuned**: Spike values now stay within Qwen3 recommended range (temp 0.95, presence 0.35) instead of extreme chaos values (1.2/0.8) that caused hallucinations.
+
+---
+
 ## [3.1.0] - 2026-02-15
 
 ### Added
