@@ -2,7 +2,20 @@
 
 All notable changes to Project Astral will be documented in this file.
 
-## [3.0.3] - 2026-02-13
+
+## [3.0.6] - 2026-02-14
+
+### Fixed
+- **Lexical Overfitting / "Pink Elephant" Loops** (`personality.py`):
+  - **Issue**: Astra was obsessively referencing specific nouns from few-shot examples (e.g., "star-spider", "fix the pinky", "hydrate") regardless of context.
+  - **Discovery**: LLMs pattern-match specific nouns in few-shot examples as "cheat codes" for the desired tone, leading to logic loops.
+    - *Example*: "Don't talk about **star-spiders**" -> Model sees "star-spiders" -> Model talks about star-spiders.
+    - *Example*: "Fix the **pinky**" (Art critique) -> Model critiques pinkies on box art.
+  - **Fix**: Generalized all few-shot examples to remove specific "magnet words".
+    - "Fix the pinky" -> "Anatomy implies you gave up" (Abstract critique)
+    - "Tell him to hydrate" -> "Mute him or throw something" (Abstract solution)
+    - "Like star-spider nests" -> Removed entirely (Negative constraint fixation)
+
 
 ### Fixed
 - **Reverted Personality Regression**: Restored `personality.py` to full instruction-based version (v2.2.3 state).
