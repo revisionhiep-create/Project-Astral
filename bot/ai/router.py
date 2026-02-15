@@ -138,7 +138,7 @@ TABBY_HOST = os.getenv("TABBY_HOST", "http://host.docker.internal:5000")
 TABBY_MODEL = os.getenv("TABBY_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.85, max_tokens: int = 512, stop: list = None, repeat_penalty: float = 1.08, presence_penalty: float = 0.25, frequency_penalty: float = 0.15, model: str = None) -> str:
+async def _call_lmstudio(messages: list, temperature: float = 0.85, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.08, presence_penalty: float = 0.25, frequency_penalty: float = 0.15, model: str = None) -> str:
     """Make a request to TabbyAPI (OpenAI-compatible API) with Qwen3-32B-Uncensored EXL2 settings."""
     payload = {
         "model": model or TABBY_MODEL,
@@ -369,7 +369,7 @@ Reply to the last message as Astra. Do not output internal thoughts."""
         print(f"[Router] Query: '{user_message[:50]}' | Search: {len(search_context)} chars | History: {len(transcript_lines)} msgs")
         
         # Use lower max_tokens if search context is present (less room for looping)
-        tokens = 512 if search_context else 512
+        tokens = 1500 if search_context else 4000
 
         # [DYNAMIC CREATIVITY]
         # Check if the last bot message was repetitive to break loops naturally

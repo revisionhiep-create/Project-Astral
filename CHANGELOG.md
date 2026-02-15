@@ -16,7 +16,7 @@ All notable changes to Project Astral will be documented in this file.
   - `presence_penalty`: 0.4 → 0.25 (Qwen3 responds well to this range).
   - `frequency_penalty`: Added 0.15 (prevents repeated phrases).
   - `typical_p`: Added 1.0, `tfs`: Added 1.0 (disabled — Qwen3 performs best without mirostat).
-  - `max_tokens`: 4000/1500 → 512 (ideal quality for chat).
+  - `max_tokens`: Kept at 4000/1500 (search responses capped, normal chat uncapped for longer lookups).
   - **Loop Breaker Tuned**: Spike values now stay within Qwen3 recommended range (temp 0.95, presence 0.35) instead of extreme chaos values (1.2/0.8) that caused hallucinations.
 
 ---
