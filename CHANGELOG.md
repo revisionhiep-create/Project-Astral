@@ -3,6 +3,22 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.3.1] - 2026-02-15
+
+### Changed
+- **Model Switch**: `bullerwins/Qwen3-32B-exl3-4.83bpw` → `turboderp/Qwen3-32B-exl3` 4.0bpw (official turboderp quant).
+  - EXL2 not viable for Qwen3 (ExLlamaV2 lacks Qwen3 architecture support).
+  - 4.0bpw gives more VRAM headroom for KV cache on 3090.
+- **Disabled Thinking Mode**: Added `/no_think` soft switch to system prompt and `chat_template_kwargs` to API payload to prevent hidden `<think>` token generation that halved throughput.
+
+### Removed
+- **Uncensored Model Roleplay Stripping** (`router.py`, `chat.py`): Removed all code added to fight the abliterated model's submissive RP meltdown.
+  - `router.py`: Removed `master,`/`mistress,`/`senpai,`/`daddy,`/`onii-chan,` prefix strip and wrapping `"..."` quote strip from both primary and retry paths.
+  - `chat.py`: Removed context poisoning cleanup (master/mistress, pussy/servant/maid patterns, gemgem dice hallucination, empty message skip).
+  - Kept: `_strip_roleplay_actions()` (action narration) and `Astra:` prefix strip (useful for any model).
+
+---
+
 ## [3.3.0] - 2026-02-15
 
 ### Changed

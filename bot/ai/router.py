@@ -155,6 +155,7 @@ async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: i
         "min_p": 0,
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
+        "chat_template_kwargs": {"enable_thinking": False},
     }
     # Add stop sequences if provided (prevents model from roleplaying users)
     if stop:
@@ -432,18 +433,13 @@ Reply to the last message as Astra. Do not output internal thoughts."""
         if not result:
             return {"text": "something broke on my end, try again?", "tokens": 0, "tps": 0}
 
-        # Chain all post-processing: think tags -> roleplay -> dedup -> name prefix -> quotes
+        # Chain all post-processing: think tags -> roleplay actions -> dedup -> name prefix
         cleaned = _strip_think_tags(result["text"])
         cleaned = _strip_roleplay_actions(cleaned)
         cleaned = _strip_repeated_content(cleaned)
         cleaned = _strip_specific_hallucinations(cleaned)
         # Strip self-name prefix (model mimics transcript format "[Astra]: ..." or "Astra: ...")
         cleaned = re.sub(r'^(?:\[?Astra\]?:\s*)', '', cleaned, flags=re.IGNORECASE).strip()
-        # Strip roleplay address patterns (uncensored model falls into submissive RP mode)
-        cleaned = re.sub(r'^(?:master|mistress|sir|ma\'am|senpai|daddy|onii-chan),?\s*', '', cleaned, flags=re.IGNORECASE).strip()
-        # Strip wrapping quotation marks (roleplay habit from uncensored models)
-        if cleaned.startswith('"') and cleaned.endswith('"'):
-            cleaned = cleaned[1:-1].strip()
 
         # OUTPUT LOOP DETECTION: Compare with last bot message
         # If she generated nearly the same thing, regenerate with spiked creativity
@@ -465,9 +461,6 @@ Reply to the last message as Astra. Do not output internal thoughts."""
                     cleaned = _strip_repeated_content(cleaned)
                     cleaned = _strip_specific_hallucinations(cleaned)
                     cleaned = re.sub(r'^(?:\[?Astra\]?:\s*)', '', cleaned, flags=re.IGNORECASE).strip()
-                    cleaned = re.sub(r'^(?:master|mistress|sir|ma\'am|senpai|daddy|onii-chan),?\s*', '', cleaned, flags=re.IGNORECASE).strip()
-                    if cleaned.startswith('"') and cleaned.endswith('"'):
-                        cleaned = cleaned[1:-1].strip()
                     result = retry  # use retry stats for T/s footer
 
         return {"text": cleaned, "tokens": result["tokens"], "tps": result["tps"]}
