@@ -131,33 +131,30 @@ def _extract_json(text: str) -> dict:
     raise ValueError(f"Could not extract JSON from: {text[:100]}")
 
 
-# TabbyAPI server (OpenAI-compatible API)
-TABBY_HOST = os.getenv("TABBY_HOST", "http://host.docker.internal:5000")
+# LLM server (OpenAI-compatible API — LM Studio or TabbyAPI)
+LLM_HOST = os.getenv("LMSTUDIO_HOST") or os.getenv("TABBY_HOST", "http://host.docker.internal:1234")
 
-# Model identifiers from LM Studio
-# Model identifiers
-TABBY_MODEL = os.getenv("TABBY_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
+# Model identifier
+LLM_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL") or os.getenv("TABBY_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.85, max_tokens: int = 4000, stop: list = None, repeat_penalty: float = 1.08, presence_penalty: float = 0.25, frequency_penalty: float = 0.15, model: str = None) -> dict:
-    """Make a request to TabbyAPI (OpenAI-compatible API) with Qwen3-32B-Uncensored EXL2 settings.
+async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 4000, stop: list = None, presence_penalty: float = 0.3, frequency_penalty: float = 0.1, model: str = None) -> dict:
+    """Make a request to TabbyAPI (OpenAI-compatible API) with Qwen3-32B EXL3 settings.
 
+    Uses Qwen3 official non-thinking mode samplers: temp=0.7, top_p=0.8, top_k=20, min_p=0.
     Returns dict with 'text', 'tokens', 'tps' keys (or None on failure).
     """
     payload = {
-        "model": model or TABBY_MODEL,
+        "model": model or LLM_MODEL,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": False,
-        "repeat_penalty": repeat_penalty,
-        "top_p": 0.92,
-        "top_k": 40,
-        "min_p": 0.05,
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0,
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
-        "typical_p": 1.0,
-        "tfs": 1.0,
     }
     # Add stop sequences if provided (prevents model from roleplaying users)
     if stop:
@@ -166,7 +163,7 @@ async def _call_lmstudio(messages: list, temperature: float = 0.85, max_tokens: 
     # The prompt instructs JSON output directly
 
 
-    # TabbyAPI Authentication
+    # Auth (TabbyAPI needs a key, LM Studio doesn't)
     headers = {"Content-Type": "application/json"}
     api_key = os.getenv("TABBY_API_KEY")
     if api_key:
@@ -176,7 +173,7 @@ async def _call_lmstudio(messages: list, temperature: float = 0.85, max_tokens: 
         start_time = time.perf_counter()
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{TABBY_HOST}/v1/chat/completions",
+                f"{LLM_HOST}/v1/chat/completions",
                 json=payload,
                 headers=headers,
                 timeout=aiohttp.ClientTimeout(total=120)
@@ -386,9 +383,9 @@ Reply to the last message as Astra. Do not output internal thoughts."""
 
         # [DYNAMIC CREATIVITY]
         # Check if the last bot message was repetitive to break loops naturally
-        temp = 0.85
-        pres_pen = 0.25
-        freq_pen = 0.15
+        temp = 0.7
+        pres_pen = 0.3
+        freq_pen = 0.1
         
         last_bot_msg = ""
         for msg in reversed(conversation_history or []):
@@ -419,16 +416,15 @@ Reply to the last message as Astra. Do not output internal thoughts."""
 
         if is_stuck:
             print("[Router] Loop detected! Spiking creativity parameters.")
-            temp = 0.95     # Upper recommended range
-            pres_pen = 0.35  # Upper recommended range
-            freq_pen = 0.25  # Slightly elevated
+            temp = 0.85     # Elevated from 0.7 baseline
+            pres_pen = 0.5   # Push harder for variety
+            freq_pen = 0.2   # Slightly elevated
 
         result = await _call_lmstudio(
             messages=messages,
             temperature=temp,
             max_tokens=tokens,
             stop=stop_sequences,
-            repeat_penalty=1.08,
             presence_penalty=pres_pen,
             frequency_penalty=freq_pen
         )
@@ -436,13 +432,18 @@ Reply to the last message as Astra. Do not output internal thoughts."""
         if not result:
             return {"text": "something broke on my end, try again?", "tokens": 0, "tps": 0}
 
-        # Chain all post-processing: think tags -> roleplay -> dedup -> name prefix
+        # Chain all post-processing: think tags -> roleplay -> dedup -> name prefix -> quotes
         cleaned = _strip_think_tags(result["text"])
         cleaned = _strip_roleplay_actions(cleaned)
         cleaned = _strip_repeated_content(cleaned)
         cleaned = _strip_specific_hallucinations(cleaned)
         # Strip self-name prefix (model mimics transcript format "[Astra]: ..." or "Astra: ...")
         cleaned = re.sub(r'^(?:\[?Astra\]?:\s*)', '', cleaned, flags=re.IGNORECASE).strip()
+        # Strip roleplay address patterns (uncensored model falls into submissive RP mode)
+        cleaned = re.sub(r'^(?:master|mistress|sir|ma\'am|senpai|daddy|onii-chan),?\s*', '', cleaned, flags=re.IGNORECASE).strip()
+        # Strip wrapping quotation marks (roleplay habit from uncensored models)
+        if cleaned.startswith('"') and cleaned.endswith('"'):
+            cleaned = cleaned[1:-1].strip()
 
         # OUTPUT LOOP DETECTION: Compare with last bot message
         # If she generated nearly the same thing, regenerate with spiked creativity
@@ -452,12 +453,11 @@ Reply to the last message as Astra. Do not output internal thoughts."""
                 print(f"[Router] Output loop detected (similarity={similarity:.2f}), regenerating with spiked params")
                 retry = await _call_lmstudio(
                     messages=messages,
-                    temperature=0.95,
+                    temperature=0.85,
                     max_tokens=tokens,
                     stop=stop_sequences,
-                    repeat_penalty=1.15,
-                    presence_penalty=0.45,
-                    frequency_penalty=0.3
+                    presence_penalty=0.6,
+                    frequency_penalty=0.25
                 )
                 if retry:
                     cleaned = _strip_think_tags(retry["text"])
@@ -465,6 +465,9 @@ Reply to the last message as Astra. Do not output internal thoughts."""
                     cleaned = _strip_repeated_content(cleaned)
                     cleaned = _strip_specific_hallucinations(cleaned)
                     cleaned = re.sub(r'^(?:\[?Astra\]?:\s*)', '', cleaned, flags=re.IGNORECASE).strip()
+                    cleaned = re.sub(r'^(?:master|mistress|sir|ma\'am|senpai|daddy|onii-chan),?\s*', '', cleaned, flags=re.IGNORECASE).strip()
+                    if cleaned.startswith('"') and cleaned.endswith('"'):
+                        cleaned = cleaned[1:-1].strip()
                     result = retry  # use retry stats for T/s footer
 
         return {"text": cleaned, "tokens": result["tokens"], "tps": result["tps"]}

@@ -3,6 +3,32 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.3.0] - 2026-02-15
+
+### Changed
+- **Model Switch**: `Qwen3-32B-abliterated-exl3-6.0bpw` → `bullerwins/Qwen3-32B-exl3-4.83bpw` (standard, non-abliterated).
+  - Abliterated/uncensored fine-tunes destroyed instruction-following entirely (roleplay contamination, ignored system prompt, `<think>` leaking).
+  - Standard model preserves Qwen3's native instruction-following while still being capable.
+- **Official Qwen3 Samplers** (`router.py`): Switched to Qwen3's recommended non-thinking mode parameters.
+  - `temperature`: 0.85 → 0.7 | `top_p`: 0.92 → 0.8 | `top_k`: 40 → 20 | `min_p`: 0.05 → 0
+  - `presence_penalty`: 0.25 → 0.3 | `frequency_penalty`: 0.15 → 0.1
+  - Removed `repeat_penalty` (was double-penalizing with presence_penalty), `typical_p`, `tfs`.
+  - Loop spike params updated to match new baseline (temp 0.85, presence 0.5).
+- **Flexible LLM Host** (`router.py`, `rag.py`): Supports both LM Studio and TabbyAPI seamlessly.
+  - `LLM_HOST` falls back: `LMSTUDIO_HOST` → `TABBY_HOST` → localhost:1234.
+  - `LLM_MODEL` falls back: `LMSTUDIO_CHAT_MODEL` → `TABBY_MODEL` → default.
+- **TabbyAPI Config**: Context reduced to 10K tokens (from 12K), EXL3 cache mode `4,4`.
+- **Docker**: Passes `TABBY_HOST`, `TABBY_API_KEY` env vars to container.
+
+### Fixed
+- **Context Poisoning Cleanup** (`chat.py`): Strips roleplay contamination (master/mistress/pussy) from Astra's own messages in history window.
+  - Empty messages after cleanup are skipped entirely.
+  - Fixed syntax error in gemgem regex (`\'` in raw string → `\u2019` unicode escape) that was silently breaking the chat cog.
+- **Roleplay Stripping** (`router.py`): Post-processing strips `master,`/`mistress,`/`senpai,` prefixes and wrapping `"..."` quotes.
+- **Personality Hardening** (`personality.py`): v3.3 — "sharp equal, not a servant", equality framing, anti-loop improvements, always lowercase enforcement.
+
+---
+
 ## [3.2.1] - 2026-02-15
 
 ### Added

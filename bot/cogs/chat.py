@@ -105,11 +105,19 @@ class ChatCog(commands.Cog):
                         if msg.author.id == self.bot.user.id:
                             author_name = "Astra"
                             msg_content = FOOTER_REGEX.sub('', msg_content)
-                            
+
                             # Strip hallucinations & obsessive loops (Clean history so model doesn't copy itself)
-                            msg_content = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', msg_content, flags=re.IGNORECASE)
+                            msg_content = re.sub(r"gemgem['\u2019]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,\u2014-]|\s+and\s+)?", '', msg_content, flags=re.IGNORECASE)
+                            # Strip roleplay contamination from own history (prevents context poisoning)
+                            msg_content = re.sub(r'\b(?:master|mistress|senpai|daddy|onii-chan),?\s*', '', msg_content, flags=re.IGNORECASE)
+                            msg_content = re.sub(r'i am (?:not )?a (?:pussy|mistress|servant|maid)\b[.!]*\s*', '', msg_content, flags=re.IGNORECASE)
+                            msg_content = re.sub(r'i do not have a pussy\b[^.]*\.?\s*', '', msg_content, flags=re.IGNORECASE)
                             msg_content = re.sub(r'\s+,', ',', msg_content)
                             msg_content = re.sub(r'  +', ' ', msg_content).strip()
+
+                            # Skip entirely empty messages after cleaning (fully contaminated)
+                            if not msg_content.strip():
+                                continue
 
                         # Format timestamp as relative or simple time (convert UTC to PST)
                         timestamp = msg.created_at.astimezone(PST).strftime("%I:%M %p")

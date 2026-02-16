@@ -7,8 +7,9 @@ services:
     environment:
       # Use host Ollama (models already downloaded locally)
       - OLLAMA_HOST=http://host.docker.internal:11434
-      - OLLAMA_MODEL=${TABBY_MODEL}
       - TABBY_MODEL=${TABBY_MODEL}
+      - TABBY_HOST=${TABBY_HOST}
+      - TABBY_API_KEY=${TABBY_API_KEY}
       - SEARXNG_HOST=http://searxng:8080
       - RAG_DATABASE=/app/data/db/memory.db
       - CHARACTERS_FILE=/app/data/characters.json
