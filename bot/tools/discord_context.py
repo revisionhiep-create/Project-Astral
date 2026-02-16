@@ -13,8 +13,8 @@ GEMGEM_BOT_ID = 1458550716225425560
 # Pattern to strip citation markers from bot messages in context
 # Matches [🔍1], [💡2], [1], [2] etc.
 _CITATION_RE = re.compile(r'\s*\[(?:🔍|💡)?\d+\]')
-# Matches ⚡24.1 T/s speed footer token
-_SPEED_RE = re.compile(r'\s*⚡[\d.]+ T/s')
+# Matches 🚗24.1 T/s speed footer token
+_SPEED_RE = re.compile(r'\s*🚗[\d.]+ T/s')
 
 
 async def fetch_recent_messages(

@@ -26,8 +26,8 @@ import asyncio
 PST = pytz.timezone("America/Los_Angeles")
 
 # Regex to strip deterministic footers from Astra's own messages in history
-# Matches: 💡3 🔍5 ⚡24.1 T/s (any combo)
-FOOTER_REGEX = re.compile(r'\n\n[💡🔍⚡][\d.]+(?:\s+T/s)?(?:\s+[💡🔍⚡][\d.]+(?:\s+T/s)?)*$')
+# Matches: 💡3 🔍5 🚗24.1 T/s (any combo)
+FOOTER_REGEX = re.compile(r'\n\n[💡🔍🚗][\d.]+(?:\s+T/s)?(?:\s+[💡🔍🚗][\d.]+(?:\s+T/s)?)*$')
 
 
 class ChatCog(commands.Cog):
@@ -230,7 +230,7 @@ class ChatCog(commands.Cog):
                 if tool_decision.get("search") and search_count > 0:
                     footer_parts.append(f"🔍{search_count}")
                 if gen_tps > 0:
-                    footer_parts.append(f"⚡{gen_tps} T/s")
+                    footer_parts.append(f"🚗{gen_tps} T/s")
 
                 if footer_parts:
                     footer = "\n\n" + " ".join(footer_parts)

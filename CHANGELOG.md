@@ -3,6 +3,18 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.3.2] - 2026-02-16
+
+### Changed
+- **Model Switch**: `Qwen3-32B-exl3` (EXL3 4.0bpw) → `Qwen3-32B-4.25bpw-exl2` (EXL2 4.25bpw).
+  - EXL3 uses compute-heavy trellis dequantization that bottlenecks on Ampere GPUs (RTX 3090), yielding only 8-10 T/s.
+  - EXL2 keeps everything GPU-native with simpler dequantization — expected ~12-15 T/s on same hardware.
+  - Slightly higher quality at 4.25bpw vs 4.0bpw.
+- **TabbyAPI Config** (`config.yml`): Updated `model_name` to `Qwen3-32B-4.25bpw-exl2`, `cache_mode` from `4,4` (EXL3 syntax) to `Q4` (EXL2 syntax).
+- **Speed Footer Emoji**: `⚡` → `🚗` for T/s display across `chat.py`, `discord_context.py`.
+
+---
+
 ## [3.3.1] - 2026-02-15
 
 ### Changed
