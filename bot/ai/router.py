@@ -138,10 +138,11 @@ LLM_HOST = os.getenv("LMSTUDIO_HOST") or os.getenv("TABBY_HOST", "http://host.do
 LLM_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL") or os.getenv("TABBY_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: int = 4000, stop: list = None, presence_penalty: float = 0.3, frequency_penalty: float = 0.1, model: str = None) -> dict:
-    """Make a request to TabbyAPI (OpenAI-compatible API) with Qwen3-32B EXL3 settings.
+async def _call_lmstudio(messages: list, temperature: float = 0.6, max_tokens: int = 8000, stop: list = None, presence_penalty: float = 0.3, frequency_penalty: float = 0.1, model: str = None) -> dict:
+    """Make a request to TabbyAPI (OpenAI-compatible API) with Qwen3-32B EXL2 settings.
 
-    Uses Qwen3 official non-thinking mode samplers: temp=0.7, top_p=0.8, top_k=20, min_p=0.
+    Uses Qwen3 official thinking mode samplers: temp=0.6, top_p=0.95, top_k=20, min_p=0.
+    Thinking enabled — model outputs <think>...</think> blocks stripped before Discord.
     Returns dict with 'text', 'tokens', 'tps' keys (or None on failure).
     """
     payload = {
@@ -150,12 +151,12 @@ async def _call_lmstudio(messages: list, temperature: float = 0.7, max_tokens: i
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": False,
-        "top_p": 0.8,
+        "top_p": 0.95,
         "top_k": 20,
         "min_p": 0,
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
-        "chat_template_kwargs": {"enable_thinking": False},
+        "chat_template_kwargs": {"enable_thinking": True},
     }
     # Add stop sequences if provided (prevents model from roleplaying users)
     if stop:
@@ -379,12 +380,12 @@ Reply to the last message as Astra. Do not output internal thoughts."""
     try:
         print(f"[Router] Query: '{user_message[:50]}' | Search: {len(search_context)} chars | History: {len(transcript_lines)} msgs")
         
-        # Use lower max_tokens if search context is present (less room for looping)
-        tokens = 1500 if search_context else 4000
+        # Thinking mode needs headroom for <think> blocks + final output
+        tokens = 4000 if search_context else 8000
 
         # [DYNAMIC CREATIVITY]
         # Check if the last bot message was repetitive to break loops naturally
-        temp = 0.7
+        temp = 0.6
         pres_pen = 0.3
         freq_pen = 0.1
         
@@ -417,7 +418,7 @@ Reply to the last message as Astra. Do not output internal thoughts."""
 
         if is_stuck:
             print("[Router] Loop detected! Spiking creativity parameters.")
-            temp = 0.85     # Elevated from 0.7 baseline
+            temp = 0.75     # Elevated from 0.6 baseline
             pres_pen = 0.5   # Push harder for variety
             freq_pen = 0.2   # Slightly elevated
 
@@ -449,7 +450,7 @@ Reply to the last message as Astra. Do not output internal thoughts."""
                 print(f"[Router] Output loop detected (similarity={similarity:.2f}), regenerating with spiked params")
                 retry = await _call_lmstudio(
                     messages=messages,
-                    temperature=0.85,
+                    temperature=0.75,
                     max_tokens=tokens,
                     stop=stop_sequences,
                     presence_penalty=0.6,

@@ -3,12 +3,24 @@
 All notable changes to Project Astral will be documented in this file.
 
 
-## [3.3.2] - 2026-02-16
+## [3.4.0] - 2026-02-16
 
 ### Changed
+- **Thinking Mode Enabled** (`router.py`): Switched from `enable_thinking: False` to `enable_thinking: True`.
+  - Official Qwen3 thinking samplers: temp=0.6, top_p=0.95, top_k=20, min_p=0.
+  - Model now reasons in `<think>...</think>` blocks before responding — stripped by `_strip_think_tags()` before Discord.
+  - Max tokens increased: 4000→8000 (normal), 1500→4000 (search) to accommodate thinking blocks.
+  - Result: ~28 T/s on EXL2, significantly higher quality responses.
+- **Personality v3.4** (`personality.py`): Tuned for thinking mode behavior.
+  - "Low-energy but sharp" → "Relaxed but sharp" — prevents model interpreting personality as lazy/apathetic.
+  - "Push back freely" → "Not stubborn, roll with corrections" — breaks doubling-down loop where thinking mode compounds aggression.
+  - "Teasing is playful, not hostile" — clarifies boundary between snarky and mean.
+  - "Snarky ≠ mean. You don't trash people unprovoked." — explicit ceiling on aggression.
+  - Strengthened HONESTY: "Never fabricate fake descriptions of real people" and "don't make up negative traits to sound edgy."
+  - Removed `/no_think` soft switch from `_CRITICAL_RULES`.
 - **Model Switch**: `Qwen3-32B-exl3` (EXL3 4.0bpw) → `Qwen3-32B-4.25bpw-exl2` (EXL2 4.25bpw).
   - EXL3 uses compute-heavy trellis dequantization that bottlenecks on Ampere GPUs (RTX 3090), yielding only 8-10 T/s.
-  - EXL2 keeps everything GPU-native with simpler dequantization — expected ~12-15 T/s on same hardware.
+  - EXL2 keeps everything GPU-native with simpler dequantization — ~28 T/s on same hardware.
   - Slightly higher quality at 4.25bpw vs 4.0bpw.
 - **TabbyAPI Config** (`config.yml`): Updated `model_name` to `Qwen3-32B-4.25bpw-exl2`, `cache_mode` from `4,4` (EXL3 syntax) to `Q4` (EXL2 syntax).
 - **Speed Footer Emoji**: `⚡` → `🚗` for T/s display across `chat.py`, `discord_context.py`.
