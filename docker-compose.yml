@@ -7,14 +7,9 @@ services:
     environment:
       # Use host Ollama (models already downloaded locally)
       - OLLAMA_HOST=http://host.docker.internal:11434
-      - TABBY_MODEL=${TABBY_MODEL}
-      - TABBY_HOST=${TABBY_HOST}
-      - TABBY_API_KEY=${TABBY_API_KEY}
-      - KOBOLD_HOST=${KOBOLD_HOST}
-      - KOBOLD_MODEL=${KOBOLD_MODEL}
+      - OLLAMA_MODEL=${LMSTUDIO_CHAT_MODEL}
       - LMSTUDIO_HOST=${LMSTUDIO_HOST:-http://host.docker.internal:1234}
       - LMSTUDIO_CHAT_MODEL=${LMSTUDIO_CHAT_MODEL}
-      - LLM_BACKEND=${LLM_BACKEND:-lmstudio}
       - SEARXNG_HOST=http://searxng:8080
       - RAG_DATABASE=/app/data/db/memory.db
       - CHARACTERS_FILE=/app/data/characters.json
@@ -33,30 +28,6 @@ services:
     # Allow access to host network on Windows Docker
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
-  # KoboldCpp - Local GGUF Inference (OpenAI-compatible API)
-  koboldcpp:
-    image: koboldai/koboldcpp:latest
-    container_name: astral-koboldcpp
-    ports:
-      - "5001:5001"
-    volumes:
-      - ./koboldcpp/models:/workspace/models:ro
-      - ./koboldcpp:/workspace/config:ro
-    environment:
-      - KCPP_MODEL=/workspace/models/${KOBOLD_MODEL_FILE:-GLM-4.7-Flash-Uncen-Hrt-NEO-CODE-MAX-imat-D_AU-Q4_K_S.gguf}
-      - KCPP_ARGS=--usecuda mmq --gpulayers 99 --contextsize ${KOBOLD_CONTEXT:-8192} --chatcompletionsadapter /workspace/config/${KOBOLD_ADAPTER:-glm47-nothink-adapter.json} --port 5001 --host 0.0.0.0
-      - KCPP_DONT_TUNNEL=true
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    restart: unless-stopped
-    networks:
-      - astral-network
 
   # SearXNG - Free Unlimited Search
   searxng:

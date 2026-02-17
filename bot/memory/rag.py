@@ -21,8 +21,8 @@ from memory.embeddings import get_embedding, get_query_embedding
 
 
 DATABASE_PATH = os.getenv("RAG_DATABASE", "/app/data/memory.db")
-LLM_HOST = os.getenv("LMSTUDIO_HOST") or os.getenv("TABBY_HOST", "http://host.docker.internal:1234")
-LLM_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL") or os.getenv("TABBY_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
+LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
+CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
 # Search Models
 BM25_INDEX = None
