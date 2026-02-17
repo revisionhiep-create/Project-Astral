@@ -12,7 +12,9 @@ services:
       - TABBY_API_KEY=${TABBY_API_KEY}
       - KOBOLD_HOST=${KOBOLD_HOST}
       - KOBOLD_MODEL=${KOBOLD_MODEL}
-      - LLM_BACKEND=${LLM_BACKEND:-tabby}
+      - LMSTUDIO_HOST=${LMSTUDIO_HOST:-http://host.docker.internal:1234}
+      - LMSTUDIO_CHAT_MODEL=${LMSTUDIO_CHAT_MODEL}
+      - LLM_BACKEND=${LLM_BACKEND:-lmstudio}
       - SEARXNG_HOST=http://searxng:8080
       - RAG_DATABASE=/app/data/db/memory.db
       - CHARACTERS_FILE=/app/data/characters.json

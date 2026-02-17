@@ -3,6 +3,34 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.6.0] - 2026-02-17
+
+### Changed
+- **Backend Switch: KoboldCpp → LM Studio** (`router.py`, `.env`, `docker-compose.yml`): Replaced KoboldCpp with LM Studio as the active inference backend.
+  - GLM-4.7-Flash-Heretic had broken thinking mode (never outputs `</think>`) and weak instruction-following.
+  - LM Studio runs on host, bot connects via `host.docker.internal:1234`.
+- **Model**: `GLM-4.7-Flash-Uncensored-Heretic` → `Qwen3-30B-A3B-Thinking-2507-Abliterated` (huihui).
+  - MoE 30.5B total, ~3.3B active per token — fast inference with strong reasoning.
+  - Thinking mode enabled via `/think` soft switch in system prompt (LM Studio doesn't support `chat_template_kwargs`).
+  - Qwen3 official thinking samplers: temp=0.6, top_p=0.95, top_k=20.
+- **LM Studio Backend Config** (`router.py`): Added `"lmstudio"` entry to `BACKEND_CONFIGS`.
+  - `LMSTUDIO_HOST` and `LMSTUDIO_CHAT_MODEL` env vars for Docker passthrough.
+  - Default backend changed from `"tabby"` to `"lmstudio"`.
+- **KoboldCpp Retained**: Container definition and config kept in `docker-compose.yml` for future use — just not started.
+
+### How to Swap Backends
+```bash
+# In .env:
+LLM_BACKEND=lmstudio  # Qwen3-30B-A3B via LM Studio (default)
+LLM_BACKEND=tabby     # Qwen3-32B via TabbyAPI
+LLM_BACKEND=kobold    # GLM-4.7 via KoboldCpp
+
+# Then:
+docker-compose restart astral-bot
+```
+
+---
+
 ## [3.5.1] - 2026-02-17
 
 ### Fixed

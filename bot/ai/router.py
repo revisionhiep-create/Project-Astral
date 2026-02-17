@@ -1,4 +1,4 @@
-"""AI Router - Multi-backend LLM orchestration (TabbyAPI / KoboldCpp)."""
+"""AI Router - Multi-backend LLM orchestration (LM Studio / TabbyAPI / KoboldCpp)."""
 import os
 import json
 import time
@@ -19,11 +19,25 @@ if GEMINI_API_KEY:
 
 
 # ── Backend Configuration ─────────────────────────────────────────────
-# Switch via LLM_BACKEND env var: "tabby" | "kobold"
-LLM_BACKEND = os.getenv("LLM_BACKEND", "tabby").lower()
+# Switch via LLM_BACKEND env var: "lmstudio" | "tabby" | "kobold"
+LLM_BACKEND = os.getenv("LLM_BACKEND", "lmstudio").lower()
 
 # Per-backend defaults: (host, model, sampler overrides)
 BACKEND_CONFIGS = {
+    "lmstudio": {
+        "host": os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234"),
+        "model": os.getenv("LMSTUDIO_CHAT_MODEL", "huihui-qwen3-30b-a3b-thinking-2507-abliterated"),
+        "api_key": None,  # LM Studio doesn't need auth
+        # Qwen3 official thinking-mode samplers
+        # Thinking controlled via /think soft switch in system prompt (LM Studio doesn't support chat_template_kwargs)
+        "temperature": 0.6,
+        "top_p": 0.95,
+        "top_k": 20,
+        "min_p": 0,
+        "presence_penalty": 0.3,
+        "frequency_penalty": 0.1,
+        "extra_payload": {},
+    },
     "tabby": {
         "host": os.getenv("TABBY_HOST", "http://host.docker.internal:5000"),
         "model": os.getenv("TABBY_MODEL", "Qwen3-32B-4.25bpw-exl2"),
@@ -40,7 +54,7 @@ BACKEND_CONFIGS = {
     "kobold": {
         "host": os.getenv("KOBOLD_HOST", "http://koboldcpp:5001"),
         "model": os.getenv("KOBOLD_MODEL", "GLM-4.7-Flash"),
-        "api_key": None,  # KoboldCpp doesn't need auth
+        "api_key": None,
         # GLM-4.7 creator-recommended samplers (DavidAU screenshot)
         "temperature": 0.8,
         "top_p": 0.95,
@@ -49,7 +63,7 @@ BACKEND_CONFIGS = {
         "presence_penalty": 0.0,
         "frequency_penalty": 0.0,
         "rep_pen": 1.05,
-        "extra_payload": {},  # No thinking kwargs — adapter handles it
+        "extra_payload": {},
     },
 }
 
@@ -384,9 +398,13 @@ async def generate_response(
     """
     # Build system prompt with context AND speaker identity
     system_prompt = build_system_prompt(search_context, memory_context, current_speaker)
-    
+
     # Add date awareness
     system_prompt = f"{get_date_context()}\n\n{system_prompt}"
+
+    # Qwen3 /think soft switch for LM Studio (doesn't support chat_template_kwargs)
+    if LLM_BACKEND == "lmstudio":
+        system_prompt = f"/think\n{system_prompt}"
 
     # Build transcript from conversation history (last 50 messages)
     transcript_lines = []
