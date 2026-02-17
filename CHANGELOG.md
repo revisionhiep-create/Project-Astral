@@ -3,6 +3,16 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.4.1] - 2026-02-16
+
+### Changed
+- **Removed T/s Footer from Discord** (`chat.py`): Speed metric no longer shown in message footers.
+  - T/s is already visible in Docker container logs — no need to clutter Discord messages.
+  - Code commented out (not deleted) for easy re-enable if needed.
+  - `FOOTER_REGEX` and strip regexes kept intact to handle any old messages still in history.
+
+---
+
 ## [3.4.0] - 2026-02-16
 
 ### Changed

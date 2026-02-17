@@ -229,8 +229,9 @@ class ChatCog(commands.Cog):
                     footer_parts.append(f"💡{rag_count}")
                 if tool_decision.get("search") and search_count > 0:
                     footer_parts.append(f"🔍{search_count}")
-                if gen_tps > 0:
-                    footer_parts.append(f"🚗{gen_tps} T/s")
+                # T/s visible in docker logs, no need to show in Discord
+                # if gen_tps > 0:
+                #     footer_parts.append(f"🚗{gen_tps} T/s")
 
                 if footer_parts:
                     footer = "\n\n" + " ".join(footer_parts)
