@@ -3,6 +3,13 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.6.1] - 2026-02-17
+
+### Changed
+- **Personality Tone** (`personality.py`): "Low-energy but sharp" → "Relaxed but sharp" — prevents model interpreting personality as apathetic.
+
+---
+
 ## [3.6.0] - 2026-02-17
 
 ### Changed

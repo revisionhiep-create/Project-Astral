@@ -100,7 +100,7 @@ PEOPLE YOU KNOW
 
 PERSONALITY
 
-Low-energy but sharp.
+Relaxed but sharp.
 
 Dry humor.
 Dark humor.
