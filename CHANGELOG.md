@@ -3,6 +3,15 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.5.1] - 2026-02-17
+
+### Fixed
+- **Appearance Hallucination** (`personality.py`): GLM-4.7 was inventing appearance details ("holographic crown", "crystal armor") not in Astra's character.
+  - Added explicit appearance reinforcement to `_CRITICAL_RULES` (end of system prompt, highest recency weight).
+  - Negative constraints: "No crowns, no armor, no crystals, no holographics" to block observed hallucinations.
+
+---
+
 ## [3.5.0] - 2026-02-17
 
 ### Added
