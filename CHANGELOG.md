@@ -3,6 +3,44 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.5.0] - 2026-02-17
+
+### Added
+- **KoboldCpp Docker Backend** (`docker-compose.yml`): New `astral-koboldcpp` container for GGUF model inference.
+  - Official `koboldai/koboldcpp:latest` image with NVIDIA CUDA GPU passthrough.
+  - Model and config mounted from `koboldcpp/models/` and `koboldcpp/` volumes.
+  - OpenAI-compatible API at `http://koboldcpp:5001/v1/` on the internal Docker network.
+  - `KCPP_DONT_TUNNEL=true` — no Cloudflare tunnel (local-only).
+- **Multi-Backend Router** (`router.py`): Swappable LLM backends via single `LLM_BACKEND` env var.
+  - `BACKEND_CONFIGS` dict holds per-backend settings: host, model, API key, and full sampler presets.
+  - `_get_backend()` resolves active config at startup and per-request.
+  - Loop detection spikes are now relative to active backend baseline (not hardcoded).
+  - `repetition_penalty` sent in payload when backend config includes `rep_pen`.
+- **GLM-4.7 Chat Adapter** (`koboldcpp/glm47-nothink-adapter.json`): Custom chat completions adapter for GLM-4.7-Flash.
+  - Suppresses thinking at the template level — `assistant_start` includes `</think>` to skip reasoning entirely.
+  - Stop sequences: `<|user|>`, `<|observation|>`.
+- **Backend Env Vars** (`.env`, `docker-compose.yml`): `KOBOLD_HOST`, `KOBOLD_MODEL`, `KOBOLD_MODEL_FILE`, `KOBOLD_ADAPTER`, `KOBOLD_CONTEXT`, `LLM_BACKEND`.
+
+### Changed
+- **Model**: Added `GLM-4.7-Flash-Uncensored-Heretic-NEO-CODE Q4_K_S` (DavidAU imatrix GGUF) as KoboldCpp backend option.
+  - 30B-A3B MOE (mixture of experts) — ~2B params active, fits on single GPU (~17GB VRAM).
+  - Creator-recommended samplers: temp=0.8, top_p=0.95, top_k=40, min_p=0.05, rep_pen=1.05.
+  - Thinking disabled via adapter (no wasted tokens on reasoning).
+- **`_strip_think_tags()` Hardened** (`router.py`): Now also catches orphaned `<think>` tags with no closing tag (model cut off mid-reasoning).
+- **`MODEL_CHANGE_GUIDE.md`**: Rewritten to document multi-backend switching workflow.
+
+### How to Swap Backends
+```bash
+# In .env:
+LLM_BACKEND=kobold   # GLM-4.7 via KoboldCpp
+LLM_BACKEND=tabby    # Qwen3-32B via TabbyAPI
+
+# Then:
+docker-compose restart astral-bot
+```
+
+---
+
 ## [3.4.1] - 2026-02-16
 
 ### Changed

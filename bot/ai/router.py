@@ -1,4 +1,4 @@
-"""AI Router - Single model orchestration with LM Studio (Qwen3-VL-32B)."""
+"""AI Router - Multi-backend LLM orchestration (TabbyAPI / KoboldCpp)."""
 import os
 import json
 import time
@@ -18,15 +18,58 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 
+# ── Backend Configuration ─────────────────────────────────────────────
+# Switch via LLM_BACKEND env var: "tabby" | "kobold"
+LLM_BACKEND = os.getenv("LLM_BACKEND", "tabby").lower()
+
+# Per-backend defaults: (host, model, sampler overrides)
+BACKEND_CONFIGS = {
+    "tabby": {
+        "host": os.getenv("TABBY_HOST", "http://host.docker.internal:5000"),
+        "model": os.getenv("TABBY_MODEL", "Qwen3-32B-4.25bpw-exl2"),
+        "api_key": os.getenv("TABBY_API_KEY"),
+        # Qwen3 official thinking-mode samplers
+        "temperature": 0.6,
+        "top_p": 0.95,
+        "top_k": 20,
+        "min_p": 0,
+        "presence_penalty": 0.3,
+        "frequency_penalty": 0.1,
+        "extra_payload": {"chat_template_kwargs": {"enable_thinking": True}},
+    },
+    "kobold": {
+        "host": os.getenv("KOBOLD_HOST", "http://koboldcpp:5001"),
+        "model": os.getenv("KOBOLD_MODEL", "GLM-4.7-Flash"),
+        "api_key": None,  # KoboldCpp doesn't need auth
+        # GLM-4.7 creator-recommended samplers (DavidAU screenshot)
+        "temperature": 0.8,
+        "top_p": 0.95,
+        "top_k": 40,
+        "min_p": 0.05,
+        "presence_penalty": 0.0,
+        "frequency_penalty": 0.0,
+        "rep_pen": 1.05,
+        "extra_payload": {},  # No thinking kwargs — adapter handles it
+    },
+}
+
+
+def _get_backend():
+    """Return the active backend config dict."""
+    return BACKEND_CONFIGS.get(LLM_BACKEND, BACKEND_CONFIGS["tabby"])
+
+
 def _strip_think_tags(text: str) -> str:
     """
     Strip <think>...</think> reasoning blocks from model output.
-    The Deep Reasoning model outputs these for chain-of-thought, but we don't want to show them.
+    Safety net — should rarely fire when thinking is disabled at the template level.
     """
     if not text:
         return text
     # Remove <think>...</think> blocks (including newlines within)
     cleaned = re.sub(r'<think>.*?</think>\s*', '', text, flags=re.DOTALL)
+    # Also strip orphaned opening <think> with no closing tag (model started thinking but got cut off)
+    cleaned = re.sub(r'<think>.*', '', cleaned, flags=re.DOTALL)
     return cleaned.strip()
 
 
@@ -131,43 +174,55 @@ def _extract_json(text: str) -> dict:
     raise ValueError(f"Could not extract JSON from: {text[:100]}")
 
 
-# LLM server (OpenAI-compatible API — LM Studio or TabbyAPI)
-LLM_HOST = os.getenv("LMSTUDIO_HOST") or os.getenv("TABBY_HOST", "http://host.docker.internal:1234")
+# ── Resolved backend settings ──────────────────────────────────────────
+_backend = _get_backend()
+LLM_HOST = _backend["host"]
+LLM_MODEL = _backend["model"]
+print(f"[Router] Active backend: {LLM_BACKEND} | Host: {LLM_HOST} | Model: {LLM_MODEL}")
 
-# Model identifier
-LLM_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL") or os.getenv("TABBY_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
 
+async def _call_lmstudio(messages: list, temperature: float = None, max_tokens: int = 8000, stop: list = None, presence_penalty: float = None, frequency_penalty: float = None, model: str = None) -> dict:
+    """Make a request to the active LLM backend (OpenAI-compatible API).
 
-async def _call_lmstudio(messages: list, temperature: float = 0.6, max_tokens: int = 8000, stop: list = None, presence_penalty: float = 0.3, frequency_penalty: float = 0.1, model: str = None) -> dict:
-    """Make a request to TabbyAPI (OpenAI-compatible API) with Qwen3-32B EXL2 settings.
-
-    Uses Qwen3 official thinking mode samplers: temp=0.6, top_p=0.95, top_k=20, min_p=0.
-    Thinking enabled — model outputs <think>...</think> blocks stripped before Discord.
+    Sampler defaults are pulled from the active backend config (TabbyAPI vs KoboldCpp).
     Returns dict with 'text', 'tokens', 'tps' keys (or None on failure).
     """
+    backend = _get_backend()
+
+    # Use backend defaults if caller didn't override
+    if temperature is None:
+        temperature = backend["temperature"]
+    if presence_penalty is None:
+        presence_penalty = backend["presence_penalty"]
+    if frequency_penalty is None:
+        frequency_penalty = backend["frequency_penalty"]
+
     payload = {
         "model": model or LLM_MODEL,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": False,
-        "top_p": 0.95,
-        "top_k": 20,
-        "min_p": 0,
+        "top_p": backend["top_p"],
+        "top_k": backend["top_k"],
+        "min_p": backend["min_p"],
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
-        "chat_template_kwargs": {"enable_thinking": True},
     }
+    # Merge backend-specific payload (e.g. chat_template_kwargs for Qwen3)
+    payload.update(backend.get("extra_payload", {}))
+
+    # KoboldCpp repetition penalty (separate from OpenAI presence/frequency penalty)
+    if backend.get("rep_pen"):
+        payload["repetition_penalty"] = backend["rep_pen"]
+
     # Add stop sequences if provided (prevents model from roleplaying users)
     if stop:
         payload["stop"] = stop
-    # Note: LM Studio doesn't support json_mode like OpenAI
-    # The prompt instructs JSON output directly
 
-
-    # Auth (TabbyAPI needs a key, LM Studio doesn't)
+    # Auth (TabbyAPI needs a key, KoboldCpp doesn't)
     headers = {"Content-Type": "application/json"}
-    api_key = os.getenv("TABBY_API_KEY")
+    api_key = backend.get("api_key")
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
 
@@ -182,7 +237,7 @@ async def _call_lmstudio(messages: list, temperature: float = 0.6, max_tokens: i
             ) as resp:
                 if resp.status != 200:
                     error = await resp.text()
-                    print(f"[LMStudio] Error {resp.status}: {error[:200]}")
+                    print(f"[{LLM_BACKEND}] Error {resp.status}: {error[:200]}")
                     return None
 
                 data = await resp.json()
@@ -195,11 +250,11 @@ async def _call_lmstudio(messages: list, temperature: float = 0.6, max_tokens: i
         completion_tokens = usage.get("completion_tokens", 0)
         tps = completion_tokens / elapsed if elapsed > 0 and completion_tokens else 0
 
-        print(f"[LMStudio] {completion_tokens} tokens in {elapsed:.2f}s | {tps:.1f} T/s")
+        print(f"[{LLM_BACKEND}] {completion_tokens} tokens in {elapsed:.2f}s | {tps:.1f} T/s")
 
         return {"text": text, "tokens": completion_tokens, "tps": round(tps, 1)}
     except Exception as e:
-        print(f"[LMStudio] Request failed: {e}")
+        print(f"[{LLM_BACKEND}] Request failed: {e}")
         return None
 
 
@@ -385,9 +440,11 @@ Reply to the last message as Astra. Do not output internal thoughts."""
 
         # [DYNAMIC CREATIVITY]
         # Check if the last bot message was repetitive to break loops naturally
-        temp = 0.6
-        pres_pen = 0.3
-        freq_pen = 0.1
+        # Start from backend defaults, spike if loop detected
+        backend = _get_backend()
+        temp = backend["temperature"]
+        pres_pen = backend["presence_penalty"]
+        freq_pen = backend["frequency_penalty"]
         
         last_bot_msg = ""
         for msg in reversed(conversation_history or []):
@@ -418,9 +475,9 @@ Reply to the last message as Astra. Do not output internal thoughts."""
 
         if is_stuck:
             print("[Router] Loop detected! Spiking creativity parameters.")
-            temp = 0.75     # Elevated from 0.6 baseline
-            pres_pen = 0.5   # Push harder for variety
-            freq_pen = 0.2   # Slightly elevated
+            temp = min(backend["temperature"] + 0.15, 1.2)  # Spike above baseline (capped)
+            pres_pen = min(backend["presence_penalty"] + 0.2, 0.5)  # Push for variety
+            freq_pen = min(backend["frequency_penalty"] + 0.1, 0.25)  # Slightly elevated
 
         result = await _call_lmstudio(
             messages=messages,
@@ -450,11 +507,11 @@ Reply to the last message as Astra. Do not output internal thoughts."""
                 print(f"[Router] Output loop detected (similarity={similarity:.2f}), regenerating with spiked params")
                 retry = await _call_lmstudio(
                     messages=messages,
-                    temperature=0.75,
+                    temperature=min(backend["temperature"] + 0.2, 1.2),
                     max_tokens=tokens,
                     stop=stop_sequences,
-                    presence_penalty=0.6,
-                    frequency_penalty=0.25
+                    presence_penalty=min(backend["presence_penalty"] + 0.3, 0.6),
+                    frequency_penalty=min(backend["frequency_penalty"] + 0.15, 0.25)
                 )
                 if retry:
                     cleaned = _strip_think_tags(retry["text"])

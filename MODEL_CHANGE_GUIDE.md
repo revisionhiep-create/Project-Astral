@@ -1,41 +1,71 @@
-# 🔄 How to Change Models — Astra & GemGem
+# How to Change Models — Astra & GemGem
 
 > **Purpose:** Step-by-step guide for switching the LLM models used by Astra (Project-Astral) and GemGem (Docker).
-> All models run locally via **LM Studio** (OpenAI-compatible API at `host.docker.internal:1234`).
 
 ---
 
-## Quick Summary
+## Quick Summary — Astra (Project-Astral)
 
-Both bots now use the **same method**:
-1.  Edit `.env` file.
-2.  Rebuild Docker.
+Astra supports **multiple backends** via `LLM_BACKEND` env var:
 
----
+| Backend | Engine | Format | Config Vars |
+|---------|--------|--------|-------------|
+| `tabby` | TabbyAPI | EXL2 | `TABBY_HOST`, `TABBY_MODEL`, `TABBY_API_KEY` |
+| `kobold` | KoboldCpp | GGUF | `KOBOLD_HOST`, `KOBOLD_MODEL` |
 
-## 💎 How to Change Models — Astra (Project-Astral)
-
-### 1. Update `.env`
+### Swap backends (1 line):
 
 ```bash
 # Project-Astral/.env
-LMSTUDIO_CHAT_MODEL=new-model-name-here
+LLM_BACKEND=kobold   # or "tabby"
 ```
 
-### 2. Rebuild
+Then rebuild:
 
 ```bash
 cd Project-Astral
 docker-compose up -d --build astral-bot
 ```
 
-### 3. (Optional) Update Fallbacks
-
-The files `bot/ai/router.py`, `bot/memory/rag.py`, and `bot/tools/vision.py` have hardcoded fallbacks in case the env var is missing. You can update them to keep the code consistent, but it's not required for the change to take effect.
+Sampler settings (temperature, penalties, etc.) are **auto-configured per backend** in `bot/ai/router.py` — no manual tuning needed when swapping.
 
 ---
 
-## 🍌 How to Change Models — GemGem (Docker)
+## Backend: TabbyAPI (EXL2)
+
+```bash
+TABBY_HOST=http://host.docker.internal:5000
+TABBY_MODEL=Qwen3-32B-4.25bpw-exl2
+TABBY_API_KEY=your-key
+LLM_BACKEND=tabby
+```
+
+Runs on host machine. Samplers: temp=0.6, top_p=0.95, top_k=20 (Qwen3 thinking mode).
+
+---
+
+## Backend: KoboldCpp (GGUF)
+
+```bash
+KOBOLD_HOST=http://koboldcpp:5001
+KOBOLD_MODEL=GLM-4.7-Flash-Uncen-Hrt-NEO-CODE-MAX-imat-D_AU-Q4_K_S
+KOBOLD_MODEL_FILE=GLM-4.7-Flash-Uncen-Hrt-NEO-CODE-MAX-imat-D_AU-Q4_K_S.gguf
+KOBOLD_ADAPTER=glm47-nothink-adapter.json
+KOBOLD_CONTEXT=8192
+LLM_BACKEND=kobold
+```
+
+Runs as Docker container. Samplers: temp=1.0, top_p=0.95, no rep pen (GLM-4.7 recommended).
+
+### Adding a new GGUF model to KoboldCpp:
+1. Place the `.gguf` file in `koboldcpp/models/`
+2. Create a chat adapter JSON in `koboldcpp/` (or use existing)
+3. Update `KOBOLD_MODEL_FILE` and `KOBOLD_ADAPTER` in `.env`
+4. Rebuild: `docker-compose up -d --build koboldcpp`
+
+---
+
+## GemGem (Docker)
 
 ### 1. Update `.env`
 
@@ -59,14 +89,18 @@ docker-compose up -d --build gemgem-bot
 Different model families use different stop tokens. If switching families (e.g., Qwen -> Llama), check `bot/ai/router.py` in Astra.
 
 ### Check `<think>` Tag Stripping
-DeepSeek/Reasoning models output `<think>` tags. Ensure `_strip_think_tags()` is active in `router.py` (Astra) and `fact_agent.py` (GemGem).
+`_strip_think_tags()` in `router.py` catches `<think>...</think>` blocks as a safety net across all backends. For KoboldCpp, thinking is disabled at the template level via the adapter JSON.
+
+### GLM-4.7 Rep Pen Sensitivity
+GLM-4.7 is extremely sensitive to repetition penalties. The kobold backend config sets them to 0. Do not increase unless you see repetition issues.
 
 ---
 
-## Current Models (as of 2026-02-11)
+## Current Models (as of 2026-02-17)
 
 ```
-Astra Chat:     qwen3-vl-32b-instruct-heretic-v2-i1
-GemGem Chat:    qwen3-vl-32b-instruct-heretic-v2-i1
-Vision:         Gemini 3.0 Flash (cloud API)
+Astra Chat (tabby):   Qwen3-32B-4.25bpw-exl2 (TabbyAPI)
+Astra Chat (kobold):  GLM-4.7-Flash-Heretic-NEO-CODE Q4_K_S (KoboldCpp)
+GemGem Chat:          qwen3-vl-32b-instruct-heretic-v2-i1
+Vision:               Gemini 3.0 Flash (cloud API)
 ```
