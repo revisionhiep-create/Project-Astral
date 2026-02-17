@@ -3,6 +3,16 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.6.2] - 2026-02-17
+
+### Changed
+- **Few-Shot Examples Expanded** (`personality.py`): Added 9 new style anchor examples (5 → 14 total).
+  - Covers gaps: fond-tease mode, genuine engagement, compliment deflection, dramatic empathy, longer response anchor, opinion framing.
+  - All inputs are generic/situational (no named facts that could cause topic bleed or logic loops).
+  - Response structures deliberately varied to prevent single-pattern anchoring.
+
+---
+
 ## [3.6.1] - 2026-02-17
 
 ### Changed
