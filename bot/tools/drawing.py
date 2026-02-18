@@ -42,24 +42,35 @@ class DrawingHandler:
     ) -> Tuple[Optional[BytesIO], Optional[str], str]:
         """
         Handle a direct draw request.
-        
+
         Flow:
         1. Detect character references
         2. Generate image
         3. Analyze image with vision
         4. Generate critique
-        
+
         Returns:
             tuple: (image_data BytesIO, engine_name, critique)
         """
         print(f"[Draw] Processing: '{subject[:50]}...'")
         user_id = str(message.author.id)
-        
+
         # Detect character references in the prompt
         matched_chars = detect_characters(subject)
         reference_images = []
         enhanced_prompt = subject
-        
+
+        # Download any images the user attached to their message
+        for attachment in message.attachments:
+            if attachment.content_type and attachment.content_type.startswith("image/"):
+                try:
+                    img_bytes = await attachment.read()
+                    img = PIL.Image.open(BytesIO(img_bytes))
+                    reference_images.insert(0, img)  # User image goes first
+                    print(f"[Draw] Added user attachment: {attachment.filename}")
+                except Exception as e:
+                    print(f"[Draw] Failed to load attachment '{attachment.filename}': {e}")
+
         # Load reference images for matched characters
         for char in matched_chars:
             ref_img = load_character_image(char["name"])
@@ -121,7 +132,18 @@ class DrawingHandler:
         # Detect character references
         matched_chars = detect_characters(basic_prompt)
         reference_images = []
-        
+
+        # Download any images the user attached to their message
+        for attachment in message.attachments:
+            if attachment.content_type and attachment.content_type.startswith("image/"):
+                try:
+                    img_bytes = await attachment.read()
+                    img = PIL.Image.open(BytesIO(img_bytes))
+                    reference_images.insert(0, img)  # User image goes first
+                    print(f"[GDraw] Added user attachment: {attachment.filename}")
+                except Exception as e:
+                    print(f"[GDraw] Failed to load attachment '{attachment.filename}': {e}")
+
         # Load reference images
         for char in matched_chars:
             ref_img = load_character_image(char["name"])

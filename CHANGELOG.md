@@ -3,6 +3,16 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.6.3] - 2026-02-17
+
+### Fixed
+- **User-Attached Images Ignored in Draw** (`drawing.py`): When a user attached an image to a draw/gdraw command, it was silently dropped — only pre-loaded character reference images were ever passed to the generator.
+  - Root cause: `handle_draw_request` and `handle_guided_draw_request` never checked `message.attachments`.
+  - Fix: Both handlers now iterate `message.attachments`, download any image attachments via `attachment.read()`, open them as PIL Images, and prepend them to `reference_images` (user image first, character refs after).
+  - Result: "draw this in the style of Futurama" with an attached photo now works — the attached image is passed as a reference to Gemini alongside the prompt.
+
+---
+
 ## [3.6.2] - 2026-02-17
 
 ### Changed
