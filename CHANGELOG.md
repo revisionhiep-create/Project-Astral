@@ -3,6 +3,16 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.6.4] - 2026-02-20
+
+### Fixed
+- **Pronoun Disambiguation** (`personality.py`): Astra was confusing "I/me/my" from the user as referring to herself.
+  - Expanded the `current_speaker` injection in `build_system_prompt()` to explicitly clarify pronoun ownership per speaker.
+  - When the current user says "I", "me", or "my" — the model now understands they mean themselves, not Astra.
+  - Applies dynamically to all users (uses `current_speaker` at runtime, not hardcoded).
+
+---
+
 ## [3.6.3] - 2026-02-17
 
 ### Fixed

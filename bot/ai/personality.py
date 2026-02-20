@@ -262,7 +262,11 @@ def build_system_prompt(
     parts = [ASTRA_PROMPT]
 
     if current_speaker:
-        parts.append(f"\nCurrent speaker: {current_speaker}")
+        parts.append(
+            f"\nYou are talking to: {current_speaker}.\n"
+            f"When {current_speaker} says \"I\", \"me\", or \"my\" — they mean themselves ({current_speaker}), not you.\n"
+            f"When you say \"I\", \"me\", or \"my\" — you mean yourself (Astra)."
+        )
 
     if search_context:
         parts.append(f"\nSearch context:\n{search_context}")
