@@ -3,6 +3,16 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.6.5] - 2026-02-21
+
+### Fixed
+- **Unprompted Character Mentions** (`personality.py`): Astra was randomly namedropping other characters (Liddo, Hiep, Melon) to answer generic questions.
+  - Added a strict `LORE & CONTEXT RULE` to the system prompt's character list.
+  - Explicitly instructs Astra to use character lore only as background data unless the user asks about them, they are in the chat, or visible in an image.
+  - Prevents the uncensored model from treating background lore as an active conversational topic.
+
+---
+
 ## [3.6.4] - 2026-02-20
 
 ### Fixed
