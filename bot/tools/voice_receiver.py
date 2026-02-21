@@ -74,7 +74,7 @@ class VoiceReceiver:
 
         self._running = True
 
-        def callback(user, data: voice_recv.VoiceData):
+        def callback(user: discord.User, data: voice_recv.VoiceData) -> None:
             if user is None:
                 return
             pcm = data.pcm
@@ -108,7 +108,7 @@ class VoiceReceiver:
         self.users.clear()
         print(f"🔇 [VoiceRecv] Stopped listening in {self.guild.name}")
 
-    def _handle_audio(self, user: discord.User, pcm: bytes):
+    def _handle_audio(self, user: discord.User, pcm: bytes) -> None:
         """Called for each audio packet received."""
         uid = user.id
         now = time.monotonic()
@@ -120,7 +120,7 @@ class VoiceReceiver:
         self.buffers[uid].append(pcm)
         self.last_audio_time[uid] = now
 
-    async def _flush_loop(self):
+    async def _flush_loop(self) -> None:
         """Periodically check for completed utterances (silence gap detection)."""
         try:
             while self._running:
@@ -152,7 +152,7 @@ class VoiceReceiver:
         except Exception as e:
             print(f"❌ [VoiceRecv] Flush loop error: {e}")
 
-    async def _watchdog_loop(self):
+    async def _watchdog_loop(self) -> None:
         """Monitor the PacketRouter thread and restart if it dies."""
         try:
             while self._running:
@@ -172,7 +172,7 @@ class VoiceReceiver:
                         break
 
                     try:
-                        def callback(user, data: voice_recv.VoiceData):
+                        def callback(user: discord.User, data: voice_recv.VoiceData) -> None:
                             if user is None:
                                 return
                             pcm = data.pcm
@@ -189,7 +189,7 @@ class VoiceReceiver:
         except Exception as e:
             print(f"❌ [VoiceRecv] Watchdog error: {e}")
 
-    async def _emit_utterance(self, uid: int):
+    async def _emit_utterance(self, uid: int) -> None:
         """Process and emit a complete utterance for a user."""
         buffer = self.buffers.pop(uid, [])
         self.last_audio_time.pop(uid, None)

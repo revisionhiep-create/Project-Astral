@@ -3,7 +3,6 @@ import os
 import json
 import time
 import aiohttp
-from typing import Optional
 import difflib
 
 import re

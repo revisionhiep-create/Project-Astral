@@ -1,10 +1,9 @@
 """GemGem Discord Bot - Chat Handler Cog (Logic AI Architecture)"""
 import discord
 from discord.ext import commands
-from discord import app_commands
-from typing import Optional
 import pytz
 import re
+import traceback
 
 from ai.router import process_message, decide_tools_and_query, summarize_text
 
@@ -12,12 +11,11 @@ from memory.rag import (
     retrieve_relevant_knowledge, 
     store_conversation,
     store_full_search,
-    store_image_knowledge,
     format_knowledge_for_context
 )
 from tools.search import search, format_search_results
-from tools.vision import analyze_image, can_see_images, get_recent_image_context
-from tools.discord_context import fetch_recent_messages, format_discord_context
+from tools.vision import analyze_image, get_recent_image_context
+from tools.discord_context import format_discord_context
 from tools.voice_handler import get_voice_handler
 from tools.admin import whitelist, ADMIN_IDS
 import asyncio
@@ -274,7 +272,6 @@ class ChatCog(commands.Cog):
                     
             except Exception as e:
                 print(f"[Chat Error] {e}")
-                import traceback
                 traceback.print_exc()
                 await message.channel.send("uh something broke lol, try again?")
 
@@ -294,12 +291,12 @@ class ChatCog(commands.Cog):
                     asyncio.create_task(self._initialize_summary(channel))
                     return
 
-    async def _initialize_summary(self, channel):
+    async def _initialize_summary(self, channel: discord.TextChannel) -> None:
         """Generate initial summary from history on boot."""
         print(f"[Summarizer] Bootstrapping summary from {channel.name}...")
         await self._update_summary(channel, initial=True)
 
-    async def _update_summary(self, channel, initial=False):
+    async def _update_summary(self, channel: discord.TextChannel, initial: bool = False) -> None:
         """Fetch older messages and update the summary cache."""
         try:
             self.is_summarizing = True

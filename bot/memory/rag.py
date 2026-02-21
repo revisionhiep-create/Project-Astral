@@ -10,6 +10,8 @@ import json
 import sqlite3
 import hashlib
 import aiohttp
+import asyncio
+from contextlib import closing
 import google.generativeai as genai
 from datetime import datetime
 from typing import Optional
@@ -269,25 +271,25 @@ async def store_knowledge(
     
     knowledge_id = f"know_{hashlib.md5(content.encode()).hexdigest()[:12]}_{int(datetime.now().timestamp())}"
     
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute(
-            """INSERT OR REPLACE INTO knowledge 
-               (id, content, embedding, knowledge_type, source, metadata) 
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (knowledge_id, content, json.dumps(embedding), knowledge_type, source, json.dumps(metadata or {}))
-        )
-        conn.commit()
-        print(f"[RAG] Stored knowledge: {knowledge_type} ({len(content)} chars)")
+    def _do_write():
+        with closing(sqlite3.connect(DATABASE_PATH)) as conn:
+            with closing(conn.cursor()) as cursor:
+                cursor.execute(
+                    """INSERT OR REPLACE INTO knowledge 
+                       (id, content, embedding, knowledge_type, source, metadata) 
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (knowledge_id, content, json.dumps(embedding), knowledge_type, source, json.dumps(metadata or {}))
+                )
+                conn.commit()
         _rebuild_bm25_index()  # Keep keyword index fresh
+
+    try:
+        await asyncio.to_thread(_do_write)
+        print(f"[RAG] Stored knowledge: {knowledge_type} ({len(content)} chars)")
         return knowledge_id
     except Exception as e:
         print(f"[RAG Store Error] {e}")
         return None
-    finally:
-        conn.close()
 
 
 # ============== CONVERSATION STORAGE (SUMMARY RAG) ==============
@@ -381,24 +383,24 @@ async def store_full_search(query: str, results: list[dict]) -> Optional[str]:
     embedding = await get_embedding(f"Search about: {query}")
     search_id = f"search_{hashlib.md5(query.encode()).hexdigest()[:12]}_{int(datetime.now().timestamp())}"
     
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    
+    def _do_write():
+        with closing(sqlite3.connect(DATABASE_PATH)) as conn:
+            with closing(conn.cursor()) as cursor:
+                cursor.execute(
+                    """INSERT OR REPLACE INTO search_knowledge 
+                       (id, query, full_results, embedding) 
+                       VALUES (?, ?, ?, ?)""",
+                    (search_id, query, full_results, json.dumps(embedding) if embedding else None)
+                )
+                conn.commit()
+
     try:
-        cursor.execute(
-            """INSERT OR REPLACE INTO search_knowledge 
-               (id, query, full_results, embedding) 
-               VALUES (?, ?, ?, ?)""",
-            (search_id, query, full_results, json.dumps(embedding) if embedding else None)
-        )
-        conn.commit()
+        await asyncio.to_thread(_do_write)
         print(f"[RAG] Stored full search: '{query}' ({len(results)} results)")
         return search_id
     except Exception as e:
         print(f"[RAG Search Error] {e}")
         return None
-    finally:
-        conn.close()
 
 
 # ============== IMAGE STORAGE ==============
@@ -432,25 +434,25 @@ async def store_image_knowledge(
     
     img_id = f"img_{hashlib.md5(content.encode()).hexdigest()[:12]}_{int(datetime.now().timestamp())}"
     
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    
+    def _do_write():
+        with closing(sqlite3.connect(DATABASE_PATH)) as conn:
+            with closing(conn.cursor()) as cursor:
+                cursor.execute(
+                    """INSERT INTO image_knowledge 
+                       (id, image_url, user_context, gemini_description, gemgem_response, embedding, user_id) 
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (img_id, image_url, user_context, gemini_description, gemgem_response,
+                     json.dumps(embedding) if embedding else None, user_id)
+                )
+                conn.commit()
+
     try:
-        cursor.execute(
-            """INSERT INTO image_knowledge 
-               (id, image_url, user_context, gemini_description, gemgem_response, embedding, user_id) 
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (img_id, image_url, user_context, gemini_description, gemgem_response,
-             json.dumps(embedding) if embedding else None, user_id)
-        )
-        conn.commit()
+        await asyncio.to_thread(_do_write)
         print(f"[RAG] Stored image knowledge ({len(gemini_description)} chars)")
         return img_id
     except Exception as e:
         print(f"[RAG Image Error] {e}")
         return None
-    finally:
-        conn.close()
 
 
 # ============== DRAWING STORAGE ==============
@@ -513,25 +515,25 @@ async def store_drawing_knowledge(
         "is_edit": is_edit
     }
     
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    
+    def _do_write():
+        with closing(sqlite3.connect(DATABASE_PATH)) as conn:
+            with closing(conn.cursor()) as cursor:
+                cursor.execute(
+                    """INSERT INTO knowledge 
+                       (id, content, embedding, knowledge_type, source, metadata) 
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (draw_id, content, json.dumps(embedding) if embedding else "[]", 
+                     "drawing", f"user_{user_id}", json.dumps(metadata))
+                )
+                conn.commit()
+
     try:
-        cursor.execute(
-            """INSERT INTO knowledge 
-               (id, content, embedding, knowledge_type, source, metadata) 
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (draw_id, content, json.dumps(embedding) if embedding else "[]", 
-             "drawing", f"user_{user_id}", json.dumps(metadata))
-        )
-        conn.commit()
+        await asyncio.to_thread(_do_write)
         print(f"[RAG] Stored drawing knowledge: '{user_request[:40]}...'")
         return draw_id
     except Exception as e:
         print(f"[RAG Drawing Error] {e}")
         return None
-    finally:
-        conn.close()
 
 
 # ============== RETRIEVAL ==============
