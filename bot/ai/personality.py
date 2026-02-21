@@ -246,9 +246,6 @@ def get_astra_prompt():
     )
 
 
-ASTRA_PROMPT = get_astra_prompt()
-
-
 # ---------------------------------------------------------
 # PROMPT BUILDER
 # ---------------------------------------------------------
@@ -259,7 +256,7 @@ def build_system_prompt(
     current_speaker=None
 ):
 
-    parts = [ASTRA_PROMPT]
+    parts = [get_astra_prompt()]
 
     if current_speaker:
         parts.append(
