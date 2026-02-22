@@ -304,7 +304,7 @@ async def generate_response(
     current_speaker: str = None
 ) -> str:
     """
-    Generate an Astra response using proper system/user ChatML roles.
+    Generate an Astral response using proper system/user ChatML roles.
     
     System message: personality + search results + memory (high instruction priority)
     User message: conversation transcript + current question
@@ -332,7 +332,7 @@ async def generate_response(
                 # Already formatted, use as-is
                 transcript_lines.append(content)
             elif role == "assistant":
-                transcript_lines.append(f"[Astra]: {content}")
+                transcript_lines.append(f"[Astral]: {content}")
             else:
                 # Check for image indicator in content
                 if "[shares an image]" in content or "[Image:" in content:
@@ -352,7 +352,7 @@ async def generate_response(
     user_prompt = f"""[Transcript - Last {len(transcript_lines)} Messages]
 {transcript}
 
-Reply to the last message as Astra. Do not output internal thoughts."""
+Reply to the last message as Astral. Do not output internal thoughts."""
     
     # Proper system/user role separation — LM Studio handles ChatML tokenization
     messages = [
@@ -378,11 +378,11 @@ Reply to the last message as Astra. Do not output internal thoughts."""
         
         last_bot_msg = ""
         for msg in reversed(conversation_history or []):
-            if msg.get("role") == "assistant" or "[Astra]" in msg.get("content", ""):
-                 # Extract content after [Astra]: if formatted
+            if msg.get("role") == "assistant" or "[Astral]" in msg.get("content", ""):
+                 # Extract content after [Astral]: if formatted
                  content = msg.get("content", "")
-                 if "[Astra]:" in content:
-                     last_bot_msg = content.split("[Astra]:", 1)[1].strip()
+                 if "[Astral]:" in content:
+                     last_bot_msg = content.split("[Astral]:", 1)[1].strip()
                  else:
                      last_bot_msg = content
                  break
@@ -426,8 +426,8 @@ Reply to the last message as Astra. Do not output internal thoughts."""
         cleaned = _strip_roleplay_actions(cleaned)
         cleaned = _strip_repeated_content(cleaned)
         cleaned = _strip_specific_hallucinations(cleaned)
-        # Strip self-name prefix (model mimics transcript format "[Astra]: ..." or "Astra: ...")
-        cleaned = re.sub(r'^(?:\[?Astra\]?:\s*)', '', cleaned, flags=re.IGNORECASE).strip()
+        # Strip self-name prefix (model mimics transcript format "[Astral]: ..." or "Astral: ...")
+        cleaned = re.sub(r'^(?:\[?Astral\]?:\s*)', '', cleaned, flags=re.IGNORECASE).strip()
 
         # OUTPUT LOOP DETECTION: Compare with last bot message
         if last_bot_msg and len(last_bot_msg) > 10 and len(cleaned) > 10:
@@ -447,7 +447,7 @@ Reply to the last message as Astra. Do not output internal thoughts."""
                     cleaned = _strip_roleplay_actions(cleaned)
                     cleaned = _strip_repeated_content(cleaned)
                     cleaned = _strip_specific_hallucinations(cleaned)
-                    cleaned = re.sub(r'^(?:\[?Astra\]?:\s*)', '', cleaned, flags=re.IGNORECASE).strip()
+                    cleaned = re.sub(r'^(?:\[?Astral\]?:\s*)', '', cleaned, flags=re.IGNORECASE).strip()
 
         return cleaned
     

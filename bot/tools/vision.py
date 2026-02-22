@@ -32,7 +32,7 @@ GEMINI_VISION_MODEL = "gemini-3-flash-preview"
 _recent_images = deque(maxlen=5)
 
 
-async def describe_image(image_url: str = None, image_data: bytes = None, user_context: str = "") -> str:
+async def describe_image(image_url: str = None, image_data: bytes = None, user_context: str = "", mime_type: str = "image/jpeg") -> str:
     """
     Describe an image using Gemini 3.0 Flash.
     Returns a text description that can be passed to Astra.
@@ -44,6 +44,7 @@ async def describe_image(image_url: str = None, image_data: bytes = None, user_c
                 async with session.get(image_url) as resp:
                     if resp.status != 200:
                         return None
+                    mime_type = resp.headers.get('Content-Type', mime_type)
                     image_data = await resp.read()
         except Exception as e:
             print(f"[Vision] Failed to fetch image: {e}")
@@ -100,7 +101,7 @@ async def describe_image(image_url: str = None, image_data: bytes = None, user_c
         
         response = await model.generate_content_async(
             [
-                {"mime_type": "image/jpeg", "data": image_data},
+                {"mime_type": mime_type, "data": image_data},
                 description_prompt
             ],
             generation_config={

@@ -3,6 +3,21 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.6.6] - 2026-02-22
+
+### Changed
+- **Bot Renamed to Astral**: Name changed from Astra to Astral across core files (`personality.py`, `router.py`, `chat.py`, `characters.py`, `discord_context.py`) to match her Discord identity.
+- **Personality Discord Tag Awareness** (`personality.py`): Explicitly instructed her that her Discord name is "Astral (LAB)" so she understands direct mentions using that suffix.
+
+### Fixed
+- **Raw Discord Tag Resolution** (`chat.py`, `discord_context.py`): The bot was seeing raw numeric IDs (like `<@123456>`) instead of human-readable names when users were mentioned.
+  - Switched from `msg.content` to `msg.clean_content` to automatically resolve mentions into `@Username` format before feeding them to the LLM.
+- **Vision API Mime Type Crash** (`vision.py`): Hardcoded `image/jpeg` in the Gemini API payload caused silent failures for PNG and WEBP discord attachments.
+  - Dynamically extracts the actual `mime_type` from Discord's HTTP response headers (`resp.headers.get('Content-Type', mime_type)`) and passes it to Gemini.
+  - Re-verified that `gemini-3-flash-preview` natively supports vision inputs.
+
+---
+
 ## [3.6.5] - 2026-02-21
 
 ### Fixed

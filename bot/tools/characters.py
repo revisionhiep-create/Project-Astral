@@ -112,7 +112,7 @@ def get_character_description(character_name: str) -> Optional[str]:
 def get_character_context_for_vision() -> str:
     """
     Build a context string for vision analysis.
-    Helps Astra recognize people she knows in images.
+    Helps Astral recognize people she knows in images.
     """
     characters = _load_characters()
     
@@ -122,9 +122,9 @@ def get_character_context_for_vision() -> str:
     context = "People/Characters you know:\n"
     for name, data in characters.items():
         desc = data.get("description", "")
-        # Mark Astra as "YOU" so the vision model knows who the AI is
-        if name.lower() == "astra":
-            context += f"- **YOU (Astra)**: {desc} - THIS IS YOU, the AI. If you see this character, say 'Astra' or 'you'.\n"
+        # Mark Astral as "YOU" so the vision model knows who the AI is
+        if name.lower() == "astral":
+            context += f"- **YOU (Astral)**: {desc} - THIS IS YOU, the AI. If you see this character, say 'Astral' or 'you'.\n"
         else:
             context += f"- {name.title()}: {desc}\n"
     

@@ -49,14 +49,14 @@ async def fetch_recent_messages(
                 if msg.author.id == GEMGEM_BOT_ID:
                     author_name = "GemGem"  # Label GemGem's messages
                 elif msg.author.id == bot.user.id:
-                    author_name = "Astra"  # Label our own messages as Astra
+                    author_name = "Astral"  # Label our own messages as Astral
                 else:
                     author_name = msg.author.display_name  # Other bots keep their name
                 
             messages.append({
                 "author": author_name,
                 "user_id": str(msg.author.id),
-                "content": msg.content[:500],  # Truncate long messages
+                "content": msg.clean_content[:500],  # Truncate long messages
                 "timestamp": msg.created_at.isoformat(),
                 "is_bot": msg.author.bot
             })
@@ -101,8 +101,8 @@ def format_discord_context(messages: list[dict], max_messages: int = 50) -> str:
     lines = []
     for msg in recent:
         content = msg['content']
-        # Strip citation markers from Astra's own messages so she doesn't copy the pattern
-        if msg['author'] == 'Astra':
+        # Strip citation markers from Astral's own messages so she doesn't copy the pattern
+        if msg['author'] == 'Astral':
             content = _strip_citations(content)
         # Format: [Time] [Username]: message content
         time = msg.get('time', '')
@@ -123,8 +123,8 @@ async def fetch_dm_history(
     try:
         async for msg in channel.history(limit=limit):
             messages.append({
-                "author": "User" if not msg.author.bot else "Astra",
-                "content": msg.content[:500],
+                "author": "User" if not msg.author.bot else "Astral",
+                "content": msg.clean_content[:500],
                 "timestamp": msg.created_at.isoformat()
             })
         return list(reversed(messages))

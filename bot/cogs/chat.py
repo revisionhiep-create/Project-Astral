@@ -23,12 +23,12 @@ import asyncio
 # Timezone for user-facing timestamps
 PST = pytz.timezone("America/Los_Angeles")
 
-# Regex to strip deterministic footers from Astra's own messages in history
+# Regex to strip deterministic footers from Astral's own messages in history
 FOOTER_REGEX = re.compile(r'\n\n[💡🔍]\d+(?:\s[💡🔍]\d+)*$', re.DOTALL)
 
 
 class ChatCog(commands.Cog):
-    """Handles all chat interactions with Astra."""
+    """Handles all chat interactions with Astral."""
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -55,7 +55,7 @@ class ChatCog(commands.Cog):
             return
         
         # Clean the message (remove bot mention - handle both <@id> and <@!id> formats)
-        content = re.sub(r'<@!?\d+>', '', message.content).strip()
+        content = re.sub(r'<@!?\d+>', '', message.clean_content).strip()
         if not content and not message.attachments:
             return
         
@@ -98,9 +98,9 @@ class ChatCog(commands.Cog):
                 try:
                     async for msg in message.channel.history(limit=30):
                         author_name = msg.author.display_name
-                        msg_content = msg.content
+                        msg_content = msg.clean_content
                         if msg.author.id == self.bot.user.id:
-                            author_name = "Astra"
+                            author_name = "Astral"
                             msg_content = FOOTER_REGEX.sub('', msg_content)
                             
                             # Strip hallucinations & obsessive loops (Clean history so model doesn't copy itself)
@@ -192,7 +192,7 @@ class ChatCog(commands.Cog):
                     combined_context += f"⚠️ [PREVIOUS CONTEXT SUMMARY - READ THIS FIRST]:\n{self.summary_cache}\n\n"
 
 
-                # Inject cached image descriptions so Astra remembers what she saw
+                # Inject cached image descriptions so Astral remembers what she saw
                 image_context = get_recent_image_context()
                 if image_context:
                     combined_context += f"{image_context}\n\n"
@@ -326,9 +326,9 @@ class ChatCog(commands.Cog):
                 if msg.content.strip():
                     name = msg.author.display_name
                     if msg.author.id == self.bot.user.id:
-                        name = "Astra"
+                        name = "Astral"
                     # Clean up Discord formatting for the summarizer
-                    clean_content = msg.content.replace('\n', ' ').strip()
+                    clean_content = msg.clean_content.replace('\n', ' ').strip()
                     transcript_lines.append(f"{name}: {clean_content}")
             
             transcript = "\n".join(transcript_lines)
