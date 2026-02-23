@@ -122,7 +122,7 @@ async def describe_image(image_url: str = None, image_data: bytes = None, user_c
         import re
         description = re.sub(r'\\n*Characters identified:.*$', '', description, flags=re.IGNORECASE | re.MULTILINE).strip()
         
-        print(f"[Vision] Gemini 3.0 Flash: {description[:80]}...")
+        print(f"[Vision] Gemini 3.0 Flash: {description}")
         return description
                 
     except Exception as e:
