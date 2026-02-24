@@ -75,7 +75,7 @@ class VoiceReceiver:
         self._running = True
 
         def callback(user: discord.User, data: voice_recv.VoiceData) -> None:
-            if user is None:
+            if user is None or user.id == self.voice_client.user.id:
                 return
             pcm = data.pcm
             if pcm:

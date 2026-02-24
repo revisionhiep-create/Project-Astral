@@ -3,6 +3,18 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.6.7] - 2026-02-24
+
+### Fixed
+- **Double-Entry History Loop** (`chat.py`): Fixed a context bug where the current message was added twice to the LLM prompt (once via history fetch and once via router append).
+  - Added `before=message` to the history query to ensure only previous messages are fetched.
+  - Prevents the bot from falsely flagging the user for "repeating themselves" and triggering the Loop Killer prematurely.
+- **Voice Self-Hearing (Echo)** (`voice_receiver.py`): The bot was capturing its own audio output from the voice channel and attempting to process it as speech.
+  - Added a filter to ignore audio from `self.voice_client.user.id` in the voice listener.
+  - Eliminates feedback loops and "ghost" processing of the bot's own Japanese voice output.
+
+---
+
 ## [3.6.6] - 2026-02-22
 
 ### Changed

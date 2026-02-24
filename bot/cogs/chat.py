@@ -96,7 +96,7 @@ class ChatCog(commands.Cog):
                 # We fetch 30 messages for immediate context, but summarizer covers older history
                 discord_messages = []
                 try:
-                    async for msg in message.channel.history(limit=30):
+                    async for msg in message.channel.history(limit=30, before=message):
                         author_name = msg.author.display_name
                         msg_content = msg.clean_content
                         if msg.author.id == self.bot.user.id:
