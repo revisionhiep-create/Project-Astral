@@ -28,7 +28,6 @@ async def generate_image(prompt: str, reference_images: list = None) -> tuple:
     # Model priority list
     models_to_try = [
         ("models/gemini-2.5-flash-image", "Gemini 2.5 Flash Art"),
-        ("models/gemini-3-pro-image-preview", "Gemini 3 Pro Art"),
         ("models/gemini-2.0-flash-exp-image", "Gemini 2.0 Art"),
         ("models/imagen-3.0-generate-001", "Imagen 3 Pro"),
     ]
