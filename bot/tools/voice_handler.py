@@ -26,7 +26,7 @@ class VoiceHandler:
         self.bot = bot
         self.tts = KokoroTTS(
             api_url=os.getenv("QWEN_TTS_URL", "http://host.docker.internal:8880"),
-            voice="namaka"
+            voice="raiden"
         )
         self.voice_queues = {}  # Guild ID -> list of audio files to play
         self.currently_playing = {}  # Guild ID -> bool

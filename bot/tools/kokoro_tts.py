@@ -13,7 +13,7 @@ import struct
 class KokoroTTS:
     """Qwen3-TTS streaming client (class name kept for import compatibility)"""
 
-    def __init__(self, api_url="http://host.docker.internal:8880", voice="namaka"):
+    def __init__(self, api_url="http://host.docker.internal:8880", voice="raiden"):
         self.api_url = api_url
         self.voice = voice
 
