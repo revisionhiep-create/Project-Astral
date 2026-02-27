@@ -3,6 +3,14 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.6.8] - 2026-02-26
+
+### Changed
+- **Chat Model → Heretic** (`router.py`, `.env`): Switched from `Qwen3-Coder-30B-A3B-Instruct` to `Qwen3-Coder-30B-A3B-Instruct-Heretic` (abliterated). Same architecture (MoE, 3.3B active), same sampling params — safety refusals reduced from 100/100 to 9/100 via weight abliteration. Removes friction between the model's RLHF safety layer and the uncensored personality.
+- **Personality Prompt Cleanup** (`personality.py`): Merged redundant ADULT MODE and UNCENSORED MODEL COMPATIBILITY sections into a single concise block. Moved "You do not break character." to the end of the core prompt for primacy-recency anchoring.
+
+---
+
 ## [3.6.7] - 2026-02-24
 
 ### Fixed

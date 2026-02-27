@@ -1,4 +1,4 @@
-"""AI Router - LM Studio orchestration (Qwen3-30B-A3B-Thinking)."""
+"""AI Router - LM Studio orchestration (Qwen3-Coder-30B-A3B-Instruct-Heretic)."""
 import os
 import json
 import time
@@ -73,6 +73,23 @@ def _strip_repeated_content(text: str) -> str:
     return '\n'.join(result)
 
 
+def _strip_markdown(text: str) -> str:
+    """Strip markdown formatting that code-focused models tend to add."""
+    if not text:
+        return text
+    # Remove headers (# ## ### etc)
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    # Remove code fences (```python, ``` etc)
+    text = re.sub(r'```\w*\n?', '', text)
+    # Remove blockquotes
+    text = re.sub(r'^>\s+', '', text, flags=re.MULTILINE)
+    # Remove horizontal rules (---, ***, ___)
+    text = re.sub(r'^[-*_]{3,}\s*$', '', text, flags=re.MULTILINE)
+    # Clean up resulting blank lines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
 def _strip_specific_hallucinations(text: str) -> str:
     """
     Generalized cleanup (no more hardcoded phrase stripping).
@@ -134,7 +151,7 @@ def _extract_json(text: str) -> dict:
 
 # LM Studio server (OpenAI-compatible API)
 LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
-CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "huihui-qwen3-30b-a3b-thinking-2507-abliterated")
+CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-coder-30b-a3b-instruct-heretic-i1")
 
 print(f"[Router] Host: {LMSTUDIO_HOST} | Model: {CHAT_MODEL}")
 
@@ -149,7 +166,7 @@ async def _call_lmstudio(messages: list, temperature: float = 0.6, max_tokens: i
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": False,
-        "top_p": 0.95,
+        "top_p": 0.8,
         "top_k": 20,
         "min_p": 0,
         "presence_penalty": presence_penalty,
@@ -317,9 +334,6 @@ async def generate_response(
     # Add date awareness
     system_prompt = f"{get_date_context()}\n\n{system_prompt}"
 
-    # Qwen3 /think soft switch (LM Studio doesn't support chat_template_kwargs)
-    system_prompt = f"/think\n{system_prompt}"
-    
     # Build transcript from conversation history (last 50 messages)
     transcript_lines = []
     if conversation_history:
@@ -367,12 +381,11 @@ Reply to the last message as Astral. Do not output internal thoughts."""
     try:
         print(f"[Router] Query: '{user_message[:50]}' | Search: {len(search_context)} chars | History: {len(transcript_lines)} msgs")
         
-        # Thinking mode needs headroom for <think> blocks + final output
         tokens = 4000 if search_context else 8000
 
         # [DYNAMIC CREATIVITY]
         # Check if the last bot message was repetitive to break loops naturally
-        temp = 0.6
+        temp = 0.7
         pres_pen = 0.3
         freq_pen = 0.1
         
@@ -421,9 +434,10 @@ Reply to the last message as Astral. Do not output internal thoughts."""
         if not result:
             return "something broke on my end, try again?"
 
-        # Chain all post-processing: think tags -> roleplay -> dedup -> name prefix
+        # Chain all post-processing: think tags -> roleplay -> markdown -> dedup -> name prefix
         cleaned = _strip_think_tags(result["text"])
         cleaned = _strip_roleplay_actions(cleaned)
+        cleaned = _strip_markdown(cleaned)
         cleaned = _strip_repeated_content(cleaned)
         cleaned = _strip_specific_hallucinations(cleaned)
         # Strip self-name prefix (model mimics transcript format "[Astral]: ..." or "Astral: ...")
@@ -445,6 +459,7 @@ Reply to the last message as Astral. Do not output internal thoughts."""
                 if retry:
                     cleaned = _strip_think_tags(retry["text"])
                     cleaned = _strip_roleplay_actions(cleaned)
+                    cleaned = _strip_markdown(cleaned)
                     cleaned = _strip_repeated_content(cleaned)
                     cleaned = _strip_specific_hallucinations(cleaned)
                     cleaned = re.sub(r'^(?:\[?Astral\]?:\s*)', '', cleaned, flags=re.IGNORECASE).strip()
