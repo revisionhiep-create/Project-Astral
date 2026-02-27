@@ -3,6 +3,14 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.6.9] - 2026-02-27
+
+### Changed
+- **TTS Engine → Qwen3-TTS Namaka** (`kokoro_tts.py`, `voice_handler.py`, `docker-compose.yml`): Replaced Kokoro TTS (port 8000, `jf_tebukuro` voice) with Qwen3-TTS streaming server (port 8880, `namaka` voice clone). New client uses length-prefixed WAV streaming protocol for lower latency. Kept `KokoroTTS` class name for import compatibility. Astral's enhanced `_clean_markdown()` (Discord emote/emoji stripping) preserved.
+- **Env Var Rename**: `KOKORO_TTS_URL` → `QWEN_TTS_URL` in docker-compose.yml.
+
+---
+
 ## [3.6.8] - 2026-02-26
 
 ### Changed

@@ -1,7 +1,7 @@
 """
 Voice Handler for Astra
-Uses Kokoro TTS API with streaming chunks for long text
-Voice: jf_tebukuro (Japanese female anime voice)
+Uses Qwen3-TTS streaming API with length-prefixed WAV chunks
+Voice: namaka
 """
 
 import discord
@@ -25,8 +25,8 @@ class VoiceHandler:
     def __init__(self, bot):
         self.bot = bot
         self.tts = KokoroTTS(
-            api_url=os.getenv("KOKORO_TTS_URL", "http://host.docker.internal:8000"),
-            voice="jf_tebukuro"
+            api_url=os.getenv("QWEN_TTS_URL", "http://host.docker.internal:8880"),
+            voice="namaka"
         )
         self.voice_queues = {}  # Guild ID -> list of audio files to play
         self.currently_playing = {}  # Guild ID -> bool

@@ -14,7 +14,7 @@ services:
       - RAG_DATABASE=/app/data/db/memory.db
       - CHARACTERS_FILE=/app/data/characters.json
       - ASSETS_DIR=/app/data/assets
-      - KOKORO_TTS_URL=http://host.docker.internal:8000
+      - QWEN_TTS_URL=http://host.docker.internal:8880
       - PYTHONUNBUFFERED=1 # Enable real-time logging
     depends_on:
       searxng:
