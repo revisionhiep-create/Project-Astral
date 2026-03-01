@@ -23,6 +23,14 @@ All notable changes to Project Astral will be documented in this file.
   - "DO NOT hallucinate. If you describe something not in the vision analysis, you FAIL."
   - Moved from polite suggestions to mandatory commands
 
+- **Summarizer Instructions Improved** (`router.py`): Expanded from 3-4 sentences to 8-12 sentences with richer context
+  - Increased max_output_tokens from 600 → 1200 to allow longer summaries
+  - Now captures: participants, emotional context, images shared, decisions/plans
+  - Better coverage for messages 31-100 (up to 70 messages)
+  - Focuses on who said what, not just abstract topics
+  - Instructions: Include participants, tone, images, important outcomes
+  - Organized chronologically or by topic for better readability
+
 ---
 
 ## [3.7.3] - 2026-03-01

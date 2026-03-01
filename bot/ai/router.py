@@ -476,25 +476,33 @@ Reply to the last message as Astral. Do not output internal thoughts."""
 async def summarize_text(text: str) -> str:
     """
     Summarize text using Gemini 2.0 Flash.
-    Focus on: Topics, Mood, Key Events.
+    Focus on: Topics, Mood, Key Events, Participants.
     """
     if not text or not GEMINI_API_KEY:
         return ""
-        
+
     system_prompt = (
-        "You are a helpful assistant. Summarize the following conversation history concisely (3-4 sentences). "
-        "Focus on: 1. Factual topics discussed 2. Concrete events. "
-        "CRITICAL: Do NOT summarize repeated questions, 'loops', or meta-commentary on user behavior (e.g. 'user keeps asking about X'). "
-        "Ignore repetitive phrasing. Just capture the core topic."
+        "Summarize this Discord conversation history in 8-12 sentences. This covers older messages (31-100) that provide background context.\n\n"
+        "Include:\n"
+        "1. Main topics/events discussed and who was involved\n"
+        "2. Key participants and their roles in the conversation\n"
+        "3. Emotional context or tone if relevant (excitement, concern, casual chat, etc.)\n"
+        "4. Any images shared and what they depicted\n"
+        "5. Important decisions, plans, or outcomes\n\n"
+        "Ignore:\n"
+        "- Repeated questions or conversational loops\n"
+        "- Meta-commentary about user behavior (e.g. 'user keeps asking about X')\n"
+        "- Repetitive phrasing or filler\n\n"
+        "Output: Factual summary focusing on what actually happened, organized chronologically or by topic."
     )
-    
+
     try:
         model = genai.GenerativeModel("gemini-2.0-flash")
         response = await model.generate_content_async(
             f"{system_prompt}\n\nConversation History:\n{text}",
             generation_config=genai.types.GenerationConfig(
                 temperature=0.3,
-                max_output_tokens=600
+                max_output_tokens=1200  # Increased from 600 to allow longer summaries
             )
         )
         return response.text.strip()
