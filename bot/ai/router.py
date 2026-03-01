@@ -272,11 +272,11 @@ Examples:
 - [image attached] "what is this" → {{"search": false, "time_range": null, "vision": true, "reasoning": "user wants image analyzed"}}"""
 
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        
+        model = genai.GenerativeModel("gemini-2.5-flash")
+
         # System instructions + user message for tool decision
         full_input = f"{prompt}\n\nCurrent message: {user_message}\nHas image attachment: {has_image}"
-        
+
         response = await model.generate_content_async(
             full_input,
             generation_config=genai.types.GenerationConfig(
@@ -475,14 +475,14 @@ Reply to the last message as Astral. Do not output internal thoughts."""
 
 async def summarize_text(text: str) -> str:
     """
-    Summarize text using Gemini 2.0 Flash.
+    Summarize text using Gemini 3.0 Flash.
     Focus on: Topics, Mood, Key Events, Participants.
     """
     if not text or not GEMINI_API_KEY:
         return ""
 
     system_prompt = (
-        "Summarize this Discord conversation history in 8-12 sentences. This covers older messages (31-100) that provide background context.\n\n"
+        "Summarize this Discord conversation history in 8-12 sentences. This covers older messages (31-200) that provide background context.\n\n"
         "Include:\n"
         "1. Main topics/events discussed and who was involved\n"
         "2. Key participants and their roles in the conversation\n"
@@ -497,7 +497,7 @@ async def summarize_text(text: str) -> str:
     )
 
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = await model.generate_content_async(
             f"{system_prompt}\n\nConversation History:\n{text}",
             generation_config=genai.types.GenerationConfig(

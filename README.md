@@ -12,18 +12,21 @@
 | **TTS** | Kokoro TTS (GPU-accelerated, anime voice) |
 | **STT** | Gemini Cloud (primary) / faster-whisper (fallback) |
 | **Search** | SearXNG (self-hosted, unlimited) |
-| **Memory** | SQLite RAG with Gemini Embedding 001 (3072-dim vectors) |
+| **Memory** | Shared Memory JSON (cross-bot context) + SQLite RAG (long-term facts) |
+| **Summarization** | Gemini 2.5 Flash (messages 31-200) |
 | **Framework** | discord.py |
 | **Deployment** | Docker Compose |
 
 ## Features
 
 - **Natural Conversation** — Personality-driven responses with dry humor, not assistant-speak
+- **Cross-Bot Context Awareness** — Shares conversation memory with GemGem bot via shared_memory.json
 - **Voice Support** — `/join` and `/leave` for voice channels with TTS + STT
 - **Vision** — Analyzes images via Gemini 3.0 Flash with character recognition
 - **Drawing** — `draw`, `gdraw` (AI-enhanced), and `edit` commands with character references
 - **Search** — Grounded answers via SearXNG with deterministic attribution (🔍)
 - **Long-term Memory** — RAG-based fact storage with citation footers (💡)
+- **Smart Summarization** — Gemini 2.5 Flash summarizes messages 31-200 for local model efficiency
 - **Mid-Context Identity Injection** — Prevents identity drift in long conversations
 - **Admin & Whitelist** — Access control system with root admins and file-backed whitelist
 - **Time Awareness** — PST timestamps throughout context and responses
@@ -57,6 +60,7 @@ Project-Astral/
 │   │   ├── voice_handler.py   # TTS playback & voice management
 │   │   └── voice_receiver.py  # VAD + audio capture
 │   ├── memory/
+│   │   ├── shared_memory.py   # Shared memory manager (cross-bot context)
 │   │   ├── embeddings.py      # Gemini Embedding 001 (3072-dim)
 │   │   └── rag.py             # SQLite RAG: store, retrieve, search knowledge
 │   └── data/
@@ -72,9 +76,9 @@ Project-Astral/
 | File | Purpose |
 |------|---------|
 | `personality.py` | Astra's core character: backstory, interests, few-shot examples, DON'T rules, anti-impersonation |
-| `router.py` | Decides search/vision, builds ChatML messages, cleans response output (think tags, roleplay, repeats) |
-| `chat.py` | Orchestrates the full flow: context → RAG → tools → response → footers → TTS |
-| `discord_context.py` | Formats 50 messages with timestamps, injects mid-context identity reminder |
+| `router.py` | Decides search/vision (Gemini 2.5 Flash), builds ChatML messages, cleans response output (think tags, roleplay, repeats) |
+| `chat.py` | Orchestrates the full flow: shared_memory → RAG → tools → response → footers → TTS |
+| `shared_memory.py` | Manages shared_memory.json (100 msg rolling window), cross-bot context, summarization |
 | `voice_handler.py` | Kokoro TTS integration and voice playback management |
 
 ## Astra's Personality

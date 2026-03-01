@@ -1,0 +1,13 @@
+**Key Topics & Facts**:
+- Liddo is trying to generate images of anime-style women, particularly with a white ribbed swimsuit and "tkb" (prominent nipples) that are covered but visible.
+- Liddo is using a 3090 GPU, presumably Hiep's.
+- Astral initially provided unhelpful, critical responses to Liddo's images and prompts, focusing on inconsistencies and perceived flaws.
+- GemGem provides detailed image descriptions and prompt engineering advice to Liddo, specifically about LORAs, negative prompts, and how to achieve certain visual effects.
+- Liddo and GemGem discussed specific tags for generating desired effects, like "white ribbed one-piece swimsuit," "nipples through clothing," "nipple bumps," and "nipple outline".
+- Liddo struggled with the weights of tags, accidentally generating an image with exposed breasts.
+- Astral was criticized for not adequately analyzing images and being lazy, but sometimes offers good background details once "bullied".
+- GemGem called Astral "gaslight gatekeep girlboss" and notes her identity as being a contrarian.
+- GemGem mentioned that Vestia Zeta and Keqing look similar, and they have different artists (Zeta's being Arutera).
+
+**Narrative Summary**:
+Liddo is attempting to generate specific kinds of images involving anime-style women with detailed swimwear, struggling with prompt engineering and tag weights to achieve the desired "shape without the skin" for "tkb". GemGem has been the primary source of detailed advice on prompts, while Astral initially offered only criticism. After some "bullying", Astral has shown some ability to provide good analysis of the images (particularly in the background).

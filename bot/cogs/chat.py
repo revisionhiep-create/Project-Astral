@@ -4,18 +4,19 @@ from discord.ext import commands
 import pytz
 import re
 import traceback
+import os
 
 from ai.router import process_message, decide_tools_and_query, summarize_text
 
 from memory.rag import (
-    retrieve_relevant_knowledge, 
+    retrieve_relevant_knowledge,
     store_conversation,
     store_full_search,
     format_knowledge_for_context
 )
+from memory.shared_memory import SharedMemoryManager
 from tools.search import search, format_search_results
 from tools.vision import analyze_image, get_recent_image_context
-from tools.discord_context import format_discord_context
 from tools.voice_handler import get_voice_handler
 from tools.admin import whitelist, ADMIN_IDS
 import asyncio
@@ -29,11 +30,13 @@ FOOTER_REGEX = re.compile(r'\n\n[💡🔍]\d+(?:\s[💡🔍]\d+)*$', re.DOTALL)
 
 class ChatCog(commands.Cog):
     """Handles all chat interactions with Astral."""
-    
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.summary_cache = ""
-        self.msgs_since_summary = 48  # Trigger soon (3rd msg) but not instantly
+        # Initialize shared memory manager
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+        self.shared_memory = SharedMemoryManager(data_dir)
+        self.msgs_since_summary = 0  # Start at 0, will trigger at 40
         self.is_summarizing = False  # Lock to prevent concurrent summaries
     
     @commands.Cog.listener()
@@ -83,43 +86,23 @@ class ChatCog(commands.Cog):
                         image_url = attachment.url
                         break
                 
-                # ============ NEW LOGIC AI FLOW ============
-                
+                # ============ SHARED MEMORY LOGIC AI FLOW ============
+
                 # Step 0: Background Summary Update
                 self.msgs_since_summary += 1
-                if self.msgs_since_summary >= 100 and not self.is_summarizing:
+                if self.msgs_since_summary >= 40 and not self.is_summarizing:
                     print(f"[Chat] Triggering background summary update (msgs since: {self.msgs_since_summary})")
                     self.msgs_since_summary = 0
-                    asyncio.create_task(self._update_summary(message.channel))
+                    asyncio.create_task(self._update_summary())
 
-                # Step 1: Fetch short-term context from Discord
-                # We fetch 30 messages for immediate context, but summarizer covers older history
-                discord_messages = []
-                try:
-                    async for msg in message.channel.history(limit=30, before=message):
-                        author_name = msg.author.display_name
-                        msg_content = msg.clean_content
-                        if msg.author.id == self.bot.user.id:
-                            author_name = "Astral"
-                            msg_content = FOOTER_REGEX.sub('', msg_content)
-                            
-                            # Strip hallucinations & obsessive loops (Clean history so model doesn't copy itself)
-                            msg_content = re.sub(r'gemgem[\'’]?s\s+(?:still\s+)?rolling\s+dice(?:\s+in\s+the\s+background)?(?:[.,—-]|\s+and\s+)?', '', msg_content, flags=re.IGNORECASE)
-                            msg_content = re.sub(r'\s+,', ',', msg_content)
-                            msg_content = re.sub(r'  +', ' ', msg_content).strip()
+                # Step 1: Load short-term context from shared_memory.json
+                # Load all history, format_for_router will handle truncation to last 30 if summary exists
+                shared_history = self.shared_memory.load_memory()
+                formatted_history, summary_context = self.shared_memory.format_for_router(shared_history)
 
-                        # Format timestamp as relative or simple time (convert UTC to PST)
-                        timestamp = msg.created_at.astimezone(PST).strftime("%I:%M %p")
-                        discord_messages.append({
-                            "author": author_name,
-                            "content": msg_content[:500],
-                            "time": timestamp
-                        })
-                    discord_messages.reverse()
-                except Exception as e:
-                    print(f"[Chat] Failed to fetch channel history: {e}")
-                
-                short_term_context = format_discord_context(discord_messages)
+                print(f"[SharedMemory] Loaded {len(shared_history)} messages from shared_memory.json")
+                if summary_context:
+                    print(f"[SharedMemory] Using summary context ({len(summary_context)} chars)")
 
                 # Step 2: Query long-term memory (RAG - conversations only)
                 # Skip RAG for simple greetings or when image is attached (waste of context)
@@ -147,7 +130,9 @@ class ChatCog(commands.Cog):
                         print(f"[RAG] No relevant memories found for: '{content[:50]}'")
                 
                 # Step 3: Ask Logic AI what tools are needed (use lean 5-msg context for speed)
-                decision_context_str = format_discord_context(discord_messages[-5:])
+                # Take last 5 messages from formatted history for decision context
+                recent_context_msgs = formatted_history[-5:] if len(formatted_history) > 5 else formatted_history
+                decision_context_str = "\n".join([msg["content"] for msg in recent_context_msgs])
                 tool_decision = await decide_tools_and_query(
                     user_message=content,
                     has_image=bool(image_url),
@@ -181,13 +166,15 @@ class ChatCog(commands.Cog):
                 # Vision if image is attached (always analyze images)
                 if image_url:
                     print(f"[Chat] Vision triggered (image attached from {message.author.display_name})")
+                    # Build conversation context for vision from formatted history
+                    vision_context = "\n".join([msg["content"] for msg in formatted_history[-10:]])
                     vision_response = await analyze_image(
-                        image_url, 
+                        image_url,
                         content if content else "",
-                        conversation_context=short_term_context,
+                        conversation_context=vision_context,
                         username=message.author.display_name
                     )
-                    
+
                     # Skip RAG image storage — descriptions pollute fact pool
                     # (caused "that's me" on every response)
                 
@@ -200,9 +187,9 @@ class ChatCog(commands.Cog):
                 if search_context:
                     combined_context += f"⚠️ [SEARCH RESULTS - YOU MUST USE THIS INFO]:\n{search_context}\n\n"
 
-                # === PREVIOUS CONTEXT SUMMARY (High level recall) ===
-                if self.summary_cache and not image_url:
-                    combined_context += f"⚠️ [PREVIOUS CONTEXT SUMMARY - READ THIS FIRST]:\n{self.summary_cache}\n\n"
+                # === PREVIOUS CONTEXT SUMMARY (from shared_memory) ===
+                if summary_context and not image_url:
+                    combined_context += f"⚠️ {summary_context}\n\n"
 
                 # Inject cached image descriptions so Astral remembers what she saw (skip if current message has image)
                 if not image_url:
@@ -218,15 +205,7 @@ class ChatCog(commands.Cog):
                 if memory_context:
                     rag_context = f"[Old memories - only reference if not covered above]:\n{memory_context}"
 
-                # Convert discord_messages to router-compatible history
-                # Use full 30-message history for both regular and image queries (vision now properly labeled in history)
-                history_limit = len(discord_messages)
-                formatted_history = []
-                for m in discord_messages[-history_limit:]:
-                    # Format as [Name]: Message so router handles it correctly
-                    formatted_content = f"[{m['author']}]: {m['content']}"
-                    formatted_history.append({"role": "user", "content": formatted_content})
-
+                # formatted_history is already built from shared_memory.load_memory()
                 # For image queries, inject vision analysis as the most recent context
                 if vision_response:
                     # Replace character name "Astra" with "you" so the LLM recognizes it's talking about herself
@@ -261,15 +240,29 @@ class ChatCog(commands.Cog):
                         response = response[:2000 - len(footer) - 5] + "..."
                     response += footer
                 
-                # Step 6: Store conversation to RAG (long-term memory)
+                # Step 6: Store conversation to shared_memory.json
                 # Strip footers before saving — they're display-only
                 clean_response = re.sub(r'\n\n[💡🔍]\d+(?:\s[💡🔍]\d+)*$', '', response)
 
-                # Build conversation context from last 5 messages for better fact extraction
-                context_for_rag = format_discord_context(discord_messages[-5:]) if len(discord_messages) > 1 else None
+                # For images, store the vision description with the response
+                if vision_response:
+                    # Store format: "Image shows: [description]\n\n[Astral's response]"
+                    memory_response = f"Image shows: {vision_response}\n\n{clean_response}"
+                else:
+                    memory_response = clean_response
 
+                # Append to shared_memory.json
+                self.shared_memory.append_conversation_turn(
+                    user_message=content if content else "[attached an image]",
+                    bot_response=memory_response,
+                    username=message.author.display_name
+                )
+                print(f"[SharedMemory] Stored conversation turn for {message.author.display_name}")
+
+                # Also store to RAG for long-term fact extraction
+                context_for_rag = "\n".join([msg["content"] for msg in formatted_history[-5:]]) if len(formatted_history) > 1 else None
                 await store_conversation(
-                    user_message=content,
+                    user_message=content if content else "[attached an image]",
                     gemgem_response=clean_response,
                     user_id=str(message.author.id),
                     username=message.author.display_name,
@@ -277,10 +270,10 @@ class ChatCog(commands.Cog):
                     guild_id=str(message.guild.id) if message.guild else None,
                     conversation_context=context_for_rag
                 )
-                
 
-                
-                # ============ END LOGIC AI FLOW ============
+
+
+                # ============ END SHARED MEMORY LOGIC AI FLOW ============
                 
                 # Send response (split if too long) - use channel.send so other bots can see
                 if len(response) > 2000:
@@ -310,70 +303,64 @@ class ChatCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """Build initial summary on startup to fix amnesia."""
-        print("[Chat] Bot ready - Initializing summary...")
-        # Find the main chat channel (heuristic: most active or first available)
-        # For now, we'll wait for the first message or try to find a default channel if configured
-        # Since we don't know the main channel ID, we'll scan guilds
-        for guild in self.bot.guilds:
-            for channel in guild.text_channels:
-                if channel.permissions_for(guild.me).read_messages and channel.permissions_for(guild.me).read_message_history:
-                    # found a readable channel, try to spark memory
-                    # Ideally we'd persist the last active channel, but this is a good start
-                    asyncio.create_task(self._initialize_summary(channel))
-                    return
+        print("[Chat] Bot ready - Initializing summary from shared_memory.json...")
+        asyncio.create_task(self._initialize_summary())
 
-    async def _initialize_summary(self, channel: discord.TextChannel) -> None:
-        """Generate initial summary from history on boot."""
-        print(f"[Summarizer] Bootstrapping summary from {channel.name}...")
-        await self._update_summary(channel, initial=True)
+    async def _initialize_summary(self) -> None:
+        """Generate initial summary from shared_memory.json on boot."""
+        print(f"[Summarizer] Bootstrapping summary from shared_memory.json...")
+        await self._update_summary(initial=True)
 
-    async def _update_summary(self, channel: discord.TextChannel, initial: bool = False) -> None:
-        """Fetch older messages and update the summary cache."""
+    async def _update_summary(self, initial: bool = False) -> None:
+        """Generate summary from shared_memory.json for older messages."""
         try:
             self.is_summarizing = True
             if initial:
-                 print("[Summarizer] Generating STARTUP summary (filling 3am gap)...")
+                 print("[Summarizer] Generating STARTUP summary from shared memory...")
             else:
                  print("[Summarizer] Starting background summary update...")
-            
-            # Fetch last 230 messages (was 130)
-            # We skip the LAST 30 (which are covered by "Recent Chat")
-            # We summarize messages 31-230 (up to 200 messages of context)
-            limit = 230
-            history = [msg async for msg in channel.history(limit=limit)]
-            history.reverse()
-            
+
+            # Load all messages from shared_memory.json
+            history = self.shared_memory.load_memory()
+
+            # Only summarize if we have enough history (need more than 30 messages)
             if len(history) <= 30:
                 print(f"[Summarizer] Not enough history to summarize ({len(history)} msgs).")
                 self.is_summarizing = False
                 return
-            
-            # Slice: Remove the recent 30 messages that are in the immediate context window
-            older_msgs = history[:-30]
-            
-            # Format generic transcript for summarizer
+
+            # Summarize messages 0 to -30 (everything except last 30)
+            # For local model: limit to last 200 messages max (messages 31-200 if history > 200)
+            if len(history) > 200:
+                older_msgs = history[-200:-30]  # Messages 31-200 from the end
+            else:
+                older_msgs = history[:-30]  # All except last 30
+
+            # Format transcript for summarizer
             transcript_lines = []
             for msg in older_msgs:
-                if msg.content.strip():
-                    name = msg.author.display_name
-                    if msg.author.id == self.bot.user.id:
-                        name = "Astral"
-                    # Clean up Discord formatting for the summarizer
-                    clean_content = msg.clean_content.replace('\n', ' ').strip()
-                    transcript_lines.append(f"{name}: {clean_content}")
-            
+                role = msg.get("role", "unknown")
+                username = msg.get("username", "User")
+                parts = msg.get("parts", [""])
+                content = parts[0] if parts else ""
+
+                if role == "model":
+                    transcript_lines.append(f"Astral: {content}")
+                else:
+                    transcript_lines.append(f"{username}: {content}")
+
             transcript = "\n".join(transcript_lines)
-            
+
             # Generate summary with Gemini 2.0 Flash
-            # It has a massive context window, so 200 messages is easy
             new_summary = await summarize_text(transcript)
-            
+
             if new_summary:
-                self.summary_cache = new_summary
+                # Save summary to shared_summary.txt
+                self.shared_memory.save_summary(new_summary)
                 print(f"[Summarizer] Updated summary ({len(new_summary)} chars) | Covered {len(older_msgs)} messages")
             else:
                 print("[Summarizer] Summary generation returned empty string.")
-                
+
         except Exception as e:
             print(f"[Summarizer] Error updating summary: {e}")
         finally:

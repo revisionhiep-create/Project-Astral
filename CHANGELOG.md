@@ -3,6 +3,75 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [4.0.0] - 2026-03-01
+
+### Added - Shared Memory System
+
+- **Cross-Bot Context Awareness**: Astral now shares conversation memory with GemGem via `shared_memory.json`
+  - New `SharedMemoryManager` class (`bot/memory/shared_memory.py`) manages unified memory
+  - 100-message rolling window with automatic rollover (oldest messages deleted)
+  - Astral sees conversations between users and GemGem in real-time
+  - GemGem conversation listener in `main.py` records all GemGem interactions
+  - Bootstrapped with GemGem's existing 100 messages for immediate context
+
+### Changed
+
+- **Memory Architecture Migration**: Complete overhaul from Discord history to shared memory
+  - Replaced direct Discord API history fetching with `shared_memory.json` loading
+  - Chat context now loads from unified JSON file instead of Discord channel
+  - Image descriptions now stored in shared_memory.json (format: `Image shows: [description]\n\n[response]`)
+  - Removed in-memory `_recent_images` cache (replaced by shared_memory storage)
+  - RAG system preserved for long-term fact extraction (operates alongside shared memory)
+
+- **Summarization Optimized for Local Models**: Reduced context window for Qwen3-VL-32B efficiency
+  - Summary trigger: 100 messages → 40 messages
+  - Summary scope: 130-230 messages → 31-200 messages (170 message window)
+  - Optimized for local model context limits while maintaining quality
+
+- **Gemini Model Upgrade**: Upgraded from 2.0 Flash to 2.5 Flash
+  - Tool routing (`decide_tools_and_query`): Now uses `gemini-2.5-flash`
+  - Conversation summarization (`summarize_text`): Now uses `gemini-2.5-flash`
+  - Better reasoning and instruction following for background tasks
+
+### Files Added
+
+- `bot/memory/shared_memory.py` - Shared memory manager with format conversion
+- `bot/data/memory/shared_memory.json` - Unified conversation storage (copied from GemGem)
+- `bot/data/memory/shared_summary.txt` - Conversation summary cache
+- `bot/scripts/test_shared_memory.py` - Test script for shared memory system
+
+### Files Modified
+
+- `bot/main.py` - Added GemGem conversation listener (records GemGem + user messages)
+- `bot/cogs/chat.py` - Migrated from Discord history to shared_memory.json
+- `bot/ai/router.py` - Updated to use Gemini 2.5 Flash for all background tasks
+- `README.md` - Updated with cross-bot context feature and tech stack changes
+
+### Technical Details
+
+**Message Format** (shared_memory.json):
+```json
+{
+  "role": "user|model",
+  "parts": ["message text"],
+  "username": "DisplayName",  // Present for user messages (humans & GemGem)
+  "timestamp": "ISO 8601"
+}
+```
+
+**Context Flow**:
+- Last 30 messages: Full detail from shared_memory.json
+- Messages 31-200: Summarized by Gemini 2.5 Flash
+- Automatic rollover at 100 messages (oldest deleted)
+
+**Benefits**:
+- Unified memory across both bots (Astral + GemGem)
+- Better context management for local models (reduced window)
+- Automatic cleanup (no manual memory management)
+- Cross-bot conversation awareness
+
+---
+
 ## [3.7.4] - 2026-03-01
 
 ### Fixed
