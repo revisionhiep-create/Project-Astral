@@ -105,8 +105,10 @@ async def describe_image(image_url: str = None, image_data: bytes = None, user_c
                 description_prompt
             ],
             generation_config={
-                "temperature": 0.3,
-                "max_output_tokens": 800
+                "temperature": 0.5,  # Increased from 0.3 to encourage longer, more detailed descriptions
+                "max_output_tokens": 1024,  # Increased from 800 to allow more detail
+                "top_p": 0.95,
+                "top_k": 40
             },
             safety_settings={
                 genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH: genai.types.HarmBlockThreshold.BLOCK_NONE,
@@ -115,14 +117,14 @@ async def describe_image(image_url: str = None, image_data: bytes = None, user_c
                 genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: genai.types.HarmBlockThreshold.BLOCK_NONE,
             }
         )
-        
+
         description = response.text.strip()
-        
+
         # Strip any "Characters identified:" line so Astra doesn't echo negative matches
         import re
         description = re.sub(r'\\n*Characters identified:.*$', '', description, flags=re.IGNORECASE | re.MULTILINE).strip()
-        
-        print(f"[Vision] Gemini 3.0 Flash: {description}")
+
+        print(f"[Vision] Gemini 3.0 Flash: {description[:200]}{'...' if len(description) > 200 else ''}")
         return description
                 
     except Exception as e:

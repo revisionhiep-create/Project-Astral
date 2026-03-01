@@ -122,15 +122,21 @@ class ChatCog(commands.Cog):
                 short_term_context = format_discord_context(discord_messages)
 
                 # Step 2: Query long-term memory (RAG - conversations only)
-                # Skip RAG for simple greetings (waste of context)
+                # Skip RAG for simple greetings or when image is attached (waste of context)
                 greeting_patterns = ['hi', 'hello', 'hey', 'sup', 'yo', 'morning', 'evening', 'night', 'honey', 'babe', 'love']
                 is_greeting = len(content.split()) <= 3 and any(pattern in content.lower() for pattern in greeting_patterns)
+                has_image = bool(image_url)
 
                 if is_greeting:
                     long_term_knowledge = []
                     memory_context = ""
                     rag_count = 0
                     print(f"[RAG] Skipping RAG for greeting: '{content[:50]}'")
+                elif has_image:
+                    long_term_knowledge = []
+                    memory_context = ""
+                    rag_count = 0
+                    print(f"[RAG] Skipping RAG for image query (vision provides context): '{content[:50]}'")
                 else:
                     long_term_knowledge = await retrieve_relevant_knowledge(content, limit=3)
                     memory_context = format_knowledge_for_context(long_term_knowledge, current_username=message.author.display_name)

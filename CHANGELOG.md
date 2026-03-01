@@ -3,6 +3,23 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.7.1] - 2026-03-01
+
+### Changed
+
+- **Skip RAG for Image Queries** (`chat.py`): RAG retrieval now completely skipped when images are attached (lines 135-139)
+  - Prevents context pollution from irrelevant facts matching keywords like "image" or "analyze"
+  - Vision context provides sufficient information without RAG interference
+  - Reduces unnecessary token usage and improves response relevance
+
+- **Improved Vision Quality** (`vision.py`): Enhanced Gemini vision parameters for more detailed descriptions
+  - Temperature: 0.3 → 0.5 (encourages longer, more varied descriptions)
+  - Max output tokens: 800 → 1024 (allows more comprehensive analysis)
+  - Added top_p: 0.95, top_k: 40 for better sampling diversity
+  - Results in more thorough image analysis with better background detail coverage
+
+---
+
 ## [3.7.0] - 2026-02-28
 
 ### Changed - RAG System Overhaul
