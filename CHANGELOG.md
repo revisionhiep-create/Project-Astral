@@ -3,6 +3,23 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.7.2] - 2026-03-01
+
+### Fixed
+
+- **Search Context Pollution on Image Queries** (`chat.py`): Search now completely skipped when images are attached (line 163)
+  - Fixes issue where search results (1000+ chars) overwhelmed vision analysis
+  - Prevents Astral from describing wrong/cached images instead of current one
+  - Vision analysis now gets full priority in context window
+  - Added log: `[Chat] Skipping search for image query (vision provides context)`
+
+- **Vision Debug Logging** (`vision.py`): Added warnings for truncated Gemini responses
+  - Logs finish_reason and character count for troubleshooting
+  - Shows `[Vision] WARNING: Short response (XXX chars, finish_reason=N)` if truncated
+  - Helps diagnose safety blocks or token limits
+
+---
+
 ## [3.7.1] - 2026-03-01
 
 ### Changed

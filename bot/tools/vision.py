@@ -118,13 +118,18 @@ async def describe_image(image_url: str = None, image_data: bytes = None, user_c
             }
         )
 
+        # Debug: Check why Gemini is truncating
+        finish_reason = response.candidates[0].finish_reason if response.candidates else None
         description = response.text.strip()
+
+        if len(description) < 300:
+            print(f"[Vision] WARNING: Short response ({len(description)} chars, finish_reason={finish_reason})")
 
         # Strip any "Characters identified:" line so Astra doesn't echo negative matches
         import re
         description = re.sub(r'\\n*Characters identified:.*$', '', description, flags=re.IGNORECASE | re.MULTILINE).strip()
 
-        print(f"[Vision] Gemini 3.0 Flash: {description[:200]}{'...' if len(description) > 200 else ''}")
+        print(f"[Vision] Gemini 3.0 Flash ({len(description)} chars): {description[:200]}{'...' if len(description) > 200 else ''}")
         return description
                 
     except Exception as e:

@@ -158,9 +158,9 @@ class ChatCog(commands.Cog):
                 search_context = ""
                 vision_response = None
                 search_count = 0  # Track for footer
-                
-                # Search if Logic AI decided
-                if tool_decision.get("search"):
+
+                # Search if Logic AI decided (but skip if image is attached - vision provides all context)
+                if tool_decision.get("search") and not image_url:
                     search_query = tool_decision.get("search_query") or content
                     time_range = tool_decision.get("time_range")  # day/week/month/year/None
                     print(f"[Chat] Logic AI triggered search: '{search_query}' (time_range={time_range})")
@@ -172,6 +172,8 @@ class ChatCog(commands.Cog):
                     if search_results:
                         await store_full_search(search_query, search_results)
                         print(f"[RAG] Stored {len(search_results)} search results as knowledge")
+                elif tool_decision.get("search") and image_url:
+                    print(f"[Chat] Skipping search for image query (vision provides context)")
                 
                 # Vision if image is attached (always analyze images)
                 if image_url:
