@@ -33,26 +33,110 @@ BM25_IDS = []
 CROSS_ENCODER = None
 
 
-async def _extract_fact_from_conversation(username: str, user_message: str, astra_response: str) -> Optional[str]:
+async def _extract_fact_from_conversation(username: str, user_message: str, astra_response: str, conversation_context: str = None) -> Optional[str]:
     """
     Extract a factual statement from a conversation using Gemini 2.0 Flash.
+
+    Args:
+        username: User's display name
+        user_message: Current user message
+        astra_response: Current bot response
+        conversation_context: Last 3-5 messages for better context (optional)
     """
     if not os.getenv("GEMINI_API_KEY"):
         return None
 
-    prompt = f"""Extract ONE factual statement about {username} from this conversation, or respond with exactly "NONE" if there's no meaningful fact to remember.
+    # Build prompt with optional context
+    if conversation_context:
+        prompt = f"""Extract ONE meaningful, long-term factual statement about {username} from this conversation, or respond with exactly "NONE" if there's nothing worth remembering.
+
+Recent Conversation Context (for reference):
+{conversation_context}
+
+Current Exchange:
+[{username}]: {user_message}
+[Astra]: {astra_response}
+
+ONLY extract facts that meet ALL these criteria:
+1. DECLARATIVE & STABLE: Lasting information, not temporary reactions or emotions
+2. ACTIONABLE & USEFUL: Information that will be relevant in future conversations
+3. SPECIFIC & CONCRETE: Names, projects, skills, preferences with clear details
+
+DO NOT extract:
+❌ Emotional reactions ("likes X", "dislikes Y" from casual chat)
+❌ Temporary states ("is typing", "said hi", "gave high five")
+❌ Generic preferences without context ("enjoys pizza")
+❌ Actions without lasting meaning ("showed something", "made a comment")
+❌ Questions without answers
+❌ Hypothetical statements ("might do X")
+❌ Small talk, greetings, emojis, reactions
+
+EXTRACT ONLY:
+✅ Professional information (job title, company, projects)
+✅ Technical skills and expertise
+✅ Long-term hobbies with specific details
+✅ Relationships and connections (team members, collaborators)
+✅ Personal background (location, education, family structure)
+✅ Specific preferences with context (programming language for backend)
+
+Examples of GOOD facts:
+- "{username} is a software engineer at Google working on search infrastructure"
+- "{username} is developing a Discord bot called GemGem using Python"
+- "{username} plays competitive chess and has a 2000 ELO rating"
+
+Examples of BAD facts (return NONE):
+- "{username} dislikes pigeons" (too trivial, from casual high five)
+- "{username} showed Astral something" (no useful information)
+- "{username} made a comment" (vague, no value)
+- "{username} wants to see birds" (temporary desire)
+
+Format: "{username} [substantial fact]"
+If the conversation contains no substantial long-term information, respond with: NONE
+
+Respond with the fact or NONE:"""
+    else:
+        # Single message mode (fallback)
+        prompt = f"""Extract ONE meaningful, long-term factual statement about {username} from this conversation, or respond with exactly "NONE" if there's nothing worth remembering.
 
 Conversation:
 [{username}]: {user_message}
 [Astra]: {astra_response}
 
-Rules:
-- Extract facts about the USER, not about Astra
-- Facts should be useful for future reference (preferences, projects, relationships, interests)
-- "lol", "k", "brb", greetings, and small talk are NOT facts - return NONE
-- Generic statements like "User is chatting" are NOT useful - return NONE
-- Format: "{username} [fact about them]" (e.g., "Hiep is developing a Discord bot called GemGem")
-- One fact only, or NONE
+ONLY extract facts that meet ALL these criteria:
+1. DECLARATIVE & STABLE: Lasting information, not temporary reactions or emotions
+2. ACTIONABLE & USEFUL: Information that will be relevant in future conversations
+3. SPECIFIC & CONCRETE: Names, projects, skills, preferences with clear details
+
+DO NOT extract:
+❌ Emotional reactions ("likes X", "dislikes Y" from casual chat)
+❌ Temporary states ("is typing", "said hi", "gave high five")
+❌ Generic preferences without context ("enjoys pizza")
+❌ Actions without lasting meaning ("showed something", "made a comment")
+❌ Questions without answers
+❌ Hypothetical statements ("might do X")
+❌ Small talk, greetings, emojis, reactions
+
+EXTRACT ONLY:
+✅ Professional information (job title, company, projects)
+✅ Technical skills and expertise
+✅ Long-term hobbies with specific details
+✅ Relationships and connections (team members, collaborators)
+✅ Personal background (location, education, family structure)
+✅ Specific preferences with context (programming language for backend)
+
+Examples of GOOD facts:
+- "{username} is a software engineer at Google working on search infrastructure"
+- "{username} is developing a Discord bot called GemGem using Python"
+- "{username} plays competitive chess and has a 2000 ELO rating"
+
+Examples of BAD facts (return NONE):
+- "{username} dislikes pigeons" (too trivial, from casual high five)
+- "{username} showed Astral something" (no useful information)
+- "{username} made a comment" (vague, no value)
+- "{username} wants to see birds" (temporary desire)
+
+Format: "{username} [substantial fact]"
+If the conversation contains no substantial long-term information, respond with: NONE
 
 Respond with the fact or NONE:"""
 
@@ -85,6 +169,60 @@ Respond with the fact or NONE:"""
     except Exception as e:
         print(f"[RAG] Fact extraction failed: {e}")
         return None
+
+
+async def _is_duplicate_fact(new_fact: str, user_id: str, similarity_threshold: float = 0.90) -> bool:
+    """
+    Check if a fact is a duplicate of an existing fact using vector similarity.
+
+    Args:
+        new_fact: The newly extracted fact
+        user_id: User ID to scope the search
+        similarity_threshold: Cosine similarity threshold (0.90-0.95 recommended)
+
+    Returns:
+        True if duplicate found, False otherwise
+    """
+    # Get embedding for new fact
+    from memory.embeddings import get_embedding
+    new_embedding = await get_embedding(new_fact)
+    if not new_embedding:
+        return False  # Can't check, assume not duplicate
+
+    # Query existing facts for this user
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT content, embedding
+            FROM knowledge
+            WHERE knowledge_type = 'user_fact'
+            AND metadata LIKE ?
+            AND is_active = 1
+        """, (f'%"user_id": "{user_id}"%',))
+
+        for content, embedding_json in cursor.fetchall():
+            if not embedding_json:
+                continue
+
+            try:
+                existing_embedding = json.loads(embedding_json)
+                similarity = _cosine_similarity(new_embedding, existing_embedding)
+
+                if similarity >= similarity_threshold:
+                    print(f"[RAG] Duplicate detected (similarity={similarity:.2f}): '{content[:60]}...'")
+                    return True
+            except:
+                continue
+
+        return False
+
+    except Exception as e:
+        print(f"[RAG] Duplicate check error: {e}")
+        return False  # Error, assume not duplicate to be safe
+    finally:
+        conn.close()
 
 
 def _init_search_models():
@@ -300,41 +438,51 @@ async def store_conversation(
     user_id: str = None,
     username: str = None,
     channel_id: str = None,
-    guild_id: str = None
+    guild_id: str = None,
+    conversation_context: str = None  # NEW: Last N messages for better context
 ) -> Optional[str]:
     """
     Store a conversation exchange as a FACT, not a raw log.
-    
+
     This is Summary RAG - we extract meaningful facts and discard chatter.
-    
+    Uses multi-message context window for better fact extraction.
+
     Args:
-        user_message: What the user said
-        gemgem_response: What Astra replied
+        user_message: What the user said (current message)
+        gemgem_response: What Astra replied (current response)
         user_id: Discord user ID
         username: Discord display name
         channel_id: Discord channel ID
         guild_id: Discord server ID
-    
+        conversation_context: Last 3-5 messages for context (optional but recommended)
+
     Returns:
         Knowledge ID if a fact was stored, None if no meaningful fact
     """
     name = username or "User"
-    
+
     # Skip very short messages (likely chatter)
     if len(user_message.strip()) < 15 and len(gemgem_response.strip()) < 50:
         print(f"[RAG] Skipping short exchange (no facts to extract)")
         return None
-    
-    # Extract fact from conversation
-    print(f"[RAG] Attempting fact extraction for {name}: msg='{user_message[:60]}' resp='{gemgem_response[:60]}'")
-    fact = await _extract_fact_from_conversation(name, user_message, gemgem_response)
-    
+
+    # Extract fact from conversation (with context if provided)
+    context_preview = conversation_context[:60] if conversation_context else "single message"
+    print(f"[RAG] Attempting fact extraction for {name}: msg='{user_message[:60]}' | context='{context_preview}'")
+    fact = await _extract_fact_from_conversation(name, user_message, gemgem_response, conversation_context)
+
     if not fact:
         print(f"[RAG] No meaningful fact in conversation with {name}")
         return None
-    
+
+    # Check for duplicate before storing
+    is_duplicate = await _is_duplicate_fact(fact, user_id)
+    if is_duplicate:
+        print(f"[RAG] ⚠️ Skipping duplicate fact: {fact[:80]}...")
+        return None
+
     print(f"[RAG] ✅ Extracted fact: {fact[:100]}")
-    
+
     # Store the fact as knowledge (not raw conversation)
     return await store_knowledge(
         content=fact,
@@ -568,38 +716,46 @@ async def retrieve_relevant_knowledge(
     try:
         # --- VECTOR SEARCH (Semantic) ---
         # Scan Knowledge
-        cursor.execute("SELECT id, content, embedding, knowledge_type FROM knowledge")
+        cursor.execute("SELECT id, content, embedding, knowledge_type, metadata FROM knowledge")
         for row in cursor.fetchall():
             if row[2]:
                 try:
                     score = _cosine_similarity(query_embedding, json.loads(row[2]))
                     if score >= threshold - 0.15: # Lower threshold for hybrid candidates
+                        # Parse metadata to extract username
+                        metadata = json.loads(row[4]) if row[4] else {}
                         candidates[row[0]] = {
                             "id": row[0],
                             "content": row[1],
                             "type": row[3],
                             "source": "knowledge",
-                            "vector_score": score
+                            "vector_score": score,
+                            "metadata": metadata
                         }
                 except: pass
-                
-        # Scan Conversations (Summary RAG)
-        cursor.execute("SELECT id, user_message, gemgem_response, embedding, username FROM conversations")
-        for row in cursor.fetchall():
-            if row[3]:
-                try:
-                    score = _cosine_similarity(query_embedding, json.loads(row[3]))
-                    if score >= threshold - 0.15:
-                        username = row[4] or "Someone"
-                        content = f"Chat - {username}: {row[1]} | Astra: {row[2]}"
-                        candidates[row[0]] = {
-                            "id": row[0],
-                            "content": content,
-                            "type": "conversation",
-                            "source": "conversations",
-                            "vector_score": score
-                        }
-                except: pass
+
+        # Scan Conversations (Summary RAG) - DISABLED
+        # The conversations table is only used for fact extraction during storage.
+        # We now retrieve ONLY from the knowledge table (extracted facts) to prevent
+        # context pollution from raw conversation logs bleeding into unrelated queries.
+        # This ensures true "Summary RAG" behavior as intended.
+        #
+        # cursor.execute("SELECT id, user_message, gemgem_response, embedding, username FROM conversations")
+        # for row in cursor.fetchall():
+        #     if row[3]:
+        #         try:
+        #             score = _cosine_similarity(query_embedding, json.loads(row[3]))
+        #             if score >= threshold - 0.15:
+        #                 username = row[4] or "Someone"
+        #                 content = f"Chat - {username}: {row[1]} | Astra: {row[2]}"
+        #                 candidates[row[0]] = {
+        #                     "id": row[0],
+        #                     "content": content,
+        #                     "type": "conversation",
+        #                     "source": "conversations",
+        #                     "vector_score": score
+        #                 }
+        #         except: pass
 
         # --- KEYWORD SEARCH (BM25) ---
         if BM25_INDEX:
@@ -614,12 +770,18 @@ async def retrieve_relevant_knowledge(
                     # Fetch content if not in candidates
                     if doc_id not in candidates:
                         content = BM25_CORPUS[idx]
+                        # Fetch metadata from DB for this doc_id
+                        cursor.execute("SELECT metadata FROM knowledge WHERE id = ?", (doc_id,))
+                        meta_row = cursor.fetchone()
+                        metadata = json.loads(meta_row[0]) if meta_row and meta_row[0] else {}
+
                         candidates[doc_id] = {
                             "id": doc_id,
                             "content": content,
                             "type": "knowledge", # BM25 only tracks knowledge table
                             "source": "bm25",
-                            "vector_score": 0.0 # No vector match
+                            "vector_score": 0.0, # No vector match
+                            "metadata": metadata
                         }
                     candidates[doc_id]["bm25_score"] = score
 
@@ -655,15 +817,39 @@ async def retrieve_relevant_knowledge(
         conn.close()
 
 
-def format_knowledge_for_context(knowledge: list[dict]) -> str:
-    """Format retrieved knowledge for injection into LLM context."""
+def format_knowledge_for_context(knowledge: list[dict], current_username: str = None) -> str:
+    """
+    Format retrieved knowledge for injection into LLM context.
+
+    Includes username labels to help the LLM distinguish between facts about
+    different users, and system instructions for appropriate usage.
+
+    Args:
+        knowledge: List of knowledge items from retrieval
+        current_username: The username of the person currently chatting (optional)
+    """
     if not knowledge:
         return ""
-    
-    formatted = ["MEMORY FACTS:"]
+
+    formatted = ["RELEVANT MEMORY FACTS:"]
+
+    # Add system instruction for the LLM
+    if current_username:
+        formatted.append(f"(Current conversation is with {current_username}. Use facts about other users only when directly relevant to the topic.)")
+
     for i, item in enumerate(knowledge, 1):
-        formatted.append(f"- {item['content']}")
-    
+        content = item['content']
+        metadata = item.get('metadata', {})
+        username = metadata.get('username', None)
+        knowledge_type = item.get('type', 'general')
+
+        # Label user-specific facts with username
+        if knowledge_type == 'user_fact' and username:
+            formatted.append(f"- [{username}] {content}")
+        # General knowledge (search, drawing, etc.) - no user label needed
+        else:
+            formatted.append(f"- {content}")
+
     return "\n".join(formatted)
 
 

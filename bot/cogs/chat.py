@@ -120,15 +120,25 @@ class ChatCog(commands.Cog):
                     print(f"[Chat] Failed to fetch channel history: {e}")
                 
                 short_term_context = format_discord_context(discord_messages)
-                
+
                 # Step 2: Query long-term memory (RAG - conversations only)
-                long_term_knowledge = await retrieve_relevant_knowledge(content, limit=5)
-                memory_context = format_knowledge_for_context(long_term_knowledge)
-                rag_count = len(long_term_knowledge)  # Track for footer
-                if memory_context:
-                    print(f"[RAG] Injecting {len(long_term_knowledge)} facts into context: {memory_context[:200]}")
+                # Skip RAG for simple greetings (waste of context)
+                greeting_patterns = ['hi', 'hello', 'hey', 'sup', 'yo', 'morning', 'evening', 'night', 'honey', 'babe', 'love']
+                is_greeting = len(content.split()) <= 3 and any(pattern in content.lower() for pattern in greeting_patterns)
+
+                if is_greeting:
+                    long_term_knowledge = []
+                    memory_context = ""
+                    rag_count = 0
+                    print(f"[RAG] Skipping RAG for greeting: '{content[:50]}'")
                 else:
-                    print(f"[RAG] No relevant memories found for: '{content[:50]}'")
+                    long_term_knowledge = await retrieve_relevant_knowledge(content, limit=3)
+                    memory_context = format_knowledge_for_context(long_term_knowledge, current_username=message.author.display_name)
+                    rag_count = len(long_term_knowledge)  # Track for footer
+                    if memory_context:
+                        print(f"[RAG] Injecting {len(long_term_knowledge)} facts into context: {memory_context[:200]}")
+                    else:
+                        print(f"[RAG] No relevant memories found for: '{content[:50]}'")
                 
                 # Step 3: Ask Logic AI what tools are needed (use lean 5-msg context for speed)
                 decision_context_str = format_discord_context(discord_messages[-5:])
@@ -176,9 +186,11 @@ class ChatCog(commands.Cog):
                 # Combine: search results FIRST (high attention zone), then Discord context
                 combined_context = ""
                 
-                # Insert Vision Analysis (if any) - HIGH PRIORITY
+                # Insert Vision Analysis (if any) - HIGHEST PRIORITY
                 if vision_response:
-                     combined_context += f"⚠️ [USER ATTACHED AN IMAGE - REACT TO THIS]:\n{vision_response}\n(Trust this analysis over your own memory)\n\n"
+                    # Replace character name "Astra" with "you" so the LLM recognizes it's talking about herself
+                    vision_self_aware = vision_response.replace("Astra", "you").replace("astra", "you")
+                    combined_context += f"🖼️ ⚠️ ⚠️ ⚠️ [IMAGE ANALYSIS - USER ATTACHED AN IMAGE - YOU MUST ACKNOWLEDGE THIS]:\n{vision_self_aware}\n\n⚠️ CRITICAL: The user is showing you THIS IMAGE. If the analysis mentions 'you', that means YOU (Astra) are in the image. Base your ENTIRE response on the image analysis above. Ignore search results if they contradict the image.\n\n"
 
                 # Regular chat with optional search/vision context
                 # Combine: search results FIRST (high attention zone), then Discord context
@@ -238,13 +250,18 @@ class ChatCog(commands.Cog):
                 # Step 6: Store conversation to RAG (long-term memory)
                 # Strip footers before saving — they're display-only
                 clean_response = re.sub(r'\n\n[💡🔍]\d+(?:\s[💡🔍]\d+)*$', '', response)
+
+                # Build conversation context from last 5 messages for better fact extraction
+                context_for_rag = format_discord_context(discord_messages[-5:]) if len(discord_messages) > 1 else None
+
                 await store_conversation(
                     user_message=content,
                     gemgem_response=clean_response,
                     user_id=str(message.author.id),
                     username=message.author.display_name,
                     channel_id=str(message.channel.id),
-                    guild_id=str(message.guild.id) if message.guild else None
+                    guild_id=str(message.guild.id) if message.guild else None,
+                    conversation_context=context_for_rag
                 )
                 
 

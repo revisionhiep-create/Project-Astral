@@ -3,6 +3,67 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.7.0] - 2026-02-28
+
+### Changed - RAG System Overhaul
+
+- **Summary RAG Architecture** (`rag.py`): Disabled raw conversation table retrieval to prevent context pollution
+  - Previously retrieved from both knowledge (facts) AND conversations (raw logs) tables
+  - Now retrieves ONLY from knowledge table (extracted facts)
+  - Commented out lines 586-607 to disable conversation scanning
+  - Prevents cross-user context bleeding (e.g., Liddo's "phantom leg" appearing in Hiep's responses)
+
+- **User-Specific Context Labels** (`rag.py`): Added username metadata to all retrieved facts
+  - Vector search now fetches metadata (lines 569-587) to extract username
+  - BM25 search now fetches metadata (lines 618-638)
+  - `format_knowledge_for_context()` labels facts with `[Username]` prefix (lines 672-705)
+  - Added system instruction: "Current conversation is with {username}. Use facts about other users only when directly relevant"
+  - Enables cross-user knowledge while maintaining context awareness
+
+- **Stricter Fact Extraction** (`rag.py`): Completely rewrote extraction prompt with strict criteria (lines 43-141)
+  - **DO NOT extract**: Emotional reactions, temporary states, generic preferences, small talk, greetings
+  - **EXTRACT ONLY**: Professional info, technical skills, substantial preferences with context, specific relationships
+  - Reduced trivial fact pollution ("dislikes pigeons", "showed something", "said hi")
+
+- **Multi-Message Context Window** (`rag.py`, `chat.py`): Added conversation context for better fact extraction
+  - `_extract_fact_from_conversation()` now accepts `conversation_context` parameter
+  - `store_conversation()` receives last 5 messages as context (chat.py lines 242-253)
+  - Improves fact quality by understanding conversation flow, not just single exchanges
+
+- **Deduplication System** (`rag.py`): Prevents storing near-identical facts
+  - New `_is_duplicate_fact()` function (lines 174-225)
+  - Uses vector similarity with 0.90 threshold to detect duplicates before storage
+  - Prevents "Liddo draws" x4 type pollution in database
+
+- **RAG Retrieval Limit Reduced** (`chat.py`): 5 facts → 3 facts per query (line 125)
+  - Reduces context window usage
+  - Prevents RAG from overwhelming vision analysis or search results
+
+- **Vision Self-Recognition** (`chat.py`): Character name replacement for first-person awareness (lines 180-183)
+  - Replaces "Astra" with "you" in vision responses before sending to personality LLM
+  - Adds explicit instruction: "If the analysis mentions 'you', that means YOU (Astra) are in the image"
+  - Fixes issue where Gemini correctly identified "Astra" but personality LLM didn't recognize it as herself
+
+- **Greeting Detection** (`chat.py`): Skip RAG retrieval for simple greetings (lines 126-141)
+  - Detects messages ≤3 words containing greeting patterns (hi, hello, hey, honey, etc.)
+  - Prevents wasteful RAG hits on "Hi honey" (was 3 hits, now 0)
+  - Saves context window for substantive conversations
+
+- **Vision Priority Strengthened** (`chat.py`): Enhanced vision warning for personality LLM (lines 179-183)
+  - Added triple warning emojis: `🖼️ ⚠️ ⚠️ ⚠️`
+  - Changed "IMPORTANT" to "CRITICAL" with explicit instructions
+  - Added: "Base your ENTIRE response on the image analysis above"
+  - Prevents vision analysis from being ignored due to context overload
+
+### Fixed
+
+- **Database Cleanup**: Removed 85 trivial/duplicate facts from 701 total (now 617)
+  - First pass: 67 trivial facts (showed, made a comment, gave high five, is interested in)
+  - Second pass: 18 duplicates and trivial ("Liddo draws" x4, "took space pictures" x2, etc.)
+  - Improves retrieval precision and reduces noise
+
+---
+
 ## [3.6.9] - 2026-02-27
 
 ### Changed
