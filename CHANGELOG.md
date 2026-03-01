@@ -12,7 +12,7 @@ All notable changes to Project Astral will be documented in this file.
   - LLM was ignoring vision descriptions thinking they were web search results, causing complete hallucinations
   - **Solution**: Vision now appears as `[Image Description]: {description}` in conversation history (line 231-238)
   - Appears as natural conversation flow, not metadata in system prompt
-  - Restores 25-message history limit for image queries (was reduced to 0 in debugging)
+  - Restored full 30-message history for image queries (no longer need to limit)
   - System prompt vision label changed from "Search context:" to "🖼️ VISION ANALYSIS OF THE IMAGE (THIS IS WHAT YOU SEE):"
   - **This was the bug causing 2 hours of debugging** - mislabeling vision as search caused LLM to ignore it entirely
 

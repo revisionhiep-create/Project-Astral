@@ -219,8 +219,8 @@ class ChatCog(commands.Cog):
                     rag_context = f"[Old memories - only reference if not covered above]:\n{memory_context}"
 
                 # Convert discord_messages to router-compatible history
-                # For image queries, inject vision analysis directly into conversation history (last 25 messages)
-                history_limit = 25 if image_url else len(discord_messages)
+                # Use full 30-message history for both regular and image queries (vision now properly labeled in history)
+                history_limit = len(discord_messages)
                 formatted_history = []
                 for m in discord_messages[-history_limit:]:
                     # Format as [Name]: Message so router handles it correctly
@@ -240,8 +240,8 @@ class ChatCog(commands.Cog):
                 response = await process_message(
                     user_message=content if content else "[attached an image]",
                     current_speaker=speaker_name,  # Pass speaker separately for system prompt
-                    search_context=combined_context,  # System prompt context (Search + Images)
-                    conversation_history=formatted_history, # Transcript (Chat History - limited to 25 for images)
+                    search_context=combined_context,  # System prompt context (Search results, summaries)
+                    conversation_history=formatted_history, # Full 30-message history (vision injected here for images)
                     memory_context=rag_context,  # RAG is deprioritized
                     has_vision=bool(image_url)  # Enable vision mode for image queries
                 )
