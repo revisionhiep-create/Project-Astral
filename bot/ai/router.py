@@ -169,6 +169,7 @@ async def _call_lmstudio(messages: list, temperature: float = 0.6, max_tokens: i
         "top_p": 0.8,
         "top_k": 20,
         "min_p": 0,
+        "repeat_penalty": 1.05,  # Qwen3-Coder recommended: helps with instruction following
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
     }
@@ -318,18 +319,19 @@ async def generate_response(
     search_context: str = "",
     memory_context: str = "",
     conversation_history: list[dict] = None,
-    current_speaker: str = None
+    current_speaker: str = None,
+    has_vision: bool = False
 ) -> str:
     """
     Generate an Astral response using proper system/user ChatML roles.
-    
+
     System message: personality + search results + memory (high instruction priority)
     User message: conversation transcript + current question
-    
+
     LM Studio's OpenAI-compatible API handles ChatML tokenization automatically.
     """
     # Build system prompt with context AND speaker identity
-    system_prompt = build_system_prompt(search_context, memory_context, current_speaker)
+    system_prompt = build_system_prompt(search_context, memory_context, current_speaker, has_vision)
 
     # Add date awareness
     system_prompt = f"{get_date_context()}\n\n{system_prompt}"
@@ -506,7 +508,8 @@ async def process_message(
     search_context: str,
     conversation_history: list[dict] = None,
     memory_context: str = "",
-    current_speaker: str = None
+    current_speaker: str = None,
+    has_vision: bool = False
 ) -> str:
     """
     Full message processing pipeline.
@@ -514,13 +517,14 @@ async def process_message(
     """
     if search_context:
         print(f"[Router] Using search context ({len(search_context)} chars)")
-    
+
     response = await generate_response(
         user_message=user_message,
         search_context=search_context,
         memory_context=memory_context,
         conversation_history=conversation_history,
-        current_speaker=current_speaker
+        current_speaker=current_speaker,
+        has_vision=has_vision
     )
-    
+
     return response

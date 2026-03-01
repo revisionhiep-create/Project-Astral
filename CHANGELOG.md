@@ -3,6 +3,50 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [3.7.4] - 2026-03-01
+
+### Fixed
+
+- **CRITICAL: Vision Analysis Mislabeled as "Search Context"** (`chat.py`, `personality.py`): Vision descriptions now injected into conversation history instead of system prompt
+  - **Root Cause**: Vision analysis was passed as `search_context` parameter and labeled as "Search context:" in system prompt
+  - LLM was ignoring vision descriptions thinking they were web search results, causing complete hallucinations
+  - **Solution**: Vision now appears as `[Image Description]: {description}` in conversation history (line 231-238)
+  - Appears as natural conversation flow, not metadata in system prompt
+  - Restores 25-message history limit for image queries (was reduced to 0 in debugging)
+  - System prompt vision label changed from "Search context:" to "🖼️ VISION ANALYSIS OF THE IMAGE (THIS IS WHAT YOU SEE):"
+  - **This was the bug causing 2 hours of debugging** - mislabeling vision as search caused LLM to ignore it entirely
+
+### Changed
+
+- **Vision Mode Instructions Strengthened** (`personality.py`): More explicit anti-hallucination instructions
+  - "DO NOT make up scenes, objects, or details not in the vision analysis"
+  - "DO NOT hallucinate. If you describe something not in the vision analysis, you FAIL."
+  - Moved from polite suggestions to mandatory commands
+
+---
+
+## [3.7.3] - 2026-03-01
+
+### Fixed
+
+- **LLM Consistency Bias on Vision Queries** (`personality.py`, `router.py`, `chat.py`): Added explicit vision mode instructions to override conversation history
+  - New `has_vision` parameter passed through entire pipeline when images are analyzed
+  - System prompt now includes `[VISION MODE - READ THIS FIRST]` section instructing Astral to:
+    - Ignore previous image descriptions from conversation history (old images)
+    - Ignore descriptions from other bots (GemGem, etc)
+    - Base response ENTIRELY on current vision analysis, not conversation memory
+  - Fixes issue where Astral repeated old image descriptions instead of analyzing new images
+  - Based on Qwen3-Coder model research emphasizing clear, direct instructions
+
+### Changed
+
+- **Qwen3-Coder Model Parameters** (`router.py`): Added `repeat_penalty: 1.05` to LMStudio payload (line 172)
+  - Aligns with official Qwen3-Coder-30B-A3B-Instruct-Heretic-I1 recommendations
+  - Improves instruction following and reduces repetitive output
+  - Completes parameter alignment: temp=0.7, top_p=0.8, top_k=20, repeat_penalty=1.05
+
+---
+
 ## [3.7.2] - 2026-03-01
 
 ### Fixed

@@ -159,8 +159,13 @@ class ChatCog(commands.Cog):
                 vision_response = None
                 search_count = 0  # Track for footer
 
-                # Search if Logic AI decided (but skip if image is attached - vision provides all context)
-                if tool_decision.get("search") and not image_url:
+                # Search if Logic AI decided (but NEVER search when image is attached - vision is the only context needed)
+                if image_url:
+                    # Force search_context to empty for image queries to prevent old search results from polluting vision
+                    search_context = ""
+                    if tool_decision.get("search"):
+                        print(f"[Chat] Skipping search for image query (vision provides context)")
+                elif tool_decision.get("search"):
                     search_query = tool_decision.get("search_query") or content
                     time_range = tool_decision.get("time_range")  # day/week/month/year/None
                     print(f"[Chat] Logic AI triggered search: '{search_query}' (time_range={time_range})")
@@ -172,8 +177,6 @@ class ChatCog(commands.Cog):
                     if search_results:
                         await store_full_search(search_query, search_results)
                         print(f"[RAG] Stored {len(search_results)} search results as knowledge")
-                elif tool_decision.get("search") and image_url:
-                    print(f"[Chat] Skipping search for image query (vision provides context)")
                 
                 # Vision if image is attached (always analyze images)
                 if image_url:
@@ -189,55 +192,58 @@ class ChatCog(commands.Cog):
                     # (caused "that's me" on every response)
                 
                 # Step 5: Generate response
-                # Step 5: Generate response
-                
-                # Combine: search results FIRST (high attention zone), then Discord context
-                combined_context = ""
-                
-                # Insert Vision Analysis (if any) - HIGHEST PRIORITY
-                if vision_response:
-                    # Replace character name "Astra" with "you" so the LLM recognizes it's talking about herself
-                    vision_self_aware = vision_response.replace("Astra", "you").replace("astra", "you")
-                    combined_context += f"🖼️ ⚠️ ⚠️ ⚠️ [IMAGE ANALYSIS - USER ATTACHED AN IMAGE - YOU MUST ACKNOWLEDGE THIS]:\n{vision_self_aware}\n\n⚠️ CRITICAL: The user is showing you THIS IMAGE. If the analysis mentions 'you', that means YOU (Astra) are in the image. Base your ENTIRE response on the image analysis above. Ignore search results if they contradict the image.\n\n"
 
-                # Regular chat with optional search/vision context
-                # Combine: search results FIRST (high attention zone), then Discord context
-                    
-                # ⚠️ SEARCH RESULTS FIRST (highest priority - attention is strongest at start)
+                # Build context for system prompt (search results and summaries)
+                combined_context = ""
+
+                # ⚠️ SEARCH RESULTS (if no image attached)
                 if search_context:
                     combined_context += f"⚠️ [SEARCH RESULTS - YOU MUST USE THIS INFO]:\n{search_context}\n\n"
-                
+
                 # === PREVIOUS CONTEXT SUMMARY (High level recall) ===
-                if self.summary_cache:
+                if self.summary_cache and not image_url:
                     combined_context += f"⚠️ [PREVIOUS CONTEXT SUMMARY - READ THIS FIRST]:\n{self.summary_cache}\n\n"
 
+                # Inject cached image descriptions so Astral remembers what she saw (skip if current message has image)
+                if not image_url:
+                    image_context = get_recent_image_context()
+                    if image_context:
+                        combined_context += f"{image_context}\n\n"
 
-                # Inject cached image descriptions so Astral remembers what she saw
-                image_context = get_recent_image_context()
-                if image_context:
-                    combined_context += f"{image_context}\n\n"
-                
-                # === CURRENT SPEAKER (AT END for recency bias) ===
+                # === CURRENT SPEAKER ===
                 speaker_name = message.author.display_name
-                
+
                 # RAG memory is separate - only use for things NOT in recent chat
                 rag_context = ""
                 if memory_context:
                     rag_context = f"[Old memories - only reference if not covered above]:\n{memory_context}"
-                
+
                 # Convert discord_messages to router-compatible history
+                # For image queries, inject vision analysis directly into conversation history (last 25 messages)
+                history_limit = 25 if image_url else len(discord_messages)
                 formatted_history = []
-                for m in discord_messages:
+                for m in discord_messages[-history_limit:]:
                     # Format as [Name]: Message so router handles it correctly
                     formatted_content = f"[{m['author']}]: {m['content']}"
                     formatted_history.append({"role": "user", "content": formatted_content})
+
+                # For image queries, inject vision analysis as the most recent context
+                if vision_response:
+                    # Replace character name "Astra" with "you" so the LLM recognizes it's talking about herself
+                    vision_self_aware = vision_response.replace("Astra", "you").replace("astra", "you")
+                    # Add vision as a system message in history (appears right before current message)
+                    formatted_history.append({
+                        "role": "user",
+                        "content": f"[Image Description]: {vision_self_aware}"
+                    })
 
                 response = await process_message(
                     user_message=content if content else "[attached an image]",
                     current_speaker=speaker_name,  # Pass speaker separately for system prompt
                     search_context=combined_context,  # System prompt context (Search + Images)
-                    conversation_history=formatted_history, # Transcript (Chat History)
-                    memory_context=rag_context  # RAG is deprioritized
+                    conversation_history=formatted_history, # Transcript (Chat History - limited to 25 for images)
+                    memory_context=rag_context,  # RAG is deprioritized
+                    has_vision=bool(image_url)  # Enable vision mode for image queries
                 )
                 
                 # === DETERMINISTIC ATTRIBUTION FOOTERS ===

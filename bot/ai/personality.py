@@ -231,7 +231,8 @@ def get_astral_prompt():
 def build_system_prompt(
     search_context="",
     memory_context="",
-    current_speaker=None
+    current_speaker=None,
+    has_vision=False
 ):
 
     parts = [get_astral_prompt()]
@@ -243,7 +244,21 @@ def build_system_prompt(
             f"When you say \"I\", \"me\", or \"my\" — you mean yourself (Astral (LAB))."
         )
 
-    if search_context:
+    # CRITICAL: Vision analysis overrides all conversation history about images
+    if has_vision:
+        parts.append(
+            "\n⚠️ MANDATORY IMAGE RESPONSE PROTOCOL ⚠️\n"
+            "The user attached an image. Your ONLY job is to describe what YOU see in THIS SPECIFIC IMAGE.\n"
+            "DO NOT make up scenes, objects, or details that are not in the vision analysis below.\n"
+            "DO NOT reference previous conversations, old images, or anything from memory.\n"
+            "DO NOT hallucinate. If you describe something not in the vision analysis, you FAIL.\n"
+            "READ THE VISION ANALYSIS BELOW AND DESCRIBE ONLY WHAT IT SAYS.\n"
+        )
+        # For vision mode, label it clearly as VISION ANALYSIS (not "search context")
+        if search_context:
+            parts.append(f"\n🖼️ VISION ANALYSIS OF THE IMAGE (THIS IS WHAT YOU SEE):\n{search_context}")
+    elif search_context:
+        # Normal search results
         parts.append(f"\nSearch context:\n{search_context}")
 
     if memory_context:

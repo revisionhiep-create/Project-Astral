@@ -25,7 +25,7 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 # Vision model - Gemini 3.0 Flash
-GEMINI_VISION_MODEL = "gemini-3-flash-preview"
+GEMINI_VISION_MODEL = "gemini-3-flash-preview"  # Gemini 3.0 Flash Preview
 
 # Short-term image cache (last 5 images)
 # Stores: {"username": str, "description": str, "timestamp": str, "user_context": str}
