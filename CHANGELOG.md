@@ -3,6 +3,48 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [4.1.0] - 2026-03-02
+
+### Changed - Model & Personality Overhaul
+
+- **Model Migration**: Switched from Qwen3-Coder-30B-A3B to Mistral-Small-24B-Instruct-2501-Heretic
+  - Updated `.env` to use `mistral-small-24b-instruct-2501-heretic-i1`
+  - Optimized sampler settings for Mistral-Small conversational performance
+  - Temperature: 0.35 → 0.65 (better personality variation)
+  - Min-P: 0.05 → 0.08 (quality floor)
+  - Repeat penalty: 1.0 → 1.05 (gentle variety nudge)
+  - Frequency penalty: 0.05 → 0.1 (vocabulary diversity)
+
+- **Personality System Rewrite**: Complete overhaul for natural, friend-like interaction
+  - **Identity Update**: Changed from "22-year-old human" to "female AI"
+  - **Capitalization**: Removed forced lowercase rule, now uses natural capitalization
+  - **Response Length**: Flexible 1 sentence to paragraphs based on topic depth (was rigid 1-4 sentences)
+  - **Uncensored Mode**: Explicit support for mature topics, profanity, pushing back, talking shit
+  - **Honesty Enforcement**: Strong anti-hallucination rules - admits "I don't know" instead of guessing
+  - **Emotional Intelligence**: Added calibration rules for reading the room, matching user energy
+  - **GemGem Relationship**: Added explicit recognition of GemGem as AI sister
+
+- **Few-Shot Examples Upgrade**: 14 → 18 examples with better range demonstration
+  - Added short casual responses (1-2 sentences)
+  - Added medium engagement (2-4 sentences)
+  - Added longer thoughtful responses (1-2 paragraphs)
+  - Added uncensored/push-back examples
+  - Added honesty-when-uncertain examples
+
+### Files Modified
+
+- `bot/ai/personality.py` - Complete rewrite of core personality and examples
+- `bot/ai/router.py` - Updated model reference and sampler parameters
+- `.env` - Model name updated to Mistral-Small-24B-Heretic
+
+### Migration Notes
+
+- Ensure LM Studio is running `mistral-small-24b-instruct-2501-heretic-i1` (Q4_K_M or higher recommended)
+- Responses will be more natural and varied in length
+- Model will admit uncertainty instead of fabricating facts
+- Personality feels more like a real friend, less like a chatbot
+
+
 ## [4.0.0] - 2026-03-01
 
 ### Added - Shared Memory System
