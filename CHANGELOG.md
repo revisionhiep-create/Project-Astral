@@ -2,6 +2,12 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [4.1.2] - 2026-03-02
+
+### Changed - RAG VRAM Optimization
+
+- **Removed Local RAG Models**: Uninstalled `sentence-transformers` and removed the `cross-encoder/ms-marco-MiniLM-L-6-v2` model from `rag.py` to eliminate 4.5 GB of VRAM overhead.
+- **Gemini API Reranking**: Documents and facts retrieved via BM25/Vector search are now reranked natively using `gemini-2.5-flash` via the prompt instead of a local PyTorch context. 
 
 ## [4.1.1] - 2026-03-02
 

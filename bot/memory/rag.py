@@ -17,7 +17,6 @@ from datetime import datetime
 from typing import Optional
 import numpy as np
 from rank_bm25 import BM25Okapi
-from sentence_transformers import CrossEncoder
 
 from memory.embeddings import get_embedding, get_query_embedding
 
@@ -30,7 +29,6 @@ CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-vl-32b-instruct-heretic-v2-
 BM25_INDEX = None
 BM25_CORPUS = []
 BM25_IDS = []
-CROSS_ENCODER = None
 
 
 async def _extract_fact_from_conversation(username: str, user_message: str, astra_response: str, conversation_context: str = None) -> Optional[str]:
@@ -226,16 +224,7 @@ async def _is_duplicate_fact(new_fact: str, user_id: str, similarity_threshold: 
 
 
 def _init_search_models():
-    """Initialize CrossEncoder and build BM25 index."""
-    global CROSS_ENCODER
-    try:
-        # Load Cross-Encoder (fast, small model)
-        CROSS_ENCODER = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-        print("[RAG] Cross-Encoder loaded successfully")
-    except Exception as e:
-        print(f"[RAG] Failed to load Cross-Encoder: {e}")
-    
-    # Build BM25 from existing DB
+    """Initialize BM25 index."""
     _rebuild_bm25_index()
 
 
@@ -297,6 +286,66 @@ Output:"""
         return clean
     except:
         return query
+
+
+async def _gemini_rerank(query: str, candidates: list[dict]) -> list[dict]:
+    """Use Gemini 2.5 Flash to score and rerank candidate documents for relevance."""
+    if not os.getenv("GEMINI_API_KEY") or not candidates:
+        return candidates
+
+    prompt = f"""You are a relevance ranking assistant. Rate how relevant each document is to the search query on a scale of 0.0 to 10.0.
+10.0 means perfectly relevant, and 0.0 means completely irrelevant.
+Provide ONLY the space-separated list of float scores, one for each document in order, and nothing else.
+
+Query: {query}
+
+"""
+    for i, cand in enumerate(candidates):
+        content = cand['content']
+        # Truncate content slightly if too long, but usually these are short facts/chunks
+        content_preview = content[:800]
+        prompt += f"Document [{i}]: {content_preview}\n\n"
+
+    try:
+        # We use gemini-2.5-flash since it's the latest fast model
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        response = await model.generate_content_async(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.0,
+                max_output_tokens=20 * len(candidates)
+            )
+        )
+        
+        # Clean up output and parse scores
+        res_text = response.text.strip().replace(',', ' ')
+        scores_str = res_text.split()
+        
+        # In case the model wrote extra text, grab only the floats
+        scores = []
+        for s in scores_str:
+            try:
+                scores.append(float(s))
+            except ValueError:
+                continue
+
+        # Map scores back to candidates
+        # If lengths mismatch, gracefully use 0 for the rest
+        for i, cand in enumerate(candidates):
+            score = scores[i] if i < len(scores) else 0.0
+            cand["rerank_score"] = score
+            
+        # Re-sort descendingly
+        candidates.sort(key=lambda x: x.get("rerank_score", 0.0), reverse=True)
+        return candidates
+
+    except Exception as e:
+        print(f"[RAG] Gemini reranking failed: {e}")
+        # Default fallback: keep original scores/order
+        for cand in candidates:
+            cand["rerank_score"] = cand.get("vector_score", 0.0)
+        candidates.sort(key=lambda x: x.get("rerank_score", 0.0), reverse=True)
+        return candidates
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -785,28 +834,21 @@ async def retrieve_relevant_knowledge(
                         }
                     candidates[doc_id]["bm25_score"] = score
 
-        # --- RE-RANKING (Cross-Encoder) ---
+        # --- RE-RANKING (Gemini API) ---
         if not candidates: return []
         
         final_results = list(candidates.values())
         
-        if CROSS_ENCODER:
-            pairs = [[clean_query, item["content"]] for item in final_results]
-            rerank_scores = CROSS_ENCODER.predict(pairs)
-            
-            for i, item in enumerate(final_results):
-                item["rerank_score"] = float(rerank_scores[i])
+        # Score and sort with Gemini
+        final_results = await _gemini_rerank(clean_query, final_results)
                 
-            # Filter by Re-rank Score (Logits > 0 means likely relevant)
-            final_results = [item for item in final_results if item["rerank_score"] > 0.0]
-            
-            # Sort by Re-rank Score
-            final_results.sort(key=lambda x: x["rerank_score"], reverse=True)
-            
-            # print(f"[RAG] Re-ranked top match: {final_results[0]['rerank_score']:.2f} | {final_results[0]['content'][:50]}")
-        else:
-            # Fallback to Vector Score
-            final_results.sort(key=lambda x: x.get("vector_score", 0), reverse=True)
+        # Filter by Re-rank Score (Score > 3.0 means likely relevant)
+        final_results = [item for item in final_results if item.get("rerank_score", 0.0) > 3.0]
+        
+        # Sort by Re-rank Score
+        final_results.sort(key=lambda x: x.get("rerank_score", 0.0), reverse=True)
+        
+        # print(f"[RAG] Re-ranked top match: {final_results[0]['rerank_score']:.2f} | {final_results[0]['content'][:50]}")
 
         return final_results[:limit]
     
