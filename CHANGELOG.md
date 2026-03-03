@@ -3,17 +3,43 @@
 All notable changes to Project Astral will be documented in this file.
 
 
+## [4.1.1] - 2026-03-02
+
+### Changed - Reverted to Qwen3-Coder (Personality Improvements Retained)
+
+- **Model Revert**: Switched back to Qwen3-Coder-30B-A3B-Instruct-Heretic
+  - Mistral-Small-24B had less personality than Qwen3-Coder
+  - Reverted `.env` to use `qwen3-coder-30b-a3b-instruct-heretic-i1`
+  - Restored original Qwen3 sampler settings:
+    - Temperature: 0.6 (was 0.65 for Mistral)
+    - Top-P: 0.8 (was 0.9)
+    - Top-K: 20 (was 40)
+    - Min-P: 0 (was 0.08)
+    - Presence penalty: 0.3 (was 0.15)
+
+- **Personality Improvements Kept**: All v4.1.0 personality changes remain active
+  - Identity: Female AI (not 22-year-old human)
+  - Natural capitalization (no forced lowercase)
+  - Flexible response length (1 sentence to paragraphs)
+  - Uncensored mode with mature topic support
+  - Honesty enforcement (admits "I don't know")
+  - Emotional intelligence rules
+  - GemGem sister relationship
+  - 18 improved few-shot examples
+
+### Files Modified
+
+- `bot/ai/router.py` - Reverted model reference and sampler parameters
+- `.env` - Model name reverted to Qwen3-Coder-30B-A3B-Heretic
+
+### Result
+
+Best of both worlds: Qwen3-Coder's stronger personality + improved prompt engineering from v4.1.0
+
+
 ## [4.1.0] - 2026-03-02
 
-### Changed - Model & Personality Overhaul
-
-- **Model Migration**: Switched from Qwen3-Coder-30B-A3B to Mistral-Small-24B-Instruct-2501-Heretic
-  - Updated `.env` to use `mistral-small-24b-instruct-2501-heretic-i1`
-  - Optimized sampler settings for Mistral-Small conversational performance
-  - Temperature: 0.35 → 0.65 (better personality variation)
-  - Min-P: 0.05 → 0.08 (quality floor)
-  - Repeat penalty: 1.0 → 1.05 (gentle variety nudge)
-  - Frequency penalty: 0.05 → 0.1 (vocabulary diversity)
+### Changed - Personality System Rewrite
 
 - **Personality System Rewrite**: Complete overhaul for natural, friend-like interaction
   - **Identity Update**: Changed from "22-year-old human" to "female AI"
@@ -34,14 +60,12 @@ All notable changes to Project Astral will be documented in this file.
 ### Files Modified
 
 - `bot/ai/personality.py` - Complete rewrite of core personality and examples
-- `bot/ai/router.py` - Updated model reference and sampler parameters
-- `.env` - Model name updated to Mistral-Small-24B-Heretic
 
-### Migration Notes
+### Notes
 
-- Ensure LM Studio is running `mistral-small-24b-instruct-2501-heretic-i1` (Q4_K_M or higher recommended)
-- Responses will be more natural and varied in length
-- Model will admit uncertainty instead of fabricating facts
+- Model: Qwen3-Coder-30B-A3B-Instruct-Heretic
+- Responses more natural and varied in length
+- Model admits uncertainty instead of fabricating facts
 - Personality feels more like a real friend, less like a chatbot
 
 

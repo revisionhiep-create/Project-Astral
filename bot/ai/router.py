@@ -1,4 +1,4 @@
-"""AI Router - LM Studio orchestration (Mistral-Small-24B-Instruct-2501-Heretic)."""
+"""AI Router - LM Studio orchestration (Qwen3-Coder-30B-A3B-Instruct-Heretic)."""
 import os
 import json
 import time
@@ -156,7 +156,7 @@ CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-coder-30b-a3b-instruct-here
 print(f"[Router] Host: {LMSTUDIO_HOST} | Model: {CHAT_MODEL}")
 
 
-async def _call_lmstudio(messages: list, temperature: float = 0.65, max_tokens: int = 8000, stop: list = None, presence_penalty: float = 0.15, frequency_penalty: float = 0.1, model: str = None) -> dict:
+async def _call_lmstudio(messages: list, temperature: float = 0.6, max_tokens: int = 8000, stop: list = None, presence_penalty: float = 0.3, frequency_penalty: float = 0.1, model: str = None) -> dict:
     """Make a request to LM Studio's OpenAI-compatible API.
     Returns dict with 'text', 'tokens', 'tps' keys (or None on failure).
     """
@@ -166,10 +166,10 @@ async def _call_lmstudio(messages: list, temperature: float = 0.65, max_tokens: 
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": False,
-        "top_p": 0.9,
-        "top_k": 40,
-        "min_p": 0.08,
-        "repeat_penalty": 1.05,  # Mistral-Small: gentle repetition penalty for variety
+        "top_p": 0.8,
+        "top_k": 20,
+        "min_p": 0,
+        "repeat_penalty": 1.05,  # Qwen3-Coder recommended: helps with instruction following
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
     }
