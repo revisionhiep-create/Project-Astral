@@ -263,8 +263,6 @@ class DrawingHandler:
             return enhanced
         
         try:
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            
             # Build enhancement prompt
             enhancement_prompt = """You are helping enhance an image generation prompt.
 
@@ -275,7 +273,7 @@ class DrawingHandler:
                 for char in matched_chars:
                     enhancement_prompt += f"- **{char['name'].title()}**: {char['description']}\n"
                 enhancement_prompt += "\n"
-            
+
             enhancement_prompt += f"""The user said: "{basic_prompt}"
 
 Based on this, create a detailed, vivid image generation prompt that:
@@ -285,7 +283,7 @@ Based on this, create a detailed, vivid image generation prompt that:
 - Details composition
 - Conveys mood/emotion
 
-IMPORTANT: 
+IMPORTANT:
 - Stay true to the user's idea
 - If characters are mentioned, describe them accurately based on the known character info above
 - DO NOT add cosmic, galaxy, gem, crystal, or sparkle themes unless specifically mentioned
@@ -294,11 +292,22 @@ IMPORTANT:
 Keep it to 2-3 sentences maximum. Return ONLY the enhanced prompt, nothing else."""
 
             # Build inputs (text + reference images - Gemini 3 Pro supports up to 14)
-            inputs = [enhancement_prompt]
+            parts = [types.Part.from_text(text=enhancement_prompt)]
             for img in reference_images[:14]:
-                inputs.append(img)
-            
-            response = await model.generate_content_async(inputs)
+                # Convert PIL Images to Part objects
+                img_bytes = io.BytesIO()
+                img.save(img_bytes, format='PNG')
+                img_bytes.seek(0)
+                parts.append(types.Part.from_bytes(
+                    data=img_bytes.getvalue(),
+                    mime_type='image/png'
+                ))
+
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=parts,
+                config=types.GenerateContentConfig(temperature=0.7)
+            )
             enhanced = response.text.strip()
             
             # Clean up markdown
@@ -345,8 +354,6 @@ Keep it to 2-3 sentences maximum. Return ONLY the enhanced prompt, nothing else.
         
         try:
             # STEP 1: Gemini describes the generated image objectively
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            
             description_prompt = """Describe this AI-generated image objectively.
 Include:
 - Main subjects and their appearance
@@ -355,16 +362,17 @@ Include:
 - Any notable details
 
 Be factual (2-3 sentences). No personality or commentary."""
-            
-            response = await model.generate_content_async(
-                [
-                    {"mime_type": "image/png", "data": image_data},
-                    description_prompt
+
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=[
+                    types.Part.from_bytes(data=image_data, mime_type="image/png"),
+                    types.Part.from_text(text=description_prompt)
                 ],
-                generation_config={
-                    "temperature": 0.3,
-                    "max_output_tokens": 200
-                }
+                config=types.GenerateContentConfig(
+                    temperature=0.3,
+                    max_output_tokens=200
+                )
             )
             
             image_description = response.text.strip()

@@ -45,17 +45,34 @@ async def generate_image(prompt: str, reference_images: list = None) -> tuple:
     for model_id, display_name in models_to_try:
         try:
             print(f"[Draw] Trying {display_name}...")
-            model = genai.GenerativeModel(model_id, safety_settings=safety_settings)
-            
-            # Build generation inputs
-            generation_inputs = [prompt]
+
+            # Build generation inputs as Part objects
+            parts = [types.Part.from_text(text=prompt)]
             if reference_images:
-                generation_inputs.extend(reference_images)
+                for img in reference_images:
+                    img_bytes = io.BytesIO()
+                    img.save(img_bytes, format='PNG')
+                    img_bytes.seek(0)
+                    parts.append(types.Part.from_bytes(
+                        data=img_bytes.getvalue(),
+                        mime_type='image/png'
+                    ))
                 print(f"[Draw] Using {len(reference_images)} reference images")
-            
+
+            # Convert safety settings to new SDK format
+            safety_config = [
+                types.SafetySetting(category=s["category"], threshold=s["threshold"])
+                for s in safety_settings
+            ]
+
             # Run in executor (blocking API)
             response = await loop.run_in_executor(
-                None, lambda: model.generate_content(generation_inputs)
+                None,
+                lambda: client.models.generate_content(
+                    model=model_id,
+                    contents=parts,
+                    config=types.GenerateContentConfig(safety_settings=safety_config)
+                )
             )
             
             # Handle Imagen-style response

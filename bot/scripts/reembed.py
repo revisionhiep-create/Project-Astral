@@ -2,10 +2,11 @@
 import sqlite3
 import json
 import time
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import os
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 MODEL = "models/gemini-embedding-001"
 DB_PATH = os.getenv("RAG_DATABASE", "/app/data/db/memory.db")
@@ -23,12 +24,12 @@ failed = 0
 
 for kid, content in rows:
     try:
-        result = genai.embed_content(
+        result = client.models.embed_content(
             model=MODEL,
             content=content[:2000],  # Truncate very long content
             task_type="retrieval_document"
         )
-        embedding = result["embedding"]
+        embedding = result.embeddings[0].values
         c.execute("UPDATE knowledge SET embedding = ? WHERE id = ?", 
                   (json.dumps(embedding), kid))
         success += 1

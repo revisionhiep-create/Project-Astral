@@ -5,9 +5,14 @@ Tries Gemini cloud STT first, falls back to local faster-whisper server.
 
 import asyncio
 import aiohttp
+import os
 from google import genai
 from google.genai import types
 
+
+# Initialize Gemini client
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 # --- Cloud STT (Gemini - primary) ---
 STT_MODEL = "gemini-2.5-flash"
@@ -38,13 +43,15 @@ async def transcribe(wav_bytes: bytes) -> str | None:
 
 async def _transcribe_cloud(wav_bytes: bytes) -> str | None:
     """Transcribe via Gemini cloud API (primary)."""
-    try:
-        model = genai.GenerativeModel(STT_MODEL)
+    if not client:
+        return None
 
-        response = await model.generate_content_async(
-            [
-                STT_PROMPT,
-                {"mime_type": "audio/wav", "data": wav_bytes},
+    try:
+        response = client.models.generate_content(
+            model=STT_MODEL,
+            contents=[
+                types.Part.from_text(text=STT_PROMPT),
+                types.Part.from_bytes(data=wav_bytes, mime_type="audio/wav"),
             ]
         )
 

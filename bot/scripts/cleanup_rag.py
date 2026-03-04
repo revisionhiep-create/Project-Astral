@@ -1,7 +1,8 @@
 import sqlite3
 import json
 import time
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import os
 import sys
 
@@ -21,7 +22,7 @@ if not API_KEY:
     print("Please run with: env GEMINI_API_KEY=... python bot/scripts/cleanup_rag.py")
     sys.exit(1)
 
-genai.configure(api_key=API_KEY)
+client = genai.Client(api_key=API_KEY)
 
 MODEL = "models/gemini-embedding-001"
 # Path relative to where script is run, usually from root
@@ -42,12 +43,12 @@ print(f"Using database: {DB_PATH}")
 
 def get_embedding(text):
     try:
-        result = genai.embed_content(
+        result = client.models.embed_content(
             model=MODEL,
             content=text[:2000],
             task_type="retrieval_document"
         )
-        return result["embedding"]
+        return result.embeddings[0].values
     except Exception as e:
         print(f"  Error embedding: {e}")
         return None

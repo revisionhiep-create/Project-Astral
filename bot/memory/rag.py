@@ -22,6 +22,10 @@ from rank_bm25 import BM25Okapi
 from memory.embeddings import get_embedding, get_query_embedding
 
 
+# Initialize Gemini client
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+
 DATABASE_PATH = os.getenv("RAG_DATABASE", "/app/data/memory.db")
 LMSTUDIO_HOST = os.getenv("LMSTUDIO_HOST", "http://host.docker.internal:1234")
 CHAT_MODEL = os.getenv("LMSTUDIO_CHAT_MODEL", "qwen3-vl-32b-instruct-heretic-v2-i1")
@@ -140,10 +144,13 @@ If the conversation contains no substantial long-term information, respond with:
 Respond with the fact or NONE:"""
 
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = await model.generate_content_async(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        if not client:
+            return None
+
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
                 temperature=0.1,
                 max_output_tokens=100
             )
@@ -273,10 +280,13 @@ Input: {query}
 Output:"""
 
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = await model.generate_content_async(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        if not client:
+            return query
+
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
                 temperature=0.1,
                 max_output_tokens=50
             )
@@ -308,11 +318,15 @@ Query: {query}
         prompt += f"Document [{i}]: {content_preview}\n\n"
 
     try:
+        if not client:
+            # Fallback: return all candidates with default scores
+            return [(i, 0.5) for i in range(len(candidates))]
+
         # We use gemini-2.5-flash since it's the latest fast model
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        response = await model.generate_content_async(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
                 temperature=0.0,
                 max_output_tokens=20 * len(candidates)
             )
