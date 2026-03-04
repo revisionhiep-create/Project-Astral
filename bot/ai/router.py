@@ -6,15 +6,15 @@ import aiohttp
 import difflib
 
 import re
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from ai.personality import build_system_prompt
 from tools.time_utils import get_date_context
 
 # Configure Google AI
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
 def _strip_think_tags(text: str) -> str:
@@ -272,20 +272,19 @@ Examples:
 - [image attached] "what is this" → {{"search": false, "time_range": null, "vision": true, "reasoning": "user wants image analyzed"}}"""
 
     try:
-        model = genai.GenerativeModel("gemini-3-flash-preview")
-
         # System instructions + user message for tool decision
         full_input = f"{prompt}\n\nCurrent message: {user_message}\nHas image attachment: {has_image}"
 
-        response = await model.generate_content_async(
-            full_input,
-            generation_config=genai.types.GenerationConfig(
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=full_input,
+            config=types.GenerateContentConfig(
                 temperature=0.1,
                 max_output_tokens=256,
                 response_mime_type="application/json"
             )
         )
-        
+
         if not response or not response.text:
             raise Exception("No response from Gemini")
         
@@ -497,10 +496,10 @@ async def summarize_text(text: str) -> str:
     )
 
     try:
-        model = genai.GenerativeModel("gemini-3-flash-preview")
-        response = await model.generate_content_async(
-            f"{system_prompt}\n\nConversation History:\n{text}",
-            generation_config=genai.types.GenerationConfig(
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=f"{system_prompt}\n\nConversation History:\n{text}",
+            config=types.GenerateContentConfig(
                 temperature=0.3,
                 max_output_tokens=1200  # Increased from 600 to allow longer summaries
             )

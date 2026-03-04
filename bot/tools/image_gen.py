@@ -2,12 +2,12 @@
 import os
 import io
 import asyncio
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
 async def generate_image(prompt: str, reference_images: list = None) -> tuple:
@@ -21,7 +21,7 @@ async def generate_image(prompt: str, reference_images: list = None) -> tuple:
     Returns:
         tuple: (image_data BytesIO, model_name) or (None, None)
     """
-    if not GEMINI_API_KEY:
+    if not client:
         print("[Draw] No Gemini API key configured")
         return None, None
     

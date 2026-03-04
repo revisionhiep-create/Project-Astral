@@ -6,7 +6,8 @@ Text Attribution Prompt: treats text in images as character dialogue/thoughts.
 import os
 import aiohttp
 import base64
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from io import BytesIO
 from datetime import datetime
 from collections import deque
@@ -21,8 +22,7 @@ except ImportError:
 
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 # Vision model - Gemini 3.0 Flash
 GEMINI_VISION_MODEL = "gemini-3-flash-preview"  # Gemini 3.0 Flash Preview
@@ -52,11 +52,11 @@ async def describe_image(image_url: str = None, image_data: bytes = None, user_c
     
     if not image_data:
         return None
-    
-    if not GEMINI_API_KEY:
+
+    if not client:
         print("[Vision] No Gemini API key configured")
         return None
-    
+
     try:
         description_prompt = """Analyze this image for character expression and any visible text. Treat text within the image as the character's dialogue, internal thoughts, or a message they are reacting to. Use the visual mood to determine the tone of the text.
 
@@ -97,25 +97,27 @@ async def describe_image(image_url: str = None, image_data: bytes = None, user_c
 - If you recognize someone, just use their name naturally in the description
 - Do NOT list who is or isn't in the image """
         
-        model = genai.GenerativeModel(GEMINI_VISION_MODEL)
-        
-        response = await model.generate_content_async(
-            [
-                {"mime_type": mime_type, "data": image_data},
-                description_prompt
-            ],
-            generation_config={
-                "temperature": 0.5,  # Increased from 0.3 to encourage longer, more detailed descriptions
-                "max_output_tokens": 1024,  # Increased from 800 to allow more detail
-                "top_p": 0.95,
-                "top_k": 40
-            },
-            safety_settings={
-                genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH: genai.types.HarmBlockThreshold.BLOCK_NONE,
-                genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT: genai.types.HarmBlockThreshold.BLOCK_NONE,
-                genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: genai.types.HarmBlockThreshold.BLOCK_NONE,
-                genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: genai.types.HarmBlockThreshold.BLOCK_NONE,
-            }
+        # Prepare content parts for multimodal input
+        content_parts = [
+            types.Part.from_bytes(data=image_data, mime_type=mime_type),
+            types.Part.from_text(text=description_prompt)
+        ]
+
+        response = client.models.generate_content(
+            model=GEMINI_VISION_MODEL,
+            contents=content_parts,
+            config=types.GenerateContentConfig(
+                temperature=0.5,  # Increased from 0.3 to encourage longer, more detailed descriptions
+                max_output_tokens=1024,  # Increased from 800 to allow more detail
+                top_p=0.95,
+                top_k=40,
+                safety_settings=[
+                    types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+                    types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+                    types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+                    types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
+                ]
+            )
         )
 
         # Debug: Check why Gemini is truncating

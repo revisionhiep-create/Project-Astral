@@ -12,7 +12,8 @@ import hashlib
 import aiohttp
 import asyncio
 from contextlib import closing
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from datetime import datetime
 from typing import Optional
 import numpy as np

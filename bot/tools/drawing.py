@@ -12,7 +12,8 @@ import os
 import io
 import discord
 import PIL.Image
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from io import BytesIO
 from typing import Optional, List, Tuple
 
@@ -23,8 +24,7 @@ from tools.characters import detect_characters, load_character_image, get_all_ch
 
 # Configure Gemini for vision/text analysis
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
 class DrawingHandler:

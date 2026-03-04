@@ -5,7 +5,8 @@ Tries Gemini cloud STT first, falls back to local faster-whisper server.
 
 import asyncio
 import aiohttp
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 
 # --- Cloud STT (Gemini - primary) ---

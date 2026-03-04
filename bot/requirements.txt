@@ -10,8 +10,8 @@ httpx>=0.26.0
 # Ollama Client
 ollama>=0.4.0
 
-# Google AI (Vision + Embeddings)
-google-generativeai>=0.8.0
+# Google AI (Vision + Embeddings) - New unified SDK
+google-genai>=0.3.0
 
 # Vector Store
 numpy>=1.26.0

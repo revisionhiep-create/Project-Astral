@@ -2,6 +2,22 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [4.2.0] - 2026-03-03
+
+### Changed - Migrated to Google GenAI SDK
+
+- **Google SDK Migration**: Migrated from deprecated `google-generativeai` package to new unified `google-genai` SDK
+  - Updated all imports: `import google.generativeai as genai` → `from google import genai` + `from google.genai import types`
+  - Replaced `genai.configure()` with `client = genai.Client(api_key=...)`
+  - Updated API calls to use client-based approach (`client.models.generate_content()`, `client.models.embed_content()`)
+  - Updated embeddings API: `content` parameter → `contents`, result access changed from `result["embedding"]` → `result.embeddings[0].values`
+  - Updated vision API: multimodal input now uses `types.Part.from_bytes()` and `types.Part.from_text()`
+  - Updated generation config: wrapped in `types.GenerateContentConfig()`
+  - Updated safety settings: now uses `types.SafetySetting()` objects
+- **Files Updated**: router.py, embeddings.py, vision.py, image_gen.py, drawing.py, stt.py, rag.py, and utility scripts
+- **Deprecation Warning Eliminated**: No more warnings about discontinued `google-generativeai` support
+- **Future-Proof**: Now using actively maintained SDK with access to latest Gemini features
+
 ## [4.1.2] - 2026-03-02
 
 ### Changed - RAG VRAM Optimization
