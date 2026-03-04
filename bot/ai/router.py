@@ -272,7 +272,7 @@ Examples:
 - [image attached] "what is this" → {{"search": false, "time_range": null, "vision": true, "reasoning": "user wants image analyzed"}}"""
 
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-3-flash-preview")
 
         # System instructions + user message for tool decision
         full_input = f"{prompt}\n\nCurrent message: {user_message}\nHas image attachment: {has_image}"
@@ -497,7 +497,7 @@ async def summarize_text(text: str) -> str:
     )
 
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-3-flash-preview")
         response = await model.generate_content_async(
             f"{system_prompt}\n\nConversation History:\n{text}",
             generation_config=genai.types.GenerationConfig(
