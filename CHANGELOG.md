@@ -2,6 +2,171 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.0.0] - 2026-03-05
+
+### Added - xAI Grok Integration (Major)
+
+**Backend Migration: LM Studio → Grok 4.1 Fast Reasoning**
+
+- **New Backend System**: Added complete xAI Grok API integration as primary LLM backend
+  - New `LLM_BACKEND` environment variable: `"grok"` or `"lmstudio"` (default: `"grok"`)
+  - Model: `grok-4-1-fast-reasoning` (80-100 tokens/sec)
+  - Endpoint: `/v1/responses` (NOT `/v1/chat/completions`) for native tool support
+  - API configuration via `.env`: `XAI_API_KEY`, `XAI_MODEL`, `XAI_HOST`
+
+- **Native Tool Calling**: Grok handles search and vision server-side (no external tool routing needed)
+  - `web_search` tool: Grok autonomously searches when needed (up to 3 queries per request)
+  - `x_search` tool: X/Twitter integration for posts and profiles
+  - `code_execution` tool: Execute code directly when needed
+  - Vision: Native image understanding with multi-modal input (`input_image` + `input_text`)
+  - Removed Gemini tool routing (`decide_tools_and_query`) - no longer needed
+  - Removed external SearXNG search execution for Grok backend
+  - Removed Gemini vision analysis - Grok handles vision natively
+
+- **Vision Implementation**: Fixed and optimized for Grok's `/v1/responses` format
+  - Multi-modal payload: `[{"type": "input_text", "text": "..."}, {"type": "input_image", "image_url": "...", "detail": "high"}]`
+  - Required `"detail": "high"` parameter for vision processing (was missing, causing silent failures)
+  - Character recognition: Uses `characters.json` data to identify people in images (Astral, GemGem, Hiep, etc.)
+  - Natural commentary: No technical analysis output, just Astral's critique/reactions
+  - Debug logging: Added vision mode detection logging for troubleshooting
+
+- **Response Parsing**: Complex extraction logic for Grok's nested response structure
+  - Top-level `"text"` field is metadata only (`{"format": {"type": "text"}}`) - skip it
+  - Actual response in `output` array → find `type="message"` → `content` list → `type="output_text"` → `text`
+  - Token counting: Uses `output_tokens` (not `completion_tokens`)
+  - Citation stripping: Added `_strip_citations()` to remove `[[1]][[2]]` markers from responses
+  - Clean post-processing chain: citations → markdown → roleplay → think tags → deduplication
+
+- **Parameter Mapping**: Grok doesn't support standard OpenAI parameters
+  - ❌ Removed: `frequency_penalty`, `presence_penalty`, `stop` sequences
+  - ✅ Uses: `repetition_penalty` (1.05 baseline + dynamic adjustment)
+  - Conversion: `presence_penalty` → `repetition_penalty` multiplier
+  - Dynamic creativity: Adjusts temperature and repetition_penalty to break loops
+
+- **Error Handling**: Comprehensive error logging and fallback
+  - Status validation: Check `"status" == "completed"` before processing
+  - Multiple extraction paths: text field → choices → output array → fallbacks
+  - Timeout: 180 seconds for tool execution (searches can be slow)
+  - Error messages: Preserved all debug info in logs
+
+**Files Modified**:
+- `bot/ai/router.py`:
+  - Added `_call_grok()` function (lines 229-447)
+  - Added `_strip_citations()` for cleaning Grok responses (lines 107-119)
+  - Backend selection in `generate_response()` (lines 678-688)
+  - Multi-modal image support (lines 607-620)
+  - Token field mapping: `output_tokens` vs `completion_tokens` (line 398)
+  - Response extraction from nested structure (lines 312-388)
+
+- `bot/cogs/chat.py`:
+  - Disabled external tool routing for Grok (lines 132-146)
+  - Removed tool_decision reference in footer (lines 198-202)
+  - Added `image_url` parameter to `process_message()` (line 193)
+  - Grok native tool routing logging
+
+- `.env`:
+  - Added `XAI_API_KEY=xai-***`
+  - Added `XAI_MODEL=grok-4-1-fast-reasoning`
+  - Added `XAI_HOST=https://api.x.ai`
+  - Added `LLM_BACKEND=grok`
+
+### Improved - Personality Optimization for Grok
+
+**Grok-Specific Best Practices Applied**:
+
+- **Identity Anchoring**: Added Grok-specific identity
+  - Changed: "You are Astral" → "You are Astral powered by Grok 4.1 Fast Reasoning"
+  - Follows xAI recommendation: explicit identity prevents confusion with other models
+
+- **Capabilities Section** (NEW): Pre-wired tool awareness
+  - Real-time web search: "Automatically search when you need current information"
+  - Vision analysis: "Process and understand images directly"
+  - X/Twitter integration: "Analyze posts and profiles when relevant"
+  - Fast responses: "80-100 tokens per second"
+  - Instruction: "Use these capabilities naturally (don't ask permission)"
+
+- **Knowledge Cutoff Update**: Leverages Grok's real-time search
+  - Old: "Your knowledge cutoff is October 2024 - be upfront about it"
+  - New: "Your base knowledge is from October 2024, but you have real-time search"
+  - New: "For current events: automatically search rather than stating limitations"
+  - Reduces passive "I don't know" responses, encourages proactive searching
+
+- **Consolidated Redundancy**: Removed repetitive warnings
+  - Consolidated length limit warnings from 3 sections → 1 clear section
+  - Removed defensive tone ("NEVER LIE", "NON-NEGOTIABLE", "CRITICAL ERROR")
+  - Trusts Grok's base behavior more (follows xAI's "assume good intent" philosophy)
+  - Removed template footer redundancy (was repeating length limits)
+
+- **XML Tags for Context**: Better Grok parsing (xAI recommendation)
+  - Changed: Plain text sections → XML-tagged sections
+  - `<vision_analysis>...</vision_analysis>` for image descriptions
+  - `<search_results>...</search_results>` for web search context
+  - `<memory>...</memory>` for RAG knowledge
+  - Improves Grok's retrieval accuracy for large/multi-part inputs
+
+- **Image Recognition Guidance** (NEW): Character-aware vision
+  - "Use character descriptions to identify people you know"
+  - "Match visual details (hair color, aesthetic, features) to recognize characters"
+  - "Give natural critique or commentary on the image"
+  - "Don't output technical analysis - just respond like you're looking at the image"
+  - Added examples: Recognizing Astral, GemGem, Hiep from visual features
+
+- **Follow-Up Questions Fix**: Reduced forced questions
+  - Added explicit rule: "Don't force questions at the end of every response"
+  - "Only ask questions when genuinely curious or when conversation naturally needs one"
+  - "Sometimes a statement is better than a question"
+  - "It's okay to just respond without fishing for more input"
+  - Added 6 examples of responses WITHOUT questions (natural endings)
+
+**Files Modified**:
+- `bot/ai/personality.py`:
+  - Grok identity anchoring (line 175)
+  - Capabilities section (lines 209-218)
+  - Updated knowledge cutoff handling (lines 251-252)
+  - Consolidated length guidelines (lines 223-229)
+  - Removed redundant warnings and defensive tone (lines 247-261)
+  - XML context tags in `build_system_prompt()` (lines 344-350)
+  - Image recognition guidance (lines 210-216)
+  - Follow-up questions section (lines 245-250)
+  - Examples without forced questions (lines 117-136)
+  - Image response examples (lines 139-155)
+
+### Research - Grok vs Gemini Safety Settings
+
+**Vision Safety Comparison**:
+
+- **Grok API**: No `safety_settings` parameter exposed
+  - Built-in permissive approach for vision *analysis* (reading images)
+  - 2026 filters only apply to image *generation* (not understanding)
+  - No BLOCK_NONE equivalent needed - naturally uncensored for vision
+  - Your use case (image analysis): Works without special configuration
+
+- **Gemini API**: Has explicit `safety_settings` parameter
+  - BLOCK_NONE option for 4 categories (HARASSMENT, HATE_SPEECH, SEXUALLY_EXPLICIT, DANGEROUS_CONTENT)
+  - 2025 issues: BLOCK_NONE broken for some models (gemini-2.0-flash-exp)
+  - Core protections cannot be bypassed even with BLOCK_NONE
+  - Requires explicit configuration for permissive behavior
+
+**Conclusion**: Grok's vision analysis is naturally permissive without needing safety overrides
+
+### Performance
+
+- **Speed**: 80-100 tokens/sec (vs ~30-40 T/s with local LM Studio)
+- **Search**: Up to 3 web searches per request (autonomous, server-side)
+- **Citations**: Automatically included in responses (stripped via post-processing)
+- **Vision**: High-detail image analysis with character recognition
+
+### Breaking Changes
+
+- **Environment Variables**: New required variables for Grok backend
+  - `XAI_API_KEY`: Required for Grok API access
+  - `LLM_BACKEND`: Set to `"grok"` to use Grok (default: `"lmstudio"`)
+
+- **Tool Routing**: External tool system bypassed for Grok backend
+  - Gemini tool routing no longer used with Grok
+  - SearXNG search disabled for Grok (uses native web_search)
+  - Vision analysis handled natively (no Gemini vision calls)
+
 ## [4.2.2] - 2026-03-04
 
 ### Fixed - OpusError Voice Crashes

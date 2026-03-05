@@ -129,54 +129,21 @@ class ChatCog(commands.Cog):
                     else:
                         print(f"[RAG] No relevant memories found for: '{content[:50]}'")
                 
-                # Step 3: Ask Logic AI what tools are needed (use lean 5-msg context for speed)
-                # Take last 5 messages from formatted history for decision context
-                recent_context_msgs = formatted_history[-5:] if len(formatted_history) > 5 else formatted_history
-                decision_context_str = "\n".join([msg["content"] for msg in recent_context_msgs])
-                tool_decision = await decide_tools_and_query(
-                    user_message=content,
-                    has_image=bool(image_url),
-                    conversation_context=decision_context_str
-                )
-                
-                # Step 4: Execute tools based on Logic AI decision
-                search_context = ""
-                vision_response = None
-                search_count = 0  # Track for footer
+                # Step 3: Tool routing - GROK HANDLES THIS NATIVELY
+                # Grok's /v1/responses endpoint automatically decides when to search/use vision
+                # No external tool routing needed!
+                print(f"[Chat] Using Grok native tool routing (web_search + vision)")
 
-                # Search if Logic AI decided (but NEVER search when image is attached - vision is the only context needed)
-                if image_url:
-                    # Force search_context to empty for image queries to prevent old search results from polluting vision
-                    search_context = ""
-                    if tool_decision.get("search"):
-                        print(f"[Chat] Skipping search for image query (vision provides context)")
-                elif tool_decision.get("search"):
-                    search_query = tool_decision.get("search_query") or content
-                    time_range = tool_decision.get("time_range")  # day/week/month/year/None
-                    print(f"[Chat] Logic AI triggered search: '{search_query}' (time_range={time_range})")
-                    search_results = await search(search_query, num_results=5, time_range=time_range)
-                    search_context = format_search_results(search_results)
-                    search_count = len(search_results)  # Track for footer
-                    print(f"[Chat] Got {len(search_results)} results")
-                    # Store search results as facts in RAG for long-term knowledge
-                    if search_results:
-                        await store_full_search(search_query, search_results)
-                        print(f"[RAG] Stored {len(search_results)} search results as knowledge")
-                
-                # Vision if image is attached (always analyze images)
-                if image_url:
-                    print(f"[Chat] Vision triggered (image attached from {message.author.display_name})")
-                    # Build conversation context for vision from formatted history
-                    vision_context = "\n".join([msg["content"] for msg in formatted_history[-10:]])
-                    vision_response = await analyze_image(
-                        image_url,
-                        content if content else "",
-                        conversation_context=vision_context,
-                        username=message.author.display_name
-                    )
+                # Step 4: No external tool execution needed
+                # Grok will handle search and vision internally via /v1/responses endpoint
+                search_context = ""  # Not needed - Grok searches internally
+                vision_response = None  # Not needed - Grok handles vision internally
+                search_count = 0  # Not tracked anymore - Grok handles citations
 
-                    # Skip RAG image storage — descriptions pollute fact pool
-                    # (caused "that's me" on every response)
+                # REMOVED: Gemini tool routing (decide_tools_and_query)
+                # REMOVED: SearXNG search execution
+                # REMOVED: Gemini vision analysis
+                # All tool calling is now handled by Grok's /v1/responses endpoint
                 
                 # Step 5: Generate response
 
@@ -222,7 +189,8 @@ class ChatCog(commands.Cog):
                     search_context=combined_context,  # System prompt context (Search results, summaries)
                     conversation_history=formatted_history, # Full 30-message history (vision injected here for images)
                     memory_context=rag_context,  # RAG is deprioritized
-                    has_vision=bool(image_url)  # Enable vision mode for image queries
+                    has_vision=bool(image_url),  # Enable vision mode for image queries
+                    image_url=image_url  # Pass image URL for Grok's native vision
                 )
                 
                 # === DETERMINISTIC ATTRIBUTION FOOTERS ===
@@ -230,8 +198,8 @@ class ChatCog(commands.Cog):
                 footer_parts = []
                 if rag_count > 0:
                     footer_parts.append(f"💡{rag_count}")
-                if tool_decision.get("search") and search_count > 0:
-                    footer_parts.append(f"🔍{search_count}")
+                # Note: Grok handles search internally, citations are in response
+                # search_count is always 0 for Grok (no external search tracking)
                 
                 if footer_parts:
                     footer = "\n\n" + " ".join(footer_parts)
