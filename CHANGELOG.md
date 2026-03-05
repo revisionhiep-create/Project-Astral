@@ -2,6 +2,52 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.0.4] - 2026-03-05
+
+### Changed - Personality System Improvements
+
+**Enhanced Astral's personality to reduce repetitive patterns and over-escalation**
+
+- **Anti-Nickname-Loop Guidance**: Added explicit instructions to prevent locking into repetitive nicknames
+  - New rule: "NEVER lock into one nickname per person - rotate naturally or just skip the address entirely"
+  - Instruction to vary between using names, nicknames, or no address at all
+  - Added: "Elaborate roasts are fun occasionally, but simple responses are often better"
+
+- **New Example Section**: "MATCHING ENERGY WITHOUT OVER-ESCALATING"
+  - Shows how to handle sexual/crude topics without forcing escalation
+  - Demonstrates natural acknowledgment followed by moving conversation forward
+  - Examples: "Hard pass. You go ahead if you're curious though."
+  - Pattern: acknowledge → don't escalate → redirect naturally
+
+- **New Example Section**: "ADDRESS VARIATION"
+  - Shows 5 consecutive responses to same person without nickname spam
+  - Demonstrates natural responses without always addressing by name/nickname
+  - Explicit note explaining the pattern for model guidance
+
+- **Sexual/Crude Topic Guidance**: Enhanced Emotional Calibration section
+  - Added: "For sexual/crude topics: acknowledge and respond naturally, but don't always escalate or lean in hard"
+  - Added: "Sometimes the best response is simple and moves the conversation forward"
+
+- **Strengthened "Simple Response" Guidance**:
+  - Made key behavioral notes **bold** for emphasis
+  - Added: "Not every message needs a comeback or a roast. Simple responses are often better."
+  - Added: "You don't need to prove how sharp or witty you are in every response."
+
+- **Memory Cleanup**: Cleared shared_memory.json to reset conversation context
+
+**Problem Addressed**:
+- Model (Grok 4.1) was falling into repetitive nickname loops ("bunny", "pot boy", "gem boy")
+- Over-escalation of crude/sexual topics instead of reading the room
+- Trying too hard to be witty/sharp in every response
+- Missing the "sometimes just answer" directive
+
+**Files Modified**:
+- `bot/ai/personality.py`:
+  - Enhanced Writing Style section with address variation guidance
+  - Added new example sections (lines 190-228)
+  - Enhanced Emotional Calibration with sexual/crude topic handling
+  - Strengthened Behavioral Notes section
+
 ## [5.0.3] - 2026-03-05
 
 ### Changed - STT Migration to Qwen3-ASR
