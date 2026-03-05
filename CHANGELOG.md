@@ -2,6 +2,35 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.0.1] - 2026-03-05
+
+### Fixed - Vision Endpoint Selection
+
+**Critical Fix: Vision was timing out with /v1/responses**
+
+- **Endpoint Switching**: Automatically use correct endpoint based on content type
+  - Images: `/v1/chat/completions` (OpenAI-compatible format, better vision support)
+  - Text+Search: `/v1/responses` (native tool calling for web_search)
+  - Detection: Checks if message content is a list (multi-modal)
+
+- **Format Adjustment**: Changed vision payload to OpenAI-compatible format
+  - Changed: `{"type": "input_text"}` + `{"type": "input_image"}` (was hanging)
+  - Fixed: `{"type": "text"}` + `{"type": "image_url", "image_url": {"url": "...", "detail": "high"}}`
+  - Root cause: `/v1/responses` with multi-modal input caused silent timeouts
+  - Solution: Use `/v1/chat/completions` for vision, `/v1/responses` for search
+
+- **Payload Adaptation**: Dynamically adjust payload structure per endpoint
+  - `/v1/chat/completions`: Uses `"messages"` key (no tools parameter)
+  - `/v1/responses`: Uses `"input"` key (with tools for search)
+
+**Files Modified**:
+- `bot/ai/router.py`:
+  - Dynamic endpoint selection (lines 286-299)
+  - OpenAI-compatible image format (lines 613-621)
+  - Vision detection logging (lines 281-284)
+
+**Result**: Vision now working - successfully identifies characters from images (Liddo, etc.)
+
 ## [5.0.0] - 2026-03-05
 
 ### Added - xAI Grok Integration (Major)

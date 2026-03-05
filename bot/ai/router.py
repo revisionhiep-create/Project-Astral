@@ -278,15 +278,31 @@ async def _call_grok(messages: list, temperature: float = 0.7, max_tokens: int =
     }
 
     # Debug: Log if vision input detected
-    if enable_vision or any(isinstance(m.get("content"), list) for m in input_messages if isinstance(m, dict)):
-        print(f"[Grok] Vision mode detected - enable_vision={enable_vision}")
+    has_vision_content = any(isinstance(m.get("content"), list) for m in input_messages if isinstance(m, dict))
+    if enable_vision or has_vision_content:
+        print(f"[Grok] Vision mode detected - enable_vision={enable_vision}, has_vision_content={has_vision_content}")
         print(f"[Grok] First message content type: {type(input_messages[-1].get('content') if input_messages else None)}")
+
+    # Use /v1/chat/completions for vision (OpenAI-compatible), /v1/responses for text+search
+    endpoint = "/v1/chat/completions" if has_vision_content else "/v1/responses"
+
+    # Adjust payload for endpoint type
+    if endpoint == "/v1/chat/completions":
+        # OpenAI format: "messages" not "input", no tools parameter
+        payload = {
+            "model": XAI_MODEL,
+            "messages": input_messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": False
+        }
+        print(f"[Grok] Using /v1/chat/completions for vision")
 
     try:
         start_time = time.perf_counter()
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{XAI_HOST}/v1/responses",  # Changed from /v1/chat/completions
+                f"{XAI_HOST}{endpoint}",
                 json=payload,
                 headers=headers,
                 timeout=aiohttp.ClientTimeout(total=180)  # Increased timeout for tool execution
@@ -608,15 +624,16 @@ async def generate_response(
     transcript = "\n".join(transcript_lines)
     
     # Build user message with transcript only (system prompt is in system role)
-    # For images, use multi-modal content format (Grok /v1/responses uses different format)
+    # For images, use multi-modal content format
     if image_url and LLM_BACKEND == "grok":
-        # Grok's /v1/responses endpoint uses "input_text" and "input_image" types
+        # Grok vision: Use /v1/chat/completions format (OpenAI-compatible)
+        # /v1/responses with vision seems to hang - use simpler format
         user_content = [
-            {"type": "input_text", "text": f"""[Transcript - Last {len(transcript_lines)} Messages]
+            {"type": "text", "text": f"""[Transcript - Last {len(transcript_lines)} Messages]
 {transcript}
 
 Reply to the last message as Astral. Do not output internal thoughts."""},
-            {"type": "input_image", "image_url": image_url, "detail": "high"}
+            {"type": "image_url", "image_url": {"url": image_url, "detail": "high"}}
         ]
     else:
         # Text-only or LM Studio (no native vision)
