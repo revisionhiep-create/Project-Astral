@@ -5,10 +5,11 @@ ENV TZ=America/Los_Angeles
 
 WORKDIR /app
 
-# Install system dependencies for voice support
+# Install system dependencies for voice support and git for pip
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libopus0 \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies

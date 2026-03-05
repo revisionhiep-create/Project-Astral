@@ -2,6 +2,21 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [4.2.2] - 2026-03-04
+
+### Fixed - Voice Receive Library Update
+
+- **Updated discord-ext-voice-recv**: Upgraded from PyPI version 0.5.2a179 to latest GitHub main branch
+  - Fixes RTCP packet router crashes that were causing voice listening to fail
+  - Error: "Error in PacketRouter loop" when receiving unexpected RTCP sender report packets (type=200)
+  - Updated from pinned version to `git+https://github.com/imayhaveborkedit/discord-ext-voice-recv.git`
+  - Added `git` to Dockerfile system dependencies to support pip installing from GitHub
+  - Improves voice receive stability and error recovery
+
+- **Files Updated**:
+  - `bot/requirements.txt`: Changed `discord-ext-voice-recv==0.5.2a179` to GitHub URL
+  - `bot/Dockerfile`: Added `git` to apt-get install list
+
 ## [4.2.1] - 2026-03-04
 
 ### Fixed - Response Length & Formatting
