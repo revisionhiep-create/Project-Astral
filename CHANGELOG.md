@@ -2,6 +2,25 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [4.2.1] - 2026-03-04
+
+### Fixed - Response Length & Formatting
+
+- **CRITICAL: Fixed Rambling Responses**: Added strict response length limits to prevent walls of text
+  - Simple greetings ("hi", "*winks*"): 1-2 sentences MAX
+  - Casual chat/banter: 2-3 sentences maximum
+  - Questions/opinions: 3-4 sentences maximum
+  - Deep discussions: 5-6 sentences maximum
+  - Added explicit warnings against repeating phrases and rambling
+- **Enhanced Formatting Guidelines**:
+  - Clarified normal capitalization usage (NOT all lowercase)
+  - Added rules against repetitive phrases and circular responses
+  - Added final reminder at end of prompt template to check length before responding
+- **Cleaned shared_memory.json**: Removed problematic rambling messages (568+ lines → 63 lines)
+  - Kept only good concise examples for RAG context
+  - Removed repetitive "star-shaped burp" and "ditto wasteland" spam
+- **Goal**: Match GemGem's concise, readable 2-4 sentence format
+
 ## [4.2.0] - 2026-03-03
 
 ### Changed - Migrated to Google GenAI SDK
