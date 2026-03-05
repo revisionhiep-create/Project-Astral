@@ -2,6 +2,64 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.0.3] - 2026-03-05
+
+### Changed - STT Migration to Qwen3-ASR
+
+**Migrated Speech-to-Text from Gemini Flash 2.5 to local Qwen3-ASR-1.7B server**
+
+- **Critical Context**: Google Cloud STT stopped working, requiring immediate migration to local STT solution
+- **Local STT Priority**: Swapped STT priority from Gemini (primary) to local STT (primary) with Gemini fallback
+  - Local STT endpoint: `http://host.docker.internal:8200/transcribe`
+  - 10 second timeout for local transcription
+  - Falls back to Gemini only if local STT fails
+
+- **Qwen3-ASR Server** (SHARED): Uses shared FastAPI server for speech-to-text
+  - Model: `Qwen/Qwen3-ASR-1.7B` (Alibaba's ASR model)
+  - GPU acceleration: CUDA with bfloat16 precision
+  - Port: 8200 (accessible via Docker host networking)
+  - Features: Health check endpoint, streaming transcription, language detection
+  - Processing: WAV file input → Qwen3-ASR transcription → JSON response
+
+- **DAVE E2EE Support** (CRITICAL FIX): Added Discord Audio & Video End-to-End Encryption decryption
+  - **Problem**: Discord enforced DAVE protocol on March 2, 2026 - all voice packets now E2EE encrypted
+  - **Impact**: Without DAVE decryption, all STT models received encrypted audio → empty transcriptions
+  - **Solution**: Patched `discord-ext-voice-recv` to decrypt DAVE frames before processing
+  - **Implementation**: Two-layer decryption
+    1. Transport layer: `decrypt_rtp(packet)` (standard RTP encryption)
+    2. Frame layer: `dave_session.decrypt(user_id, MediaType.audio, packet)` (DAVE E2EE)
+  - **User Mapping**: Uses `voice_client._get_id_from_ssrc(ssrc)` to map SSRC → Discord user ID
+  - **Fallback**: Gracefully handles missing DAVE session or unmapped SSRCs
+
+- **Audio Quality Improvement**: Removed crude 16kHz downsampling
+  - Changed: 48kHz stereo → crude 16kHz mono downsampling
+  - Fixed: 48kHz stereo → high-quality 48kHz mono (averaging channels)
+  - Let STT models handle resampling with their optimized algorithms
+  - Better audio quality → better transcription accuracy
+
+**Files Modified**:
+- `bot/tools/stt.py`:
+  - Swapped STT priority (local primary, Gemini fallback)
+  - Updated endpoint to port 8200
+- `bot/tools/voice_receiver.py`:
+  - Improved audio quality (48kHz mono processing)
+  - Removed crude downsampling logic
+- `bot/patches/apply_dave_patch.sh` (NEW):
+  - Python script to patch discord-ext-voice-recv
+  - Adds `import davey` to reader.py
+  - Implements two-layer decryption (RTP + DAVE)
+  - SSRC → user_id mapping for DAVE decryption
+  - Error handling for missing DAVE session
+- `bot/Dockerfile`:
+  - Added DAVE patch application step
+  - Copies and executes apply_dave_patch.sh during build
+
+**Dependencies**:
+- Existing: `davey==0.1.4` (DAVE protocol support)
+- Existing: `discord.py==2.7.1` (DAVE integration)
+
+**Result**: Voice transcription now working with DAVE-decrypted audio → Qwen3-ASR → accurate text
+
 ## [5.0.2] - 2026-03-05
 
 ### Changed - Vision Routing to Gemini

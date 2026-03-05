@@ -34,7 +34,7 @@ MIN_UTTERANCE_SEC = 1.5       # Minimum utterance length to process (reject tiny
 MAX_UTTERANCE_SEC = 30        # Maximum utterance length before force-flush
 
 # --- Output WAV format ---
-OUT_SAMPLE_RATE = 16000  # Downsample for STT
+OUT_SAMPLE_RATE = 48000  # Keep 48kHz - let Whisper handle high-quality downsampling
 OUT_CHANNELS = 1         # Mono for STT
 
 
@@ -201,13 +201,13 @@ class VoiceReceiver:
         # Combine PCM chunks
         raw_pcm = b"".join(buffer)
 
-        # Downsample: 48kHz stereo -> 16kHz mono
-        mono_16k = self._downsample(raw_pcm)
+        # Convert stereo to mono (keep 48kHz - Whisper will handle high-quality resampling)
+        mono_48k = self._stereo_to_mono(raw_pcm)
 
         # Wrap in WAV
-        wav_bytes = self._make_wav(mono_16k)
+        wav_bytes = self._make_wav(mono_48k)
 
-        duration = len(mono_16k) / (OUT_SAMPLE_RATE * BYTES_PER_SAMPLE)
+        duration = len(mono_48k) / (OUT_SAMPLE_RATE * BYTES_PER_SAMPLE)
         print(f"🔊 [VoiceRecv] Utterance from {user.display_name}: {duration:.1f}s")
 
         # Fire callback
@@ -216,9 +216,13 @@ class VoiceReceiver:
         except Exception as e:
             print(f"❌ [VoiceRecv] Utterance callback error: {e}")
 
-    def _downsample(self, pcm_48k_stereo: bytes) -> bytes:
-        """Downsample from 48kHz stereo to 16kHz mono."""
-        samples = struct.unpack(f"<{len(pcm_48k_stereo) // 2}h", pcm_48k_stereo)
+    def _stereo_to_mono(self, pcm_stereo: bytes) -> bytes:
+        """
+        Convert stereo PCM to mono by averaging left and right channels.
+        No resampling - keeps the original 48kHz sample rate.
+        Let Whisper handle high-quality downsampling to 16kHz internally.
+        """
+        samples = struct.unpack(f"<{len(pcm_stereo) // 2}h", pcm_stereo)
 
         # Stereo to mono (average L+R)
         mono = []
@@ -228,15 +232,12 @@ class VoiceReceiver:
             else:
                 mono.append(samples[i])
 
-        # 48kHz -> 16kHz (take every 3rd sample)
-        downsampled = mono[::3]
+        return struct.pack(f"<{len(mono)}h", *mono)
 
-        return struct.pack(f"<{len(downsampled)}h", *downsampled)
-
-    def _make_wav(self, pcm_16k_mono: bytes) -> bytes:
+    def _make_wav(self, pcm_mono: bytes) -> bytes:
         """Wrap raw PCM in a WAV header."""
         buf = io.BytesIO()
-        data_size = len(pcm_16k_mono)
+        data_size = len(pcm_mono)
 
         # WAV header
         buf.write(b"RIFF")
@@ -252,6 +253,6 @@ class VoiceReceiver:
         buf.write(struct.pack("<H", BYTES_PER_SAMPLE * 8))
         buf.write(b"data")
         buf.write(struct.pack("<I", data_size))
-        buf.write(pcm_16k_mono)
+        buf.write(pcm_mono)
 
         return buf.getvalue()

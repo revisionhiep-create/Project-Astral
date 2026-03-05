@@ -21,6 +21,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY fix-OpusError.patch /tmp/
 RUN cd /usr/local/lib/python3.11/site-packages && patch -p1 < /tmp/fix-OpusError.patch
 
+# Apply DAVE E2EE decryption patch for voice receive
+COPY patches/apply_dave_patch.sh /tmp/
+RUN chmod +x /tmp/apply_dave_patch.sh && /tmp/apply_dave_patch.sh
+
 # Copy bot code
 COPY . .
 

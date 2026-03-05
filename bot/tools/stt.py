@@ -1,6 +1,6 @@
 """
 Speech-to-Text Handler for Astra
-Tries Gemini cloud STT first, falls back to local faster-whisper server.
+Tries local faster-whisper server first, falls back to Gemini cloud STT.
 """
 
 import asyncio
@@ -14,7 +14,11 @@ from google.genai import types
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
-# --- Cloud STT (Gemini - primary) ---
+# --- Local STT (faster-whisper - primary) ---
+LOCAL_STT_URL = "http://host.docker.internal:8200/transcribe"
+LOCAL_STT_TIMEOUT = 10  # seconds
+
+# --- Cloud STT (Gemini - fallback) ---
 STT_MODEL = "gemini-2.5-flash"
 STT_PROMPT = (
     "Transcribe this audio exactly as spoken. "
@@ -22,27 +26,23 @@ STT_PROMPT = (
     "If the audio is silence or unintelligible noise, return exactly: [silence]"
 )
 
-# --- Local STT (faster-whisper fallback) ---
-LOCAL_STT_URL = "http://host.docker.internal:8200/transcribe"
-LOCAL_STT_TIMEOUT = 10  # seconds
-
 
 async def transcribe(wav_bytes: bytes) -> str | None:
     """
     Transcribe WAV audio bytes to text.
-    Tries Gemini cloud first, falls back to local faster-whisper.
+    Tries local faster-whisper first, falls back to Gemini cloud.
     """
-    # Try cloud STT first
-    result = await _transcribe_cloud(wav_bytes)
+    # Try local STT first
+    result = await _transcribe_local(wav_bytes)
     if result is not None:
         return result
 
-    # Fall back to local STT
-    return await _transcribe_local(wav_bytes)
+    # Fall back to cloud STT
+    return await _transcribe_cloud(wav_bytes)
 
 
 async def _transcribe_cloud(wav_bytes: bytes) -> str | None:
-    """Transcribe via Gemini cloud API (primary)."""
+    """Transcribe via Gemini cloud API (fallback)."""
     if not client:
         return None
 
@@ -60,16 +60,16 @@ async def _transcribe_cloud(wav_bytes: bytes) -> str | None:
         if not text or text.lower() in ("[silence]", "silence", ""):
             return None
 
-        print(f'🎙️ [STT-Cloud] Transcribed: "{text[:80]}{"..." if len(text) > 80 else ""}"')
+        print(f'🎙️ [STT-Cloud] ✓ Fallback transcribed: "{text[:80]}{"..." if len(text) > 80 else ""}"')
         return text
 
     except Exception as e:
-        print(f"⚠️ [STT-Cloud] Failed ({type(e).__name__}), falling back to local")
+        print(f"❌ [STT-Cloud] Failed ({type(e).__name__})")
         return None
 
 
 async def _transcribe_local(wav_bytes: bytes) -> str | None:
-    """Transcribe via local faster-whisper server (fallback)."""
+    """Transcribe via local faster-whisper server (primary)."""
     try:
         timeout = aiohttp.ClientTimeout(total=LOCAL_STT_TIMEOUT)
         async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -78,7 +78,7 @@ async def _transcribe_local(wav_bytes: bytes) -> str | None:
 
             async with session.post(LOCAL_STT_URL, data=form) as resp:
                 if resp.status != 200:
-                    print(f"❌ [STT-Local] Server error: {resp.status}")
+                    print(f"⚠️ [STT-Local] Server error: {resp.status}, falling back to cloud")
                     return None
 
                 data = await resp.json()
@@ -88,9 +88,9 @@ async def _transcribe_local(wav_bytes: bytes) -> str | None:
                     return None
 
                 proc_time = data.get("processing_time", "?")
-                print(f'🎙️ [STT-Local] Transcribed ({proc_time}s): "{text[:80]}{"..." if len(text) > 80 else ""}"')
+                print(f'🎙️ [STT-Local] ✓ Transcribed ({proc_time}s): "{text[:80]}{"..." if len(text) > 80 else ""}"')
                 return text
 
     except (aiohttp.ClientError, asyncio.TimeoutError, Exception) as e:
-        print(f"❌ [STT-Local] Server unavailable ({type(e).__name__})")
+        print(f"⚠️ [STT-Local] Unavailable ({type(e).__name__}), falling back to cloud")
         return None
