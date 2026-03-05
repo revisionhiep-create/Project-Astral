@@ -4,18 +4,24 @@ All notable changes to Project Astral will be documented in this file.
 
 ## [4.2.2] - 2026-03-04
 
-### Fixed - Voice Receive Library Update
+### Fixed - OpusError Voice Crashes
 
-- **Updated discord-ext-voice-recv**: Upgraded from PyPI version 0.5.2a179 to latest GitHub main branch
-  - Fixes RTCP packet router crashes that were causing voice listening to fail
-  - Error: "Error in PacketRouter loop" when receiving unexpected RTCP sender report packets (type=200)
-  - Updated from pinned version to `git+https://github.com/imayhaveborkedit/discord-ext-voice-recv.git`
-  - Added `git` to Dockerfile system dependencies to support pip installing from GitHub
-  - Improves voice receive stability and error recovery
+- **Applied Community OpusError Patch**: Added error handling to prevent router crashes from corrupted audio streams
+  - Root cause: Discord sends corrupted Opus packets causing `OpusError: corrupted stream` crashes
+  - Solution: Wrapped `decoder.pop_data()` in try-except to catch and skip corrupted packets
+  - Patch from AUR community (fix-OpusError.patch) applied during Docker build
+  - Referenced issues: #35 (packet loss), #27 (listener stops)
+  - Added `patch` utility to Dockerfile system dependencies
+
+- **Library Update** (initial attempt, no actual fix):
+  - Updated `discord-ext-voice-recv` from PyPI 0.5.2a179 to GitHub main branch
+  - Note: GitHub has no commits after June 2025, so this provided no actual fix
+  - Added `git` to Dockerfile for GitHub pip installs
 
 - **Files Updated**:
-  - `bot/requirements.txt`: Changed `discord-ext-voice-recv==0.5.2a179` to GitHub URL
-  - `bot/Dockerfile`: Added `git` to apt-get install list
+  - `bot/requirements.txt`: Changed to GitHub URL (no actual code difference)
+  - `bot/Dockerfile`: Added `git` and `patch`, applies fix-OpusError.patch
+  - `bot/fix-OpusError.patch`: New file with community patch
 
 ## [4.2.1] - 2026-03-04
 
