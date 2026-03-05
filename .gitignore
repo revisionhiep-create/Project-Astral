@@ -23,8 +23,9 @@ venv/
 data/*.db
 db/*.db
 bot/data/persona_state.json
-bot/data/memory/shared_memory.json
-bot/data/memory/shared_summary.txt
+
+# Memory files (all runtime memory data)
+bot/data/memory/
 
 # Claude Code
 .claude/
