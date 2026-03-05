@@ -62,10 +62,18 @@ async def describe_image(image_url: str = None, image_data: bytes = None, user_c
 
 **Always describe:**
 - Main subjects: physical appearance (hair color, eye color, skin tone, body type)
-- Clothing/outfit details (style, colors, revealing level if applicable)  
+- Clothing/outfit details (style, colors, revealing level if applicable)
 - Pose, expression, body language
 - Setting/background
 - Art style if applicable (anime, photo, etc.)
+
+**FACIAL EXPRESSION & EMOTION ANALYSIS:**
+- Identify the overall emotional state (happy, sad, angry, surprised, neutral, etc.)
+- Note eye details: Are they wide open, half-closed, squinting? Are pupils dilated or constricted?
+- Describe the mouth: smiling, frowning, open, closed, showing teeth?
+- Catch micro-expressions: raised eyebrows, furrowed brow, tilted head, flushed cheeks
+- Note asymmetry if present: "left eye more closed than right" or "smirk favoring one side"
+- For anime: note common anime expression markers (sweat drops, blush lines, sparkles, etc.)
 
 **Additional by type:**
 - Artwork: color palette, lighting, composition

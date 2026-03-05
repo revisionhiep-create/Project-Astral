@@ -2,6 +2,30 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.0.5] - 2026-03-05
+
+### Added - Enhanced Facial Expression Analysis in Vision System
+
+**Upgraded Gemini vision prompts to capture detailed facial expressions and micro-expressions**
+
+- **Facial Expression Analysis**: Added comprehensive facial feature detection
+  - Overall emotional state identification (happy, sad, angry, surprised, neutral, etc.)
+  - Eye details: wide open, half-closed, squinting, pupil dilation/constriction
+  - Mouth details: smiling, frowning, open, closed, showing teeth
+  - Micro-expressions: raised eyebrows, furrowed brow, tilted head, flushed cheeks
+  - Asymmetry detection: "left eye more closed than right" or "smirk favoring one side"
+  - Anime-specific markers: sweat drops, blush lines, sparkles, expression markers
+
+- **Natural Integration**: Analysis integrated naturally into conversational descriptions
+  - No forced output format or clinical terminology
+  - Fits naturally into bot personalities
+  - Format-agnostic: works for photos, anime, CGI, artwork
+
+**Files Modified**:
+- `bot/tools/vision.py`: Enhanced Gemini 3.0 Flash vision prompt with facial analysis section
+
+**Impact**: Astral can now provide much more detailed and nuanced descriptions of character expressions and emotions in images, making her commentary more engaging and accurate.
+
 ## [5.0.4] - 2026-03-05
 
 ### Changed - Personality System Improvements
