@@ -129,21 +129,20 @@ class ChatCog(commands.Cog):
                     else:
                         print(f"[RAG] No relevant memories found for: '{content[:50]}'")
                 
-                # Step 3: Tool routing - GROK HANDLES THIS NATIVELY
-                # Grok's /v1/responses endpoint automatically decides when to search/use vision
-                # No external tool routing needed!
-                print(f"[Chat] Using Grok native tool routing (web_search + vision)")
+                # Step 3: Vision analysis with Gemini (if image attached)
+                # Use Gemini 3-flash-preview for accurate vision, then pass to Grok for response
+                vision_response = None
+                if has_image:
+                    from tools.vision import describe_image
+                    print(f"[Chat] Using Gemini 3-flash-preview for vision analysis")
+                    vision_response = await describe_image(image_url=image_url, user_context=content)
+                    if vision_response:
+                        print(f"[Vision] Gemini analysis: {vision_response[:150]}...")
 
-                # Step 4: No external tool execution needed
-                # Grok will handle search and vision internally via /v1/responses endpoint
+                # Step 4: Grok handles search natively (but not vision)
+                # Grok's /v1/responses endpoint searches automatically when needed
                 search_context = ""  # Not needed - Grok searches internally
-                vision_response = None  # Not needed - Grok handles vision internally
                 search_count = 0  # Not tracked anymore - Grok handles citations
-
-                # REMOVED: Gemini tool routing (decide_tools_and_query)
-                # REMOVED: SearXNG search execution
-                # REMOVED: Gemini vision analysis
-                # All tool calling is now handled by Grok's /v1/responses endpoint
                 
                 # Step 5: Generate response
 
@@ -189,8 +188,8 @@ class ChatCog(commands.Cog):
                     search_context=combined_context,  # System prompt context (Search results, summaries)
                     conversation_history=formatted_history, # Full 30-message history (vision injected here for images)
                     memory_context=rag_context,  # RAG is deprioritized
-                    has_vision=bool(image_url),  # Enable vision mode for image queries
-                    image_url=image_url  # Pass image URL for Grok's native vision
+                    has_vision=False,  # Disable Grok vision - using Gemini instead
+                    image_url=None  # Don't pass image to Grok - Gemini handles vision
                 )
                 
                 # === DETERMINISTIC ATTRIBUTION FOOTERS ===

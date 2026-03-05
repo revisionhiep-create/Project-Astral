@@ -2,6 +2,45 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.0.2] - 2026-03-05
+
+### Changed - Vision Routing to Gemini
+
+**Reverted to Gemini 3-flash-preview for vision analysis (Grok vision less accurate)**
+
+- **Hybrid Approach**: Best of both models
+  - **Vision**: Gemini 3-flash-preview (more accurate character recognition, detailed descriptions)
+  - **Response**: Grok 4.1 Fast Reasoning (fast, uncensored, natural personality)
+
+- **Workflow**: Two-step process
+  1. Gemini analyzes image with detailed description (4-6 sentences, specific colors/features)
+  2. Gemini's description injected into conversation history
+  3. Grok responds based on Gemini's analysis (no direct image access)
+
+- **Re-enabled Gemini Vision** in chat.py:
+  - Calls `describe_image()` from tools/vision.py
+  - Uses existing Gemini vision system with safety_settings BLOCK_NONE
+  - Character recognition from characters.json
+  - User context awareness (responds to "who is this?", etc.)
+
+- **Disabled Grok Vision**:
+  - `has_vision=False` in process_message call
+  - `image_url=None` - no image sent to Grok
+  - Grok only sees Gemini's text description
+
+**Why**: Grok vision was working but less accurate than Gemini for:
+- Character identification (confused details)
+- Specific visual features (colors, poses, outfits)
+- Detailed scene descriptions
+
+**Files Modified**:
+- `bot/cogs/chat.py`:
+  - Re-enabled Gemini vision analysis (lines 132-140)
+  - Disabled Grok vision parameters (lines 191-192)
+  - Vision response injection into history (lines 176-183)
+
+**Result**: More accurate vision with Gemini, fast responses with Grok
+
 ## [5.0.1] - 2026-03-05
 
 ### Fixed - Vision Endpoint Selection
