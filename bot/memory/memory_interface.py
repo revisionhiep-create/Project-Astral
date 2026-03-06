@@ -344,7 +344,7 @@ async def store_conversation(
 async def retrieve_relevant_knowledge(
     query: str,
     limit: int = 5,
-    threshold: float = 0.78,
+    threshold: float = 0.5,
     user_id: str = None,
     guild_id: str = None
 ) -> List[Dict[str, Any]]:
