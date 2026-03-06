@@ -22,6 +22,7 @@ venv/
 # Data (keep structure but ignore content)
 data/*.db
 db/*.db
+db/*.wal
 bot/data/persona_state.json
 
 # Memory files (all runtime memory data)
