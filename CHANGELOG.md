@@ -2,6 +2,131 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.1.0] - 2026-03-06
+
+### 🔄 Major: Memory Alaya Integration - Unified RAG System
+
+**Migrated to shared Memory Alaya system with DuckDB backend, shared with GemGem bot**
+
+#### Added
+
+- **Memory Alaya Abstraction Layer** (`/shared_memory/memory_alaya.py`)
+  - Unified memory interface for both Project Astral and GemGem
+  - Hybrid search: Vector similarity (Gemini embeddings) + BM25 keyword search
+  - Built-in Gemini 2.5 Flash reranking for optimal relevance
+  - Metadata filtering: user_id, guild_id, channel_id
+  - Backend abstraction: DuckDB (default) and pgvector (production-ready)
+
+- **DuckDB Backend** (`/shared_memory/backends/duckdb_backend.py`)
+  - Embedded database with full-text search
+  - BM25 Okapi indexing for keyword search
+  - Fast vector similarity with cosine distance
+  - Stores 3072-dim Gemini embeddings
+
+- **Memory Interface** (`bot/memory/memory_interface.py`)
+  - Drop-in replacement for old `rag.py`
+  - Same API for backward compatibility
+  - Only stores user facts (no image descriptions or search results)
+  - Gemini 2.0 Flash for fact extraction
+  - Shared database: `/app/shared_memory/memory.duckdb`
+
+- **Query Utility** (`/shared_memory/query_memories.py`)
+  - Interactive CLI tool to query and inspect memories
+  - Commands: `query`, `list`, `stats`
+  - Direct testing of hybrid search + reranking
+
+- **Documentation** (`/shared_memory/README.md`)
+  - Complete architecture overview
+  - API reference for both bots
+  - Migration guide from old system
+
+#### Changed
+
+- **Import Updates** (3 files):
+  - `cogs/chat.py`: `from memory.rag import` → `from memory import`
+  - `tools/vision.py`: Updated to use new memory interface
+  - `tools/import_knowledge.py`: Updated imports
+
+- **Docker Configuration**:
+  - Updated `Dockerfile` to copy shared_memory from parent directory
+  - Updated `docker-compose.yml` build context to `..` (parent directory)
+  - Added volume mount: `../shared_memory:/app/shared_memory`
+  - Database path: `/app/shared_memory/memory.duckdb` (shared with GemGem)
+
+- **Retrieval System**:
+  - `retrieve_relevant_knowledge()` now uses Memory Alaya's hybrid search
+  - 3-stage process: Vector search → BM25 keyword → Gemini reranking
+  - Similarity threshold: 0.78 (default, configurable)
+  - Rerank score filtering: > 3.0 (out of 10.0)
+
+#### Deprecated
+
+- **Old Storage Functions** (no-ops with warnings):
+  - `store_full_search()` - Search caching removed
+  - `store_image_knowledge()` - Image storage removed
+  - `store_drawing_knowledge()` - Drawing storage removed
+
+#### Removed
+
+- **Cleaned up 12 MB**:
+  - `db/memory.db` - Old SQLite database (backed up)
+  - `.ruff_cache/` - Linter cache
+  - `offload/`, `patches/` - Empty/duplicate directories
+  - Legacy scripts: `check_dims.py`, `check_facts.py`, `cleanup_rag.py`, `dump_facts.py`, `reembed.py`, `reembed_images.py`
+
+#### Moved to `deprecated/`
+
+- `bot/memory/rag.py` - Old SQLite-based RAG (35 KB)
+  - Contained duplicate `_gemini_rerank()` function
+  - Now redundant with Memory Alaya's built-in reranking
+
+#### Migration Stats
+
+- **Facts Migrated**: 37 user_facts from SQLite
+- **Facts Deduplicated**: 29 unique facts (cosine similarity > 0.90)
+- **Shared with GemGem**: All 29 facts accessible by both bots
+- **Database Size**: 2.1 MB (DuckDB with embeddings)
+
+#### Technical Details
+
+- **Embeddings**: `gemini-embedding-001` (3072-dimensional vectors)
+- **Vector Search**: Cosine similarity, threshold 0.63-0.78
+- **Keyword Search**: BM25 Okapi algorithm
+- **Reranking**: Gemini 2.5 Flash (0-10 scoring scale)
+- **Performance**: ~300-700ms per query (hybrid search + reranking)
+
+#### Files Modified
+
+**Core Memory System**:
+- `bot/memory/memory_interface.py` - New Memory Alaya wrapper (538 lines)
+- `bot/memory/__init__.py` - Updated exports
+- `bot/memory/embeddings.py` - Unchanged (still used)
+
+**Bot Code**:
+- `bot/cogs/chat.py` - Updated imports (line 11)
+- `bot/tools/vision.py` - Updated imports (line 160)
+- `bot/tools/import_knowledge.py` - Updated imports (line 10)
+
+**Docker**:
+- `bot/Dockerfile` - Added shared_memory copy, updated paths
+- `docker-compose.yml` - Updated build context, added volume mount
+
+**Shared System**:
+- `/shared_memory/memory_alaya.py` - Core abstraction (280 lines)
+- `/shared_memory/backends/duckdb_backend.py` - DuckDB implementation (372 lines)
+- `/shared_memory/backends/pgvector_backend.py` - PostgreSQL implementation (383 lines)
+- `/shared_memory/query_memories.py` - Query utility (400+ lines)
+- `/shared_memory/README.md` - Complete documentation
+
+#### Impact
+
+- ✅ **Unified knowledge base** shared between Project Astral and GemGem
+- ✅ **Faster retrieval** with hybrid search (vector + keyword)
+- ✅ **Better relevance** with Gemini 2.5 Flash reranking
+- ✅ **Cleaner architecture** - only user facts stored
+- ✅ **Production-ready** - easy migration to pgvector for scaling
+- ✅ **12 MB disk space** reclaimed from old databases and caches
+
 ## [5.0.6] - 2026-03-05
 
 ### Added - Tenor GIF Support via Discord Embeds

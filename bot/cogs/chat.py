@@ -8,10 +8,10 @@ import os
 
 from ai.router import process_message, decide_tools_and_query, summarize_text
 
-from memory.rag import (
+from memory import (
     retrieve_relevant_knowledge,
     store_conversation,
-    store_full_search,
+    store_full_search,  # Deprecated no-op
     format_knowledge_for_context
 )
 from memory.shared_memory import SharedMemoryManager

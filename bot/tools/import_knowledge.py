@@ -7,7 +7,7 @@ import sys
 # Add parent to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from memory.rag import store_knowledge
+from memory import store_knowledge
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")

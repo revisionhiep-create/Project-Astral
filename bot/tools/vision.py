@@ -157,7 +157,7 @@ async def analyze_image(image_url: str, user_prompt: str = "", conversation_cont
     Also stores in short-term cache and RAG for recall.
     """
     from ai.router import process_message
-    from memory.rag import store_image_knowledge
+    from memory import store_image_knowledge  # Deprecated no-op
     
     # Step 1: Get Gemini's objective description WITH user context
     description = await describe_image(image_url=image_url, user_context=user_prompt)
