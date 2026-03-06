@@ -2,6 +2,17 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.1.2] - 2026-03-06
+
+### Added
+- **Voice Command TTS Stop**: Say "stop", "shut up", or "quiet" to interrupt ongoing TTS playback
+  - Detects stop keywords in voice transcriptions via STT
+  - Stops current audio playback and clears pending chunks
+  - Bot acknowledges with "Okay, stopping."
+  - Hands-free TTS control without needing to leave voice channel
+  - Keywords: `stop`, `shut up`, `quiet`, `silence`, `pause`, `hush`, `shush`
+  - Implementation: `bot/cogs/voice.py` in `_on_utterance()` callback
+
 ## [5.1.1] - 2026-03-06
 
 ### Changed

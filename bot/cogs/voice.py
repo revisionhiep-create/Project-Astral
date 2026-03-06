@@ -130,6 +130,33 @@ class VoiceCommands(commands.Cog):
                 print(f"🔇 [Voice] Dropping short fragment: \"{text}\"")
                 return
 
+            # 🛑 VOICE COMMAND: Stop TTS if user says stop keywords
+            text_lower = text.lower()
+            stop_keywords = ['stop', 'shut up', 'quiet', 'silence', 'pause', 'hush', 'shush']
+            if any(keyword in text_lower for keyword in stop_keywords):
+                # Check if TTS is currently playing
+                if guild.voice_client and self.voice_handler.currently_playing.get(guild.id, False):
+                    print(f"[Voice] 🛑 Stop command detected from {user.display_name}: '{text}'")
+
+                    # Stop current playback
+                    if guild.voice_client.is_playing():
+                        guild.voice_client.stop()
+
+                    # Clear remaining chunks
+                    if guild.id in self.voice_handler.voice_queues:
+                        cleared_count = len(self.voice_handler.voice_queues[guild.id])
+                        self.voice_handler.voice_queues[guild.id].clear()
+                        print(f"[Voice] Cleared {cleared_count} pending audio chunks")
+
+                    # Reset playing flag
+                    self.voice_handler.currently_playing[guild.id] = False
+
+                    # Acknowledge with short voice response
+                    await self.voice_handler.speak_text(guild, "Okay, stopping.")
+
+                    # Don't process this as a regular message
+                    return
+
             # Find a text channel to send the response (use first text channel)
             text_channel = None
             for channel in guild.text_channels:
