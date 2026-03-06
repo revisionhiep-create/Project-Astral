@@ -1,6 +1,0 @@
-duckdb>=0.10.0
-psycopg2-binary>=2.9.9
-pgvector>=0.2.4
-numpy>=1.24.0
-rank-bm25>=0.2.2
-google-genai>=0.3.0
