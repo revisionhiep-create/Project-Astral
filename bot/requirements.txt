@@ -13,9 +13,14 @@ ollama>=0.4.0
 # Google AI (Vision + Embeddings) - New unified SDK
 google-genai>=0.3.0
 
-# Vector Store
+# Unified Memory System (Memory Alaya)
+duckdb>=0.10.0
 numpy>=1.26.0
 rank_bm25>=0.2.2
+
+# Optional: PostgreSQL backend for production scaling
+# psycopg2-binary>=2.9.9
+# pgvector>=0.2.4
 
 # Image Processing
 Pillow>=10.0.0
