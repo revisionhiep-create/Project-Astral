@@ -47,12 +47,17 @@ async def _transcribe_cloud(wav_bytes: bytes) -> str | None:
         return None
 
     try:
-        response = client.models.generate_content(
-            model=STT_MODEL,
-            contents=[
-                types.Part.from_text(text=STT_PROMPT),
-                types.Part.from_bytes(data=wav_bytes, mime_type="audio/wav"),
-            ]
+        # Run sync Gemini API call in executor to avoid blocking
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.models.generate_content(
+                model=STT_MODEL,
+                contents=[
+                    types.Part.from_text(text=STT_PROMPT),
+                    types.Part.from_bytes(data=wav_bytes, mime_type="audio/wav"),
+                ]
+            )
         )
 
         text = response.text.strip()
@@ -64,7 +69,9 @@ async def _transcribe_cloud(wav_bytes: bytes) -> str | None:
         return text
 
     except Exception as e:
-        print(f"❌ [STT-Cloud] Failed ({type(e).__name__})")
+        print(f"❌ [STT-Cloud] Failed ({type(e).__name__}: {e})")
+        import traceback
+        traceback.print_exc()
         return None
 
 
