@@ -66,7 +66,7 @@ async def _extract_fact_from_conversation(
     conversation_context: str = None
 ) -> Optional[str]:
     """
-    Extract a factual statement from a conversation using Gemini 2.0 Flash.
+    Extract a factual statement from a conversation using Gemini 2.5 Flash.
 
     This is the SAME logic as rag.py - we only extract meaningful, long-term facts.
 
@@ -178,7 +178,7 @@ Respond with the fact or NONE:"""
 
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.1,

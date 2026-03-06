@@ -2,6 +2,13 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.1.1] - 2026-03-06
+
+### Changed
+- **Fact Extraction Model Upgrade**: Upgraded from Gemini 2.0 Flash to Gemini 2.5 Flash for improved fact extraction quality
+  - Updated `bot/memory/memory_interface.py` to use `gemini-2.5-flash`
+  - Better accuracy in extracting meaningful user facts from conversations
+
 ## [5.1.0] - 2026-03-06
 
 ### 🔄 Major: Memory Alaya Integration - Unified RAG System
@@ -27,7 +34,7 @@ All notable changes to Project Astral will be documented in this file.
   - Drop-in replacement for old `rag.py`
   - Same API for backward compatibility
   - Only stores user facts (no image descriptions or search results)
-  - Gemini 2.0 Flash for fact extraction
+  - Gemini 2.5 Flash for fact extraction
   - Shared database: `/app/shared_memory/memory.duckdb`
 
 - **Query Utility** (`/shared_memory/query_memories.py`)
