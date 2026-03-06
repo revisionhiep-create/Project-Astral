@@ -13,9 +13,16 @@ All notable changes to Project Astral will be documented in this file.
   - DuckDB does not support concurrent process access, requiring separate databases per bot
 
 ### Changed
+- **Self-Contained Memory System**: Made bot fully independent
+  - Copied Memory Alaya framework into `bot/memory_alaya/` (was in shared `../shared_memory/`)
+  - Updated imports to use local copy: `from memory_alaya import MemoryAlaya`
+  - Removed dependency on external `shared_memory/` folder
+  - Removed `shared_memory` volume mount from docker-compose
+  - Bot is now completely self-contained and portable
+
 - **Memory Database Location**: `data/db/memory.duckdb` (was `/shared_memory/memory_astral.duckdb`)
   - Database now persists in bot's own `db/` volume mount
-  - Cleaner separation between shared code (`shared_memory/`) and bot-specific data
+  - Cleaner separation between shared code and bot-specific data
   - Note: Memories are no longer shared between Project Astral and GemGem
 
 ## [5.1.1] - 2026-03-06

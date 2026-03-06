@@ -19,15 +19,8 @@ from typing import Optional, List, Dict, Any
 from google import genai
 from google.genai import types
 
-# Add parent directory to path to access shared_memory as a package
-parent_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', '..', '..')
-)
-if parent_path not in sys.path:
-    sys.path.insert(0, parent_path)
-
-# Import Memory Alaya as a package (this handles relative imports correctly)
-from shared_memory import MemoryAlaya
+# Import Memory Alaya from local copy (self-contained)
+from memory_alaya import MemoryAlaya
 from memory.embeddings import get_embedding, get_query_embedding
 
 

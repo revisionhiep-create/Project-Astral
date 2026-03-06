@@ -25,10 +25,7 @@ RUN cd /usr/local/lib/python3.11/site-packages && patch -p1 < /tmp/fix-OpusError
 COPY Project-Astral/bot/patches/apply_dave_patch.sh /tmp/
 RUN chmod +x /tmp/apply_dave_patch.sh && /tmp/apply_dave_patch.sh
 
-# Copy shared_memory module from parent directory
-COPY shared_memory /app/shared_memory
-
-# Copy bot code
+# Copy bot code (now includes self-contained memory_alaya/)
 COPY Project-Astral/bot .
 
 # Run bot

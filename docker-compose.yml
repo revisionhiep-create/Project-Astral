@@ -23,7 +23,6 @@ services:
         condition: service_started
     volumes:
       - ./bot:/app # Live code mount (overlay entire app for hot reload)
-      - ../shared_memory:/app/shared_memory # Mount shared memory module
       - ./db:/app/data/db # Persist RAG database
     restart: unless-stopped
     networks:
