@@ -23,6 +23,7 @@ class VoiceMessage:
         self.guild = guild
         self.channel = text_channel
         self.attachments = []
+        self.embeds = []  # No embeds from voice
         self.mentions = [bot_user]  # Simulate bot being mentioned
         self.id = None
         self.created_at = discord.utils.utcnow()
