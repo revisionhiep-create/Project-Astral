@@ -2,6 +2,22 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.1.2] - 2026-03-06
+
+### Fixed
+- **Database Locking Issue**: Resolved DuckDB file locking conflict with GemGem bot
+  - Moved Memory Alaya database from `/app/shared_memory/` to `/app/data/db/memory.duckdb`
+  - Each bot now maintains its own separate DuckDB file in their respective data directories
+  - Updated `bot/memory/memory_interface.py` to use bot-specific database path
+  - Removed `MEMORY_DB_PATH` environment variable from docker-compose (using sensible defaults)
+  - DuckDB does not support concurrent process access, requiring separate databases per bot
+
+### Changed
+- **Memory Database Location**: `data/db/memory.duckdb` (was `/shared_memory/memory_astral.duckdb`)
+  - Database now persists in bot's own `db/` volume mount
+  - Cleaner separation between shared code (`shared_memory/`) and bot-specific data
+  - Note: Memories are no longer shared between Project Astral and GemGem
+
 ## [5.1.1] - 2026-03-06
 
 ### Changed

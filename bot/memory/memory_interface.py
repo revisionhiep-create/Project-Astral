@@ -36,8 +36,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 # Initialize Memory Alaya with DuckDB backend
-# Use shared database location mounted from host
-MEMORY_DB_PATH = "/app/shared_memory/memory.duckdb"
+# Store in bot's own db directory, separate from shared code
+MEMORY_DB_PATH = os.getenv("MEMORY_DB_PATH", "/app/data/db/memory.duckdb")
 
 memory_alaya = None
 
