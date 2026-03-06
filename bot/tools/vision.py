@@ -5,6 +5,7 @@ Text Attribution Prompt: treats text in images as character dialogue/thoughts.
 """
 import os
 import aiohttp
+import asyncio
 import base64
 from google import genai
 from google.genai import types
@@ -207,6 +208,114 @@ def get_recent_image_context() -> str:
         return ""
     
     return "\n".join(lines)
+
+
+async def describe_gif(gif_url: str, user_context: str = "") -> str:
+    """
+    Analyze animated GIF from Tenor or direct URL.
+    Fetches the GIF, samples key frames, and uses Gemini to describe the animation.
+
+    Best practices for 3-6 second GIFs:
+    - Focus on primary action/movement
+    - Note emotional progression if expressions change
+    - Identify key subjects and their interactions
+    - Capture the "loop point" if relevant
+    """
+    if not client:
+        print("[Vision] No Gemini API key configured")
+        return None
+
+    try:
+        # Fetch GIF data
+        async with aiohttp.ClientSession() as session:
+            async with session.get(gif_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status != 200:
+                    print(f"[Vision] Failed to fetch GIF: HTTP {resp.status}")
+                    return None
+
+                gif_data = await resp.read()
+                mime_type = resp.headers.get('Content-Type', 'image/gif')
+
+        if not gif_data:
+            return None
+
+        # Gemini 3.0 Flash can analyze GIFs directly
+        # Construct prompt optimized for short animations
+        gif_prompt = """Analyze this animated GIF. Focus on:
+
+**ANIMATION & MOVEMENT:**
+- What is the primary action or movement happening?
+- Is there a loop? If so, describe the cycle
+- Speed/tempo of the animation (fast, slow, smooth, choppy)
+
+**SUBJECTS & CHARACTERS:**
+- Who/what is in the GIF?
+- Physical appearance (if character: hair, eyes, clothing, style)
+- Emotional state and expression changes (if faces visible)
+
+**CONTEXT & MOOD:**
+- What's the overall vibe? (funny, dramatic, cute, chaotic, etc.)
+- Art style (anime, realistic, cartoon, meme-style, etc.)
+- Setting or background (if visible)
+
+**TEXT OR CAPTIONS:**
+- Any text overlays or embedded captions?
+
+Keep description to 3-4 sentences focusing on what makes this GIF notable or expressive."""
+
+        # Add user context if provided
+        if user_context:
+            gif_prompt += f"\n\n**USER CONTEXT:**\nThe user said: '{user_context}'\n(Address this context in your description if relevant)"
+
+        # Add character recognition
+        character_context = get_character_context_for_vision()
+        if character_context:
+            gif_prompt += f"""
+
+**CHARACTER MATCHING (compare to these people visually):**
+{character_context}
+
+**STRICT RULES for matching:**
+- **CRITICAL DISTINCTION:** Do NOT confuse Astra (mature style, PURPLE eyes, STAR necklace) with GemGem (RAINBOW eyes, GEMS/PLANETS in hair).
+- If the character has **RAINBOW/PINK** eyes or is chibi/cute/sticker style -> It is **GemGem**.
+- If the character has **PURPLE-VIOLET** eyes and looks mature/composed -> It is **Astra (you)**.
+- If **BOTH** are present, identify BOTH separately.
+- ONLY match if MOST key features are clearly visible
+- If you're not confident, just describe by appearance without naming anyone"""
+
+        # Prepare content for Gemini
+        content_parts = [
+            types.Part.from_bytes(data=gif_data, mime_type=mime_type),
+            types.Part.from_text(text=gif_prompt)
+        ]
+
+        response = client.models.generate_content(
+            model=GEMINI_VISION_MODEL,
+            contents=content_parts,
+            config=types.GenerateContentConfig(
+                temperature=0.6,  # Slightly higher for expressive GIF descriptions
+                max_output_tokens=800,
+                top_p=0.95,
+                top_k=40,
+                safety_settings=[
+                    types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+                    types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+                    types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+                    types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
+                ]
+            )
+        )
+
+        description = response.text.strip()
+        print(f"[Vision] GIF analysis ({len(description)} chars): {description[:150]}{'...' if len(description) > 150 else ''}")
+        return description
+
+    except asyncio.TimeoutError:
+        print("[Vision] GIF fetch timeout")
+        return None
+    except Exception as e:
+        print(f"[Vision] GIF analysis failed: {e}")
+        return None
 
 
 async def can_see_images() -> bool:

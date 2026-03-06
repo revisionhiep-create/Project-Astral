@@ -2,6 +2,48 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.0.6] - 2026-03-05
+
+### Added - Tenor GIF Support via Discord Embeds
+
+**Implemented accurate GIF analysis for Discord's GIF button (Tenor links)**
+
+- **Discord Embed Integration**: Bot now uses Discord's embed video URLs for accurate GIF detection
+  - Prioritizes `embed.video.url` (MP4) from Discord's embed data
+  - Fallback to `embed.thumbnail.url` for Tenor thumbnails
+  - Skips HTML scraping to avoid incorrect GIF detection
+  - Works seamlessly with Discord's built-in GIF button
+
+- **GIF Analysis with Gemini 3.0 Flash**: Optimized prompts for 3-6 second animations
+  - Animation & movement analysis (action, loop detection, speed/tempo)
+  - Subject identification and emotional progression
+  - Context & mood detection (funny, dramatic, cute, chaotic)
+  - Text overlay and caption detection
+  - Character recognition support
+
+- **Best Practices Implementation**:
+  - Focus on primary action/movement in short GIFs
+  - Emotional progression tracking across frames
+  - Art style and setting detection
+  - Concise 3-4 sentence descriptions
+
+**How to Use**:
+- Paste Tenor URL with bot mention: `@Astral https://tenor.com/view/...`
+- Discord creates embed automatically with correct GIF
+- Bot analyzes the exact GIF Discord displays
+
+**Files Modified**:
+- `bot/tools/vision.py`: Added `describe_gif()` function with animation-optimized prompts
+- `bot/cogs/chat.py`: Added embed-based GIF detection, prioritizing Discord embed URLs over HTML scraping
+
+**Technical Details**:
+- Uses MP4 format from Discord embeds (Gemini supports video analysis)
+- Timeout handling (10 seconds for GIF fetch)
+- Proper username attribution for GIF responses
+- Memory persistence for conversation context
+
+**Impact**: Astral can now accurately describe animated GIFs sent via Discord's GIF button, using the exact media Discord displays instead of random related GIFs from Tenor's sidebar.
+
 ## [5.0.5] - 2026-03-05
 
 ### Added - Enhanced Facial Expression Analysis in Vision System

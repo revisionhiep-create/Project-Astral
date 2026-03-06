@@ -52,18 +52,33 @@ class ChatCog(commands.Cog):
         
         if not (is_mentioned or is_dm):
             return
-        
+
+        # Debug: Log all messages that mention the bot
+        print(f"[Chat] Received mention from {message.author.display_name} (ID: {message.author.id})")
+
         # 🛡️ AUTHORIZATION CHECK (Silent ignore for unauthorized users)
         if not whitelist.is_authorized(message.author.id):
+            print(f"[Chat] ⚠️ Unauthorized user: {message.author.display_name} (ID: {message.author.id})")
             return
         
         # Clean the message (remove bot mention - handle both <@id> and <@!id> formats)
-        content = re.sub(r'<@!?\d+>', '', message.clean_content).strip()
-        if not content and not message.attachments:
-            return
-        
+        # Use message.content instead of clean_content to preserve URLs
+        try:
+            content = re.sub(r'<@!?\d+>', '', message.content).strip()
+            print(f"[Chat] Message content after cleaning: '{content[:100]}'")
+        except Exception as e:
+            print(f"[Chat] Error cleaning content: {e}")
+            content = ""
+
+        # Debug log to see what we received
+        print(f"[Chat] Message from {message.author.display_name}: content='{content[:100] if content else '(empty)'}', attachments={len(message.attachments)}, embeds={len(message.embeds)}")
+
+        # Don't return early - we need to check for Tenor URLs in embeds too
+        # if not content and not message.attachments:
+        #     return
+
         # Handle 'access' mention commands (Admin only)
-        content_lower = content.lower()
+        content_lower = content.lower() if content else ""
         if content_lower.startswith("access") and message.author.id in ADMIN_IDS:
             admin_cog = self.bot.get_cog("AdminCog")
             if admin_cog:
@@ -79,12 +94,74 @@ class ChatCog(commands.Cog):
         
         async with message.channel.typing():
             try:
-                # Check for image attachments
+                # Check for image attachments and Tenor GIF links
                 image_url = None
+                gif_url = None
+
+                # First, check for direct image attachments
                 for attachment in message.attachments:
                     if attachment.content_type and attachment.content_type.startswith("image/"):
-                        image_url = attachment.url
+                        if attachment.content_type == "image/gif" or attachment.url.lower().endswith('.gif'):
+                            gif_url = attachment.url
+                        else:
+                            image_url = attachment.url
                         break
+
+                # Second, check for Tenor GIF links in message content or embeds
+                # Discord's GIF button sends Tenor URLs as plain text or in embeds
+                if not gif_url and not image_url:
+                    # PRIORITY 1: Check embeds for direct media URLs (most accurate)
+                    if message.embeds:
+                        for embed in message.embeds:
+                            # Discord gifv embeds have video.url with MP4
+                            if embed.type == "gifv" and hasattr(embed, 'video') and embed.video and embed.video.url:
+                                # Use the MP4 URL - Gemini can analyze video formats
+                                gif_url = embed.video.url
+                                print(f"[Chat] Using embed video URL: {gif_url}")
+                                break
+                            # Some embeds have thumbnail URLs
+                            elif hasattr(embed, 'thumbnail') and embed.thumbnail and embed.thumbnail.url:
+                                if 'tenor.com' in embed.thumbnail.url:
+                                    gif_url = embed.thumbnail.url
+                                    print(f"[Chat] Using embed thumbnail URL: {gif_url}")
+                                    break
+
+                    # PRIORITY 2: Parse message content for Tenor URLs
+                    if not gif_url:
+                        search_text = content
+
+                        # Also collect embed URLs as fallback
+                        if message.embeds:
+                            for embed in message.embeds:
+                                if embed.url:
+                                    search_text += " " + embed.url
+
+                        print(f"[Chat] Searching for Tenor URLs in text: {search_text[:200]}")
+
+                        # Match various Tenor URL formats
+                        tenor_patterns = [
+                            r'https?://(?:www\.)?tenor\.com/view/[^\s]+',
+                            r'https?://(?:www\.)?tenor\.com/[^\s]+\.gif',
+                            r'https?://media\.tenor\.com/[^\s]+',
+                            r'https?://c\.tenor\.com/[^\s]+'
+                        ]
+
+                        # Only look for direct media URLs - skip HTML scraping to avoid wrong GIFs
+                        for pattern in tenor_patterns:
+                            match = re.search(pattern, search_text)
+                            if match:
+                                tenor_url = match.group(0)
+                                print(f"[Chat] Found Tenor URL in text: {tenor_url}")
+
+                                # Only use direct media URLs (media.tenor.com or c.tenor.com)
+                                if 'media.tenor.com' in tenor_url or 'c.tenor.com' in tenor_url:
+                                    gif_url = tenor_url
+                                    print(f"[Chat] Using direct media URL: {gif_url}")
+                                    break
+                                else:
+                                    # For view pages, skip - we should have already gotten the embed URL
+                                    print(f"[Chat] Skipping view page URL (embed should have direct media): {tenor_url}")
+                                    break
                 
                 # ============ SHARED MEMORY LOGIC AI FLOW ============
 
@@ -105,10 +182,10 @@ class ChatCog(commands.Cog):
                     print(f"[SharedMemory] Using summary context ({len(summary_context)} chars)")
 
                 # Step 2: Query long-term memory (RAG - conversations only)
-                # Skip RAG for simple greetings or when image is attached (waste of context)
+                # Skip RAG for simple greetings or when image/GIF is attached (waste of context)
                 greeting_patterns = ['hi', 'hello', 'hey', 'sup', 'yo', 'morning', 'evening', 'night', 'honey', 'babe', 'love']
                 is_greeting = len(content.split()) <= 3 and any(pattern in content.lower() for pattern in greeting_patterns)
-                has_image = bool(image_url)
+                has_image = bool(image_url or gif_url)
 
                 if is_greeting:
                     long_term_knowledge = []
@@ -129,15 +206,22 @@ class ChatCog(commands.Cog):
                     else:
                         print(f"[RAG] No relevant memories found for: '{content[:50]}'")
                 
-                # Step 3: Vision analysis with Gemini (if image attached)
+                # Step 3: Vision analysis with Gemini (if image/GIF attached)
                 # Use Gemini 3-flash-preview for accurate vision, then pass to Grok for response
                 vision_response = None
-                if has_image:
+
+                if image_url:
                     from tools.vision import describe_image
                     print(f"[Chat] Using Gemini 3-flash-preview for vision analysis")
                     vision_response = await describe_image(image_url=image_url, user_context=content)
                     if vision_response:
                         print(f"[Vision] Gemini analysis: {vision_response[:150]}...")
+                elif gif_url:
+                    from tools.vision import describe_gif
+                    print(f"[Chat] Using Gemini 3-flash-preview for GIF analysis")
+                    vision_response = await describe_gif(gif_url=gif_url, user_context=content)
+                    if vision_response:
+                        print(f"[Vision] GIF analysis: {vision_response[:150]}...")
 
                 # Step 4: Grok handles search natively (but not vision)
                 # Grok's /v1/responses endpoint searches automatically when needed
@@ -154,11 +238,11 @@ class ChatCog(commands.Cog):
                     combined_context += f"⚠️ [SEARCH RESULTS - YOU MUST USE THIS INFO]:\n{search_context}\n\n"
 
                 # === PREVIOUS CONTEXT SUMMARY (from shared_memory) ===
-                if summary_context and not image_url:
+                if summary_context and not (image_url or gif_url):
                     combined_context += f"⚠️ {summary_context}\n\n"
 
-                # Inject cached image descriptions so Astral remembers what she saw (skip if current message has image)
-                if not image_url:
+                # Inject cached image descriptions so Astral remembers what she saw (skip if current message has image/GIF)
+                if not (image_url or gif_url):
                     image_context = get_recent_image_context()
                     if image_context:
                         combined_context += f"{image_context}\n\n"
@@ -182,8 +266,22 @@ class ChatCog(commands.Cog):
                         "content": f"[Image Description]: {vision_self_aware}"
                     })
 
+                # Determine user message based on what was sent
+                if content:
+                    user_message = content
+                elif gif_url:
+                    user_message = "[attached a GIF]"
+                elif image_url:
+                    user_message = "[attached an image]"
+                else:
+                    user_message = ""
+
+                # Skip processing if truly empty
+                if not user_message and not vision_response:
+                    return
+
                 response = await process_message(
-                    user_message=content if content else "[attached an image]",
+                    user_message=user_message,
                     current_speaker=speaker_name,  # Pass speaker separately for system prompt
                     search_context=combined_context,  # System prompt context (Search results, summaries)
                     conversation_history=formatted_history, # Full 30-message history (vision injected here for images)
