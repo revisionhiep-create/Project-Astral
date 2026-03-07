@@ -2,6 +2,57 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.2.0] - 2026-03-06
+
+### 🧹 Major Refactoring - Code Cleanup & Modernization
+
+**Removed ~1,200 lines of dead code, improved maintainability, and centralized configuration**
+
+#### Removed (Dead Code Cleanup)
+- **Deprecated RAG Implementation** (`bot/memory/deprecated/rag.py` - 935 lines)
+  - Old SQLite-based memory system fully replaced by Memory Alaya
+  - Removed duplicate fact extraction logic
+  - ChromaDB dependencies no longer needed
+- **Unused Utilities** (`bot/ai/query_enhance.py`, `bot/tools/discord_context.py` - 231 lines)
+  - Functions never imported or called
+  - Replaced by current architecture
+- **Unused Dependencies** (requirements.txt cleanup)
+  - Removed `ollama>=0.4.0` (not imported anywhere)
+  - Removed `rank_bm25>=0.2.2` (only used in deprecated code)
+  - Removed commented PostgreSQL dependencies
+- **Commented Code** (chat.py)
+  - Removed commented-out early returns
+  - Removed old conversation scanning notes
+
+#### Changed
+- **Configuration Management** (NEW: `bot/config.py`)
+  - Centralized all magic numbers and constants
+  - `BotConfig`: Summary intervals, RAG limits, greeting patterns, admin IDs
+  - `AIConfig`: Model selection (Grok, Gemini), temperature, top_p
+  - `MemoryConfig`: Fact extraction thresholds, DuckDB settings
+  - All values configurable via environment variables
+- **Code Organization**
+  - Updated `bot/cogs/chat.py` to use `BotConfig` constants
+  - Updated `bot/memory/memory_interface.py` to use `MemoryConfig`
+  - Removed unused imports (datetime, pytz, search/vision tools)
+- **Naming Consistency**
+  - Fixed `gemgem_response` → `astra_response` throughout codebase
+  - Better reflects bot identity
+
+#### Added
+- **Logging Infrastructure** (`bot/utils/logger.py`)
+  - Structured logging with rotating file handlers
+  - Separate error log (`logs/astra_errors.log`)
+  - Console output for INFO+, file output for DEBUG+
+  - 10MB main log, 5MB error log with rotation
+  - Ready for migration from print() statements
+
+#### Impact
+- **Code Reduction**: -951 net lines (1,195 removed, 244 added)
+- **Maintainability**: Centralized configuration, eliminated duplication
+- **Observability**: Logging infrastructure ready for production
+- **Safety**: No breaking changes, all working code intact
+
 ## [5.1.2] - 2026-03-06
 
 ### Fixed
