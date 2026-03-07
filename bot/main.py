@@ -4,14 +4,18 @@ import asyncio
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from datetime import datetime
 import re
 
 from memory.shared_memory import SharedMemoryManager
 from tools.admin import whitelist
+from utils.logger import setup_logging, get_logger
 
 # Load environment variables
 load_dotenv()
+
+# Initialize logging
+setup_logging()
+logger = get_logger(__name__)
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 

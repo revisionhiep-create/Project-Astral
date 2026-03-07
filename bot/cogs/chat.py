@@ -1,11 +1,11 @@
 """GemGem Discord Bot - Chat Handler Cog (Logic AI Architecture)"""
 import discord
 from discord.ext import commands
-import pytz
 import re
 import traceback
 import os
 
+from config import BotConfig
 from ai.router import process_message, decide_tools_and_query, summarize_text
 
 from memory import (
@@ -15,14 +15,10 @@ from memory import (
     format_knowledge_for_context
 )
 from memory.shared_memory import SharedMemoryManager
-from tools.search import search, format_search_results
-from tools.vision import analyze_image, get_recent_image_context
+from tools.vision import get_recent_image_context
 from tools.voice_handler import get_voice_handler
 from tools.admin import whitelist, ADMIN_IDS
 import asyncio
-
-# Timezone for user-facing timestamps
-PST = pytz.timezone("America/Los_Angeles")
 
 # Regex to strip deterministic footers from Astral's own messages in history
 FOOTER_REGEX = re.compile(r'\n\n[💡🔍]\d+(?:\s[💡🔍]\d+)*$', re.DOTALL)
@@ -36,7 +32,7 @@ class ChatCog(commands.Cog):
         # Initialize shared memory manager
         data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
         self.shared_memory = SharedMemoryManager(data_dir)
-        self.msgs_since_summary = 0  # Start at 0, will trigger at 40
+        self.msgs_since_summary = 0
         self.is_summarizing = False  # Lock to prevent concurrent summaries
     
     @commands.Cog.listener()
@@ -72,11 +68,6 @@ class ChatCog(commands.Cog):
 
         # Debug log to see what we received
         print(f"[Chat] Message from {message.author.display_name}: content='{content[:100] if content else '(empty)'}', attachments={len(message.attachments)}, embeds={len(message.embeds)}")
-
-        # Don't return early - we need to check for Tenor URLs in embeds too
-        # if not content and not message.attachments:
-        #     return
-
         # Handle 'access' mention commands (Admin only)
         content_lower = content.lower() if content else ""
         if content_lower.startswith("access") and message.author.id in ADMIN_IDS:
@@ -167,7 +158,7 @@ class ChatCog(commands.Cog):
 
                 # Step 0: Background Summary Update
                 self.msgs_since_summary += 1
-                if self.msgs_since_summary >= 40 and not self.is_summarizing:
+                if self.msgs_since_summary >= BotConfig.SUMMARY_INTERVAL_MESSAGES and not self.is_summarizing:
                     print(f"[Chat] Triggering background summary update (msgs since: {self.msgs_since_summary})")
                     self.msgs_since_summary = 0
                     asyncio.create_task(self._update_summary())
@@ -183,8 +174,7 @@ class ChatCog(commands.Cog):
 
                 # Step 2: Query long-term memory (RAG - conversations only)
                 # Skip RAG for simple greetings or when image/GIF is attached (waste of context)
-                greeting_patterns = ['hi', 'hello', 'hey', 'sup', 'yo', 'morning', 'evening', 'night', 'honey', 'babe', 'love']
-                is_greeting = len(content.split()) <= 3 and any(pattern in content.lower() for pattern in greeting_patterns)
+                is_greeting = len(content.split()) <= 3 and any(pattern in content.lower() for pattern in BotConfig.GREETING_PATTERNS)
                 has_image = bool(image_url or gif_url)
 
                 if is_greeting:
@@ -198,7 +188,7 @@ class ChatCog(commands.Cog):
                     rag_count = 0
                     print(f"[RAG] Skipping RAG for image query (vision provides context): '{content[:50]}'")
                 else:
-                    long_term_knowledge = await retrieve_relevant_knowledge(content, limit=3)
+                    long_term_knowledge = await retrieve_relevant_knowledge(content, limit=BotConfig.RAG_FACT_LIMIT)
                     memory_context = format_knowledge_for_context(long_term_knowledge, current_username=message.author.display_name)
                     rag_count = len(long_term_knowledge)  # Track for footer
                     if memory_context:
@@ -328,7 +318,7 @@ class ChatCog(commands.Cog):
                 context_for_rag = "\n".join([msg["content"] for msg in formatted_history[-5:]]) if len(formatted_history) > 1 else None
                 await store_conversation(
                     user_message=content if content else "[attached an image]",
-                    gemgem_response=clean_response,
+                    astra_response=clean_response,
                     user_id=str(message.author.id),
                     username=message.author.display_name,
                     channel_id=str(message.channel.id),

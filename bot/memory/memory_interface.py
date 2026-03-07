@@ -249,7 +249,7 @@ async def _is_duplicate_fact(
 
 async def store_conversation(
     user_message: str,
-    gemgem_response: str,
+    astra_response: str,
     user_id: str = None,
     username: str = None,
     channel_id: str = None,
@@ -264,7 +264,7 @@ async def store_conversation(
 
     Args:
         user_message: What the user said (current message)
-        gemgem_response: What Astra replied (current response)
+        astra_response: What Astra replied (current response)
         user_id: Discord user ID
         username: Discord display name
         channel_id: Discord channel ID
@@ -277,14 +277,14 @@ async def store_conversation(
     name = username or "User"
 
     # Skip very short messages (likely chatter)
-    if len(user_message.strip()) < 15 and len(gemgem_response.strip()) < 50:
+    if len(user_message.strip()) < 15 and len(astra_response.strip()) < 50:
         print(f"[Memory Interface] Skipping short exchange (no facts to extract)")
         return None
 
     # Extract fact from conversation (with context if provided)
     context_preview = conversation_context[:60] if conversation_context else "single message"
     print(f"[Memory Interface] Attempting fact extraction for {name}: msg='{user_message[:60]}' | context='{context_preview}'")
-    fact = await _extract_fact_from_conversation(name, user_message, gemgem_response, conversation_context)
+    fact = await _extract_fact_from_conversation(name, user_message, astra_response, conversation_context)
 
     if not fact:
         print(f"[Memory Interface] No meaningful fact in conversation with {name}")
