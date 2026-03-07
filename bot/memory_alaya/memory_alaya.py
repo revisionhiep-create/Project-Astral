@@ -152,13 +152,14 @@ class MemoryAlaya:
         Returns:
             List of knowledge dictionaries with content, score, metadata
         """
-        # Step 1: Hybrid search (vector + keyword)
+        # Step 1: Hybrid search (vector + keyword + questions)
         candidates = await self.backend.hybrid_search(
             query=query,
             query_embedding=query_embedding,
             top_k=top_k * 2,  # Get more for reranking
             filters=filters,
-            similarity_threshold=similarity_threshold
+            similarity_threshold=similarity_threshold,
+            search_questions=True  # Enable hypothetical question search
         )
 
         if not candidates:

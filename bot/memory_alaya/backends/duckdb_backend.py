@@ -121,7 +121,8 @@ class DuckDBBackend:
         query_embedding: List[float],
         top_k: int = 10,
         filters: Dict[str, str] = None,
-        similarity_threshold: float = 0.63
+        similarity_threshold: float = 0.63,
+        search_questions: bool = True
     ) -> List[Dict[str, Any]]:
         """Hybrid search combining vector and keyword search.
 
@@ -131,6 +132,7 @@ class DuckDBBackend:
             top_k: Number of results to return
             filters: Optional filters (user_id, guild_id, channel_id)
             similarity_threshold: Minimum cosine similarity
+            search_questions: Whether to also search hypothetical_questions in metadata
 
         Returns:
             List of results with scores
@@ -162,8 +164,15 @@ class DuckDBBackend:
             query, top_k, where_clause, params
         )
 
-        # Step 3: Merge results (deduplication by ID)
-        merged = self._merge_results(vector_results, keyword_results)
+        # Step 3: Hypothetical question search (if enabled)
+        question_results = []
+        if search_questions:
+            question_results = await self._question_search(
+                query, top_k, where_clause, params
+            )
+
+        # Step 4: Merge results (deduplication by ID)
+        merged = self._merge_results(vector_results, keyword_results, question_results)
 
         return merged[:top_k]
 
@@ -275,26 +284,145 @@ class DuckDBBackend:
             print(f"[ERROR] Keyword search failed: {e}")
             return []
 
+    async def _question_search(
+        self,
+        query: str,
+        top_k: int,
+        where_clause: str,
+        params: List[Any]
+    ) -> List[Dict[str, Any]]:
+        """Search hypothetical questions in metadata.
+
+        Args:
+            query: User's query text
+            top_k: Number of results to return
+            where_clause: SQL WHERE clause for filtering
+            params: SQL parameters
+
+        Returns:
+            List of results with question_match_score
+        """
+        try:
+            # Fetch all records matching filters
+            query_sql = f"""
+                SELECT id, content, knowledge_type, source, metadata, user_id, guild_id, channel_id
+                FROM knowledge
+                WHERE {where_clause}
+            """
+
+            results = self.conn.execute(query_sql, params).fetchall()
+            print(f"[QUESTION SEARCH] Query: '{query}' | WHERE: {where_clause} | Params: {params} | DB rows fetched: {len(results)}")
+
+            # Score based on question similarity
+            scored_results = []
+            query_lower = query.lower()
+
+            for row in results:
+                metadata_json = row[4]  # metadata column
+                if not metadata_json:
+                    continue
+
+                try:
+                    metadata = json.loads(metadata_json)
+                    questions = metadata.get('hypothetical_questions', [])
+
+                    if not questions:
+                        continue
+
+                    print(f"[QUESTION SEARCH] Checking {len(questions)} questions for fact: {row[1][:60]}")
+
+                    # Calculate similarity to each question (simple keyword overlap)
+                    max_score = 0.0
+                    best_question = None
+                    for question in questions:
+                        question_lower = question.lower()
+
+                        # Simple scoring: word overlap / total words
+                        query_words = set(query_lower.split())
+                        question_words = set(question_lower.split())
+
+                        if query_words and question_words:
+                            overlap = len(query_words & question_words)
+                            score = overlap / max(len(query_words), len(question_words))
+                            if score > max_score:
+                                max_score = score
+                                best_question = question
+
+                    if best_question:
+                        print(f"[QUESTION SEARCH]   Match: '{best_question[:50]}' (score: {max_score:.3f})")
+
+                    # Only include if there's meaningful overlap
+                    if max_score > 0.3:  # Threshold for question matching
+                        print(f"[QUESTION SEARCH] PASS threshold! Adding to results")
+                        scored_results.append({
+                            "id": row[0],
+                            "content": row[1],
+                            "knowledge_type": row[2],
+                            "source": row[3],
+                            "metadata": metadata,
+                            "user_id": row[5],
+                            "guild_id": row[6],
+                            "channel_id": row[7],
+                            "question_match_score": float(max_score),
+                            "search_type": "question"
+                        })
+
+                except Exception as e:
+                    print(f"[WARN] Error parsing metadata for question search: {e}")
+                    continue
+
+            # Sort by score
+            scored_results.sort(key=lambda x: x["question_match_score"], reverse=True)
+            return scored_results[:top_k]
+
+        except Exception as e:
+            print(f"[ERROR] Question search failed: {e}")
+            return []
+
     def _merge_results(
         self,
         vector_results: List[Dict[str, Any]],
-        keyword_results: List[Dict[str, Any]]
+        keyword_results: List[Dict[str, Any]],
+        question_results: List[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
-        """Merge and deduplicate results from vector and keyword search."""
+        """Merge and deduplicate results from vector, keyword, and question search.
+
+        Priority order:
+        1. Question matches (highest weight - 1.2x)
+        2. Vector matches (semantic similarity)
+        3. Keyword matches (BM25)
+        """
+        if question_results is None:
+            question_results = []
+
         seen_ids = set()
         merged = []
 
-        # Add vector results first (they have embedding similarity)
+        # Add question results first with boosted score (HIGHEST PRIORITY)
+        for result in question_results:
+            if result["id"] not in seen_ids:
+                seen_ids.add(result["id"])
+                # Boost question match scores
+                result["boosted_score"] = result.get("question_match_score", 0) * 1.2
+                merged.append(result)
+
+        # Add vector results (they have embedding similarity)
         for result in vector_results:
             if result["id"] not in seen_ids:
                 seen_ids.add(result["id"])
+                result["boosted_score"] = result.get("vector_score", 0)
                 merged.append(result)
 
-        # Add keyword results that weren't in vector results
+        # Add keyword results that weren't in vector or question results
         for result in keyword_results:
             if result["id"] not in seen_ids:
                 seen_ids.add(result["id"])
+                # Normalize BM25 scores (they're typically 0-10)
+                result["boosted_score"] = result.get("bm25_score", 0) / 10.0
                 merged.append(result)
+
+        # Re-sort by boosted score
+        merged.sort(key=lambda x: x.get("boosted_score", 0), reverse=True)
 
         return merged
 
