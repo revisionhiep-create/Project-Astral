@@ -22,6 +22,8 @@ venv/
 # Data (keep structure but ignore content)
 data/*.db
 db/*.db
+db/*.duckdb
+db/*.duckdb.wal
 db/*.wal
 bot/data/persona_state.json
 
@@ -42,4 +44,3 @@ Thumbs.db
 # Temp files
 temp_audio/
 nul
-db/memory.duckdb
