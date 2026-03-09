@@ -13,6 +13,7 @@ google-genai>=0.3.0
 # Unified Memory System (Memory Alaya)
 duckdb>=0.10.0
 numpy>=1.26.0
+rank-bm25>=0.2.0
 
 # Image Processing
 Pillow>=10.0.0
