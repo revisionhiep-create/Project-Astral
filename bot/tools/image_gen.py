@@ -27,11 +27,11 @@ async def generate_image(prompt: str, reference_images: list = None) -> tuple:
     
     # Model priority list
     models_to_try = [
+        ("models/gemini-3.1-flash-image-preview", "Nano Banana 2"),
+        ("models/imagen-4.0-generate-001", "Imagen 4.0 Standard"),
         ("models/gemini-2.5-flash-image", "Gemini 2.5 Flash Art"),
-        ("models/gemini-2.0-flash-exp-image", "Gemini 2.0 Art"),
-        ("models/imagen-3.0-generate-001", "Imagen 3 Pro"),
     ]
-    
+
     # Relaxed safety for artistic content
     safety_settings = [
         {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
@@ -39,9 +39,9 @@ async def generate_image(prompt: str, reference_images: list = None) -> tuple:
         {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
         {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
     ]
-    
+
     loop = asyncio.get_event_loop()
-    
+
     for model_id, display_name in models_to_try:
         try:
             print(f"[Draw] Trying {display_name}...")
@@ -65,15 +65,34 @@ async def generate_image(prompt: str, reference_images: list = None) -> tuple:
                 for s in safety_settings
             ]
 
-            # Run in executor (blocking API)
-            response = await loop.run_in_executor(
-                None,
-                lambda: client.models.generate_content(
-                    model=model_id,
-                    contents=parts,
-                    config=types.GenerateContentConfig(safety_settings=safety_config)
+            # Configure for Nano Banana 2 with 512x512 resolution
+            if model_id == "models/gemini-3.1-flash-image-preview":
+                # Run in executor with image config for Nano Banana 2
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: client.models.generate_content(
+                        model=model_id,
+                        contents=parts,
+                        config=types.GenerateContentConfig(
+                            response_modalities=['IMAGE'],
+                            image_config=types.ImageConfig(
+                                aspect_ratio="1:1",
+                                image_size="512"
+                            ),
+                            safety_settings=safety_config
+                        )
+                    )
                 )
-            )
+            else:
+                # Run in executor (blocking API) for other models
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: client.models.generate_content(
+                        model=model_id,
+                        contents=parts,
+                        config=types.GenerateContentConfig(safety_settings=safety_config)
+                    )
+                )
             
             # Handle Imagen-style response
             if hasattr(response, "images") and response.images:

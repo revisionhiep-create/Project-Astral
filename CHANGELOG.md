@@ -2,6 +2,36 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.3.0] - 2026-03-10
+
+### 🎨 Image Generation Update - Nano Banana 2 Migration
+
+**Migrated to Nano Banana 2 (Gemini 3.1 Flash Image) with 512x512 resolution for optimal quality and cost efficiency.**
+
+#### Changed
+- **bot/tools/image_gen.py**: Switched primary image model to Nano Banana 2
+  - Updated model priority: `gemini-3.1-flash-image-preview` (Nano Banana 2) now primary
+  - Configured 512x512 resolution (1:1 aspect ratio, "512" size)
+  - Added image_config with explicit resolution parameters for Nano Banana 2
+  - Updated fallback chain: Imagen 4.0 Standard → Gemini 2.5 Flash Art
+  - Display name automatically updates to "Nano Banana 2" in all commands
+
+#### Cost & Performance
+- **Resolution**: 512x512 pixels (optimal cost tier)
+- **Pricing**: ~$0.045 per image (Standard API), $0.022 via Batch API
+- **Quality**: #1 ranked in Artificial Analysis Image Arena benchmarks
+- **Speed**: Lightning-fast generation with advanced world knowledge
+
+#### Features
+- All image commands (`draw`, `gdraw`, `edit`) now use Nano Banana 2 by default
+- Supports up to 14 reference images for editing and multi-image blending
+- Precision text rendering and translation capabilities
+- Real-time web knowledge integration for accurate subject rendering
+- Character reference system fully compatible with new model
+- Automatic fallback chain ensures reliability
+
+---
+
 ## [5.2.0] - 2026-03-06
 
 ### 🧹 Major Refactoring - Code Cleanup & Modernization
