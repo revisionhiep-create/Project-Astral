@@ -53,10 +53,6 @@ async def on_ready():
         print(f"⚡ Synced {len(synced)} slash commands")
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
-    
-    # Check search system
-    searxng_url = os.getenv("SEARXNG_URL", "http://searxng:8080")
-    print(f"🔍 Search system: {searxng_url}")
 
 
 @bot.event

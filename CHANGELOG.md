@@ -2,6 +2,48 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.4.0] - 2026-03-12
+
+### 🧹 SearXNG Removal - Complete Search Infrastructure Cleanup
+
+**Removed all SearXNG (self-hosted search) infrastructure and related dead code. Grok's built-in x.com search via tool calling has fully replaced it.**
+
+#### Removed
+- **Docker Infrastructure**
+  - Removed SearXNG service from docker-compose.yml (lines 34-46)
+  - Removed SearXNG dependency from astral-bot service
+  - Removed SEARXNG_HOST environment variable from docker-compose.yml
+  - Deleted searxng/ directory with settings.yml configuration
+
+- **Search Tool Implementation**
+  - Deleted bot/tools/search.py (96 lines) - SearXNG client functions
+  - Deleted bot/scripts/test_search.py (23 lines) - SearXNG testing script
+  - Removed search imports from bot/tools/__init__.py (search, search_and_format, format_search_results)
+
+- **Configuration & Environment**
+  - Removed SEARXNG_HOST from .env
+  - Removed SEARCH_TIMEOUT and MAX_SEARCH_RESULTS from bot/config.py
+  - Removed searxng_url logging from bot/main.py (lines 57-59)
+
+- **Dead Code - Search Agent**
+  - Removed decide_tools_and_query import from bot/cogs/chat.py
+  - Removed decide_tools_and_query export from bot/ai/__init__.py
+  - Function still exists in router.py but is never called (deprecated when Grok backend enabled)
+
+#### Context
+- **Old Architecture**: Bot used decide_tools_and_query() to analyze last 5 messages and trigger SearXNG searches
+- **New Architecture**: Grok 4.1 Fast handles search autonomously via built-in web_search tool calling
+- **Migration Date**: January 2026 (when Grok backend became primary)
+- Search is now handled server-side by xAI's /v1/responses endpoint
+
+#### Impact
+- **Code Reduction**: ~150 lines of dead code removed
+- **Docker Simplification**: One less container to manage
+- **Environment Cleanup**: Removed unused SearXNG_HOST configuration
+- **No Functionality Loss**: Grok's native search provides superior results with Twitter/X integration
+
+---
+
 ## [5.3.0] - 2026-03-10
 
 ### 🎨 Image Generation Update - Nano Banana 2 Migration

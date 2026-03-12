@@ -59,13 +59,6 @@ class BotConfig:
     MAX_RECENT_IMAGES = int(os.getenv("MAX_RECENT_IMAGES", "3"))
     """Maximum number of recent images to keep in context"""
 
-    # ========== Search Settings ==========
-    SEARCH_TIMEOUT = int(os.getenv("SEARCH_TIMEOUT", "15"))
-    """Timeout in seconds for web search requests"""
-
-    MAX_SEARCH_RESULTS = int(os.getenv("MAX_SEARCH_RESULTS", "5"))
-    """Maximum number of search results to process"""
-
     # ========== Admin Settings ==========
     ADMIN_IDS = {
         int(id_str) for id_str in os.getenv("ADMIN_IDS", "69353483425292288,1365378902301741071").split(",")

@@ -6,7 +6,7 @@ import traceback
 import os
 
 from config import BotConfig
-from ai.router import process_message, decide_tools_and_query, summarize_text
+from ai.router import process_message, summarize_text
 
 from memory import (
     retrieve_relevant_knowledge,

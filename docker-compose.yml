@@ -12,15 +12,11 @@ services:
       - OLLAMA_MODEL=${LMSTUDIO_CHAT_MODEL}
       - LMSTUDIO_HOST=${LMSTUDIO_HOST:-http://host.docker.internal:1234}
       - LMSTUDIO_CHAT_MODEL=${LMSTUDIO_CHAT_MODEL}
-      - SEARXNG_HOST=http://searxng:8080
       - RAG_DATABASE=/app/data/db/memory.db
       - CHARACTERS_FILE=/app/data/characters.json
       - ASSETS_DIR=/app/data/assets
       - QWEN_TTS_URL=http://host.docker.internal:8880
       - PYTHONUNBUFFERED=1 # Enable real-time logging
-    depends_on:
-      searxng:
-        condition: service_started
     volumes:
       - ./bot:/app # Live code mount (overlay entire app for hot reload)
       - ./db:/app/data/db # Persist RAG database
@@ -30,20 +26,6 @@ services:
     # Allow access to host network on Windows Docker
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
-  # SearXNG - Free Unlimited Search
-  searxng:
-    image: searxng/searxng:latest
-    container_name: astral-searxng
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./searxng:/etc/searxng:rw
-    environment:
-      - SEARXNG_BASE_URL=http://localhost:8080
-    restart: unless-stopped
-    networks:
-      - astral-network
 
 networks:
   astral-network:
