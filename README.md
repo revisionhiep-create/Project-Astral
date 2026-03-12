@@ -1,32 +1,31 @@
 # Project Astral 🌟
 
-**Astra** is a Discord bot with a genuine, human-like personality powered by a local LLM. She's designed to feel like a real friend in your group chat, not an AI assistant.
+**Astra** is a Discord bot with a genuine, human-like personality powered by Grok 4.1 Fast Reasoning. She's designed to feel like a real friend in your group chat, not an AI assistant.
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
-| **Brain** | Qwen3-VL-32B Heretic v2 (via LM Studio) |
+| **Brain** | Grok 4.1 Fast Reasoning (xAI API) - 80-100 tokens/sec |
 | **Vision** | Gemini 3.0 Flash (image analysis + character recognition) |
-| **Image Gen** | FLUX.2 [dev] (self-hosted) / Gemini Imagen |
-| **TTS** | Kokoro TTS (GPU-accelerated, anime voice) |
+| **Image Gen** | Nano Banana 2 (Gemini 3.1 Flash Image) / Imagen 4.0 / Gemini 2.5 Flash Art |
+| **TTS** | Qwen3-TTS (streaming, Raiden voice clone) |
 | **STT** | Gemini Cloud (primary) / faster-whisper (fallback) |
-| **Search** | SearXNG (self-hosted, unlimited) |
-| **Memory** | Shared Memory JSON (cross-bot context) + SQLite RAG (long-term facts) |
+| **Search** | Grok built-in web_search (autonomous) + X/Twitter search |
+| **Memory** | Memory Alaya (DuckDB vector database with hybrid search) |
 | **Summarization** | Gemini 2.5 Flash (messages 31-200) |
 | **Framework** | discord.py |
 | **Deployment** | Docker Compose |
 
 ## Features
 
-- **Natural Conversation** — Personality-driven responses with dry humor, not assistant-speak
-- **Cross-Bot Context Awareness** — Shares conversation memory with GemGem bot via shared_memory.json
-- **Voice Support** — `/join` and `/leave` for voice channels with TTS + STT
+- **Natural Conversation** — Personality-driven responses with dry humor powered by Grok 4.1
+- **Real-time Web Search** — Grok's built-in autonomous search with X/Twitter integration
+- **Voice Support** — `/join` and `/leave` for voice channels with streaming Qwen3-TTS + STT
 - **Vision** — Analyzes images via Gemini 3.0 Flash with character recognition
-- **Drawing** — `draw`, `gdraw` (AI-enhanced), and `edit` commands with character references
-- **Search** — Grounded answers via SearXNG with deterministic attribution (🔍)
-- **Long-term Memory** — RAG-based fact storage with citation footers (💡)
-- **Smart Summarization** — Gemini 2.5 Flash summarizes messages 31-200 for local model efficiency
+- **Drawing** — `draw`, `gdraw` (AI-enhanced), and `edit` commands with Nano Banana 2
+- **Long-term Memory** — Memory Alaya DuckDB with hybrid search (vector + BM25 + questions)
+- **Smart Summarization** — Gemini 2.5 Flash summarizes messages 31-200 for efficiency
 - **Mid-Context Identity Injection** — Prevents identity drift in long conversations
 - **Admin & Whitelist** — Access control system with root admins and file-backed whitelist
 - **Time Awareness** — PST timestamps throughout context and responses
@@ -39,8 +38,7 @@ Project-Astral/
 │   ├── main.py                # Entry point
 │   ├── ai/
 │   │   ├── personality.py     # Astra's character, few-shot examples, DON'T rules
-│   │   ├── router.py          # LLM orchestration, tool routing, response cleaning
-│   │   └── query_enhance.py   # Search query improvement
+│   │   └── router.py          # Grok API integration, response cleaning, citation stripping
 │   ├── cogs/
 │   │   ├── admin.py           # /access add/remove/list commands
 │   │   ├── chat.py            # Main message handling & context assembly
@@ -49,20 +47,18 @@ Project-Astral/
 │   ├── tools/
 │   │   ├── admin.py           # Whitelist manager & ADMIN_IDS
 │   │   ├── characters.py      # Character reference system for drawings
-│   │   ├── discord_context.py # Chat history formatting + mid-context injection
-│   │   ├── drawing.py         # Image generation logic (FLUX/Gemini)
-│   │   ├── image_gen.py       # FLUX.2 API client
-│   │   ├── kokoro_tts.py      # Kokoro TTS client
-│   │   ├── search.py          # SearXNG integration
+│   │   ├── drawing.py         # Image generation logic (Nano Banana 2)
+│   │   ├── image_gen.py       # Gemini image generation API client
+│   │   ├── kokoro_tts.py      # Qwen3-TTS streaming client (Raiden voice)
 │   │   ├── stt.py             # Speech-to-text (Gemini + whisper)
 │   │   ├── time_utils.py      # PST time/date utilities
 │   │   ├── vision.py          # Gemini 3.0 Flash image analysis
 │   │   ├── voice_handler.py   # TTS playback & voice management
 │   │   └── voice_receiver.py  # VAD + audio capture
 │   ├── memory/
-│   │   ├── shared_memory.py   # Shared memory manager (cross-bot context)
-│   │   ├── embeddings.py      # Gemini Embedding 001 (3072-dim)
-│   │   └── rag.py             # SQLite RAG: store, retrieve, search knowledge
+│   │   ├── memory_alaya/      # Memory Alaya framework (DuckDB vector database)
+│   │   ├── memory_interface.py # Memory Alaya integration
+│   │   └── shared_memory.py   # Shared memory manager (100-msg rolling window)
 │   └── data/
 │       └── characters.json    # Known character definitions for recognition
 ├── docker-compose.yml
@@ -75,11 +71,11 @@ Project-Astral/
 
 | File | Purpose |
 |------|---------|
-| `personality.py` | Astra's core character: backstory, interests, few-shot examples, DON'T rules, anti-impersonation |
-| `router.py` | Decides search/vision (Gemini 2.5 Flash), builds ChatML messages, cleans response output (think tags, roleplay, repeats) |
-| `chat.py` | Orchestrates the full flow: shared_memory → RAG → tools → response → footers → TTS |
-| `shared_memory.py` | Manages shared_memory.json (100 msg rolling window), cross-bot context, summarization |
-| `voice_handler.py` | Kokoro TTS integration and voice playback management |
+| `personality.py` | Astra's core character: backstory, interests, few-shot examples, DON'T rules, Grok-specific prompts |
+| `router.py` | Grok API integration (/v1/responses endpoint), citation stripping, response cleaning |
+| `chat.py` | Orchestrates full flow: Memory Alaya → Grok → response → TTS |
+| `memory_interface.py` | Memory Alaya integration (DuckDB hybrid search + Gemini reranking) |
+| `voice_handler.py` | Qwen3-TTS streaming integration and voice playback management |
 
 ## Astra's Personality
 
@@ -101,19 +97,19 @@ Project-Astral/
 
 ### Prerequisites
 - Docker & Docker Compose
-- NVIDIA GPU on network (for LM Studio + Kokoro)
-- LM Studio with `qwen3-vl-32b-instruct-heretic-v2-i1` loaded
-- Gemini API key (for vision + embeddings)
+- xAI API key (for Grok 4.1 Fast)
+- Gemini API key (for vision + embeddings + summarization)
+- Qwen3-TTS server (for voice synthesis)
 
 ### Environment Variables
 ```env
 DISCORD_TOKEN=your_token
-GEMINI_API_KEY=your_key
-LMSTUDIO_HOST=http://host.docker.internal:1234
-LMSTUDIO_CHAT_MODEL=qwen3-vl-32b-instruct-heretic-v2-i1
-KOKORO_TTS_URL=http://host.docker.internal:8000
-SEARXNG_HOST=http://searxng:8080
-RAG_DATABASE=/app/data/db/memory.db
+GEMINI_API_KEY=your_gemini_key
+XAI_API_KEY=your_xai_key
+XAI_MODEL=grok-4-1-fast-reasoning
+XAI_HOST=https://api.x.ai
+LLM_BACKEND=grok
+QWEN_TTS_URL=http://host.docker.internal:8880
 ```
 
 ### Start
@@ -129,11 +125,11 @@ docker logs astral-bot --tail 20
 |---------|-------------|
 | `/join` | Astra joins your voice channel |
 | `/leave` | Astra leaves the voice channel |
-| `@Astra draw [prompt]` | Generate an image with FLUX/Gemini |
+| `@Astra draw [prompt]` | Generate an image with Nano Banana 2 |
 | `@Astra gdraw [prompt]` | AI-enhanced guided drawing |
 | `@Astra edit [instruction]` | Edit the last generated image |
 | `@Astra access [add/remove/list]` | Manage whitelist (admin only) |
-| `@Astra [anything]` | Chat naturally |
+| `@Astra [anything]` | Chat naturally with Grok 4.1 + auto web search |
 
 ## Version History
 
