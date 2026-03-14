@@ -229,10 +229,13 @@ class SharedMemoryManager:
         return None
 
     def save_summary(self, summary: str) -> bool:
-        """Save conversation summary."""
+        """Save conversation summary with atomic write (prevents corruption)."""
         try:
-            with open(self.summary_file, "w", encoding="utf-8") as f:
+            # Atomic write: temp file + rename (OS-level guarantee)
+            temp_path = self.summary_file + ".tmp"
+            with open(temp_path, "w", encoding="utf-8") as f:
                 f.write(summary)
+            os.replace(temp_path, self.summary_file)
             return True
         except Exception as e:
             print(f"[SharedMemory] Failed to save summary: {e}")

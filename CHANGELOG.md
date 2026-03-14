@@ -2,6 +2,31 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.5.2] - 2026-03-14
+
+### 🛡️ Atomic Writes for Summary Files - Prevents Corruption
+
+**Implemented atomic file writes to prevent partial write corruption.**
+
+#### Changed
+- **Summary writes now atomic**: `save_summary()` uses temp file + OS-level atomic rename
+  - Write to `shared_summary.txt.tmp`
+  - Atomic rename to `shared_summary.txt`
+  - `os.replace()` provides OS-level guarantee (no partial writes)
+
+#### Technical Details
+- **Atomic write pattern**: Temp file → `os.replace()` → final file
+- **OS guarantees**: POSIX atomic rename prevents corruption
+- **Future-proof**: Though Astral reads summaries from GemGem, atomic writes ensure safety if local summarization is re-enabled
+
+#### Problem Solved
+- **Previous**: Direct file writes could be interrupted, leaving corrupted files
+- **Solution**: Either complete write or file unchanged (no partial corruption)
+
+#### Files Modified
+- `bot/memory/shared_memory.py`:
+  - Lines 231-242: Atomic write in `save_summary()` method
+
 ## [5.5.1] - 2026-03-14
 
 ### 🎯 RAG Optimization - Lower Similarity Threshold for Better Recall
