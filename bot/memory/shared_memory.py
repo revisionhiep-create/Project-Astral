@@ -18,7 +18,7 @@ from typing import Optional
 class SharedMemoryManager:
     """Manages persistent conversation memory for all users and bots in a single file."""
 
-    MAX_HISTORY = 100  # Maximum messages total (rolling window)
+    MAX_HISTORY = 1500  # Maximum messages total (rolling window) - Leverages Grok 4.1's 2M token context
     MEMORY_FILE = "shared_memory.json"
     SUMMARY_FILE = "shared_summary.txt"
 

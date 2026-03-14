@@ -81,13 +81,30 @@ async def on_message(message: discord.Message):
     # GemGem's reply
     if message.author.id == GEMGEM_BOT_ID:
         content = message.content.strip()
-        if content:
+
+        # Skip recording GemGem's utility command responses
+        # Traits display, commands list, reset confirmations, dashboard intros, etc.
+        skip_patterns = [
+            "🎭 **",  # Traits display
+            "**Traits",  # Traits continuation
+            "## 💬",  # Commands list (starts with "## 💬 How to Talk to GemGem")
+            "📋 **GemGem Commands**",  # Alternative commands format
+            "🧹 Memory wiped",  # Reset confirmation
+            "⚙️ **Quick Actions**",  # Dashboard
+        ]
+
+        should_skip = any(content.startswith(pattern) for pattern in skip_patterns)
+
+        if content and not should_skip:
             shared_memory.append_message(
                 role="user",
                 content=content,
                 username="GemGem"
             )
             print(f"[SharedMemory] Recorded GemGem response: {content[:50]}...")
+        elif should_skip:
+            print(f"[SharedMemory] Skipped recording GemGem utility response: {content[:30]}...")
+
         await bot.process_commands(message)
         return
 
@@ -96,13 +113,21 @@ async def on_message(message: discord.Message):
             and not bot.user.mentioned_in(message)
             and whitelist.is_authorized(message.author.id)):
         content = re.sub(rf'<@!?{GEMGEM_BOT_ID}>', '', message.content).strip()
-        if content:
+
+        # Skip recording GemGem's utility commands (traits management, etc.)
+        content_lower = content.lower()
+        skip_commands = ["traits", "personality", "commands", "reset", "!"]
+
+        if content and content_lower not in skip_commands:
             shared_memory.append_message(
                 role="user",
                 content=content,
                 username=message.author.display_name
             )
             print(f"[SharedMemory] Recorded user->GemGem: [{message.author.display_name}] {content[:50]}...")
+        elif content_lower in skip_commands:
+            print(f"[SharedMemory] Skipped recording GemGem command: {content_lower}")
+
         await bot.process_commands(message)
         return
     # === END GEMGEM LISTENER ===

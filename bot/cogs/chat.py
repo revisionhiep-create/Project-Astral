@@ -6,7 +6,7 @@ import traceback
 import os
 
 from config import BotConfig
-from ai.router import process_message, summarize_text
+from ai.router import process_message
 
 from memory import (
     retrieve_relevant_knowledge,
@@ -32,8 +32,7 @@ class ChatCog(commands.Cog):
         # Initialize shared memory manager
         data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
         self.shared_memory = SharedMemoryManager(data_dir)
-        self.msgs_since_summary = 0
-        self.is_summarizing = False  # Lock to prevent concurrent summaries
+        # Note: Summarization is handled by GemGem, Astral just reads the summary
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -155,13 +154,8 @@ class ChatCog(commands.Cog):
                                     break
                 
                 # ============ SHARED MEMORY LOGIC AI FLOW ============
-
-                # Step 0: Background Summary Update
-                self.msgs_since_summary += 1
-                if self.msgs_since_summary >= BotConfig.SUMMARY_INTERVAL_MESSAGES and not self.is_summarizing:
-                    print(f"[Chat] Triggering background summary update (msgs since: {self.msgs_since_summary})")
-                    self.msgs_since_summary = 0
-                    asyncio.create_task(self._update_summary())
+                # Note: Summarization is handled by GemGem (single API call)
+                # Astral just reads the summary from shared_summary.txt
 
                 # Step 1: Load short-term context from shared_memory.json
                 # Load all history, format_for_router will handle truncation to last 30 if summary exists
@@ -357,69 +351,8 @@ class ChatCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Build initial summary on startup to fix amnesia."""
-        print("[Chat] Bot ready - Initializing summary from shared_memory.json...")
-        asyncio.create_task(self._initialize_summary())
-
-    async def _initialize_summary(self) -> None:
-        """Generate initial summary from shared_memory.json on boot."""
-        print(f"[Summarizer] Bootstrapping summary from shared_memory.json...")
-        await self._update_summary(initial=True)
-
-    async def _update_summary(self, initial: bool = False) -> None:
-        """Generate summary from shared_memory.json for older messages."""
-        try:
-            self.is_summarizing = True
-            if initial:
-                 print("[Summarizer] Generating STARTUP summary from shared memory...")
-            else:
-                 print("[Summarizer] Starting background summary update...")
-
-            # Load all messages from shared_memory.json
-            history = self.shared_memory.load_memory()
-
-            # Only summarize if we have enough history (need more than 30 messages)
-            if len(history) <= 30:
-                print(f"[Summarizer] Not enough history to summarize ({len(history)} msgs).")
-                self.is_summarizing = False
-                return
-
-            # Summarize messages 0 to -30 (everything except last 30)
-            # For local model: limit to last 200 messages max (messages 31-200 if history > 200)
-            if len(history) > 200:
-                older_msgs = history[-200:-30]  # Messages 31-200 from the end
-            else:
-                older_msgs = history[:-30]  # All except last 30
-
-            # Format transcript for summarizer
-            transcript_lines = []
-            for msg in older_msgs:
-                role = msg.get("role", "unknown")
-                username = msg.get("username", "User")
-                parts = msg.get("parts", [""])
-                content = parts[0] if parts else ""
-
-                if role == "model":
-                    transcript_lines.append(f"Astral: {content}")
-                else:
-                    transcript_lines.append(f"{username}: {content}")
-
-            transcript = "\n".join(transcript_lines)
-
-            # Generate summary with Gemini 2.0 Flash
-            new_summary = await summarize_text(transcript)
-
-            if new_summary:
-                # Save summary to shared_summary.txt
-                self.shared_memory.save_summary(new_summary)
-                print(f"[Summarizer] Updated summary ({len(new_summary)} chars) | Covered {len(older_msgs)} messages")
-            else:
-                print("[Summarizer] Summary generation returned empty string.")
-
-        except Exception as e:
-            print(f"[Summarizer] Error updating summary: {e}")
-        finally:
-            self.is_summarizing = False
+        """Log when bot is ready."""
+        print("[Chat] Astral ready - Reading summary from GemGem's shared_summary.txt...")
 
 
 async def setup(bot: commands.Bot):

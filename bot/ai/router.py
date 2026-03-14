@@ -780,7 +780,7 @@ async def summarize_text(text: str) -> str:
         return ""
 
     system_prompt = (
-        "Summarize this Discord conversation history in 8-12 sentences. This covers older messages (31-200) that provide background context.\n\n"
+        "Summarize this Discord conversation history in 8-12 sentences. This covers older messages (all except the last 30) that provide background context.\n\n"
         "Include:\n"
         "1. Main topics/events discussed and who was involved\n"
         "2. Key participants and their roles in the conversation\n"
