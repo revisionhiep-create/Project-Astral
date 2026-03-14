@@ -337,7 +337,7 @@ async def store_conversation(
 async def retrieve_relevant_knowledge(
     query: str,
     limit: int = 5,
-    threshold: float = 0.5,
+    threshold: float = 0.4,
     user_id: str = None,
     guild_id: str = None
 ) -> List[Dict[str, Any]]:
@@ -349,7 +349,7 @@ async def retrieve_relevant_knowledge(
     Args:
         query: User's query or message
         limit: Maximum number of results
-        threshold: Minimum similarity threshold (0.78 default like rag.py)
+        threshold: Minimum similarity threshold (0.4 for conversational AI, lowered from 0.5)
         user_id: Optional user ID filter
         guild_id: Optional guild ID filter
 
