@@ -2,6 +2,30 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.6.0] - 2026-03-15
+
+### ⚡ API Usage Optimization & Code Cleanup
+
+**Migrated summarization to Gemini 2.5 Flash and removed dead code for better efficiency.**
+
+#### Changes
+1. **Summarizer model updated**: `gemini-3-flash-preview` → `gemini-2.5-flash`
+   - File: `bot/ai/router.py` line 799
+   - Reduces dependency on preview models
+   - Fits within free tier: 250 RPD limit
+
+2. **Dead code removed**: `decide_tools_and_query()` function
+   - File: `bot/ai/router.py` (106 lines removed)
+   - Never called - Grok handles search natively
+   - Was using Gemini 3.0 Flash Preview unnecessarily
+
+#### Impact
+- **API savings**: Eliminated potential ~358 calls/day from unused function
+- **Daily API usage optimized**:
+  - 2.5 Flash: ~210/250 RPD (fact extraction + summarization)
+  - 3.0 Flash Preview: ~70/250 RPD (vision only)
+- **Free tier compatible**: Both models well within limits
+
 ## [5.5.4] - 2026-03-14
 
 ### 🐛 Video Attachment Detection - Bug Fix

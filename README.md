@@ -7,15 +7,17 @@
 | Component | Technology |
 |-----------|------------|
 | **Brain** | Grok 4.1 Fast Reasoning (xAI API) - 80-100 tokens/sec |
-| **Vision** | Gemini 3.0 Flash (image analysis + character recognition) |
+| **Vision** | Gemini 3.0 Flash Preview (image analysis + character recognition) ~36 calls/day |
 | **Image Gen** | Nano Banana 2 (Gemini 3.1 Flash Image) / Imagen 4.0 / Gemini 2.5 Flash Art |
 | **TTS** | Qwen3-TTS (streaming, Raiden voice clone) |
 | **STT** | Gemini Cloud (primary) / faster-whisper (fallback) |
 | **Search** | Grok built-in web_search (autonomous) + X/Twitter search |
-| **Memory** | Memory Alaya (DuckDB vector database with hybrid search) |
-| **Summarization** | Gemini 2.5 Flash (messages 31-200) |
+| **Memory** | Memory Alaya (DuckDB, Gemini 2.5 Flash for fact extraction ~107 calls/day) |
+| **Summarization** | Gemini 2.5 Flash (messages 31-200) ~10 calls/day |
 | **Framework** | discord.py |
 | **Deployment** | Docker Compose |
+
+**API Usage**: RAG + Vision operations use ~210 calls/day on Gemini 2.5 Flash and ~70 calls/day on Gemini 3.0 Flash Preview, both fitting within free tier limits (250 RPD).
 
 ## Features
 

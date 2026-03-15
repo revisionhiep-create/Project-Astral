@@ -463,114 +463,6 @@ async def _call_grok(messages: list, temperature: float = 0.7, max_tokens: int =
         return None
 
 
-async def decide_tools_and_query(
-    user_message: str,
-    has_image: bool,
-    conversation_context: str = ""
-) -> dict:
-    """
-    Decide which tools are needed and extract search query.
-    Uses the same model as chat for consistency.
-    
-    Args:
-        user_message: Current user message
-        has_image: Whether an image is attached
-        conversation_context: Recent chat context for follow-ups
-    
-    Returns:
-        Dict with search, vision, search_query, reasoning
-    """
-    prompt = f"""Analyze this Discord message and decide what tools are needed.
-
-Recent chat context:
-{conversation_context[:3000] if conversation_context else "(no context)"}
-
-Current message: {user_message}
-Has image attachment: {has_image}
-
-Respond with ONLY valid JSON:
-{{
-  "search": true or false,
-  "search_query": "optimized search query if search is true, otherwise empty string",
-  "time_range": "day/week/month/year or null for all-time",
-  "vision": true or false,
-  "reasoning": "brief one-line explanation"
-}}
-
-Rules:
-- search=true: ANY question requiring CURRENT/REAL-TIME info (weather, prices, scores, news, "what's happening", recent events)
-- search=true: factual questions about specific people, things, events, releases, updates
-- search=true: questions with time words like "now", "today", "current", "latest", "recent", "will" (future)
-- search=true: niche/technical topics, specific person details, current events
-- search=true: when you're not 100% certain about the answer - better to search than guess
-- search=false: well-known concepts you already know (Stoicism, basic science, common knowledge)
-- search=false: casual chat, greetings, pure opinions, emotional support, questions answerable from chat context
-- search=false: personal questions about the user or reactions to what they said
-- vision=true: image is attached OR user asks to look at something
-
-QUERY REWRITING (CRITICAL):
-- De-contextualize: Replace ALL pronouns (he, she, it, they, him, her, this, that) with specific entities from chat context
-- Bad: "How old is he?" → Good: "Tim Cook age" (if context mentioned Tim Cook)
-- Bad: "What does it cost?" → Good: "iPhone 16 Pro price" (if context mentioned iPhone)
-- Extract key terms, add context (city names, specific topics), remove filler words
-
-TIME RANGE:
-- "day" or "week": News, current events, scores, weather, "what's happening now"
-- "month" or "year": Recent releases, updates, new products
-- null: Historical facts, biographies, evergreen documentation, "who was", "what is"
-
-Examples:
-- "when will the snow melt in DC" → {{"search": true, "search_query": "Washington DC weather forecast snow", "time_range": "week", "vision": false, "reasoning": "weather is real-time"}}
-- "who won the game" → {{"search": true, "search_query": "latest game score results", "time_range": "day", "vision": false, "reasoning": "sports scores are real-time"}}
-- "who is ironmouse" → {{"search": true, "search_query": "Ironmouse VTuber", "time_range": null, "vision": false, "reasoning": "person lookup, evergreen info"}}
-- "How old is he?" (context: discussed Tim Cook) → {{"search": true, "search_query": "Tim Cook age", "time_range": null, "vision": false, "reasoning": "resolved pronoun from context"}}
-- "who was the first Roman Emperor" → {{"search": true, "search_query": "first Roman Emperor", "time_range": null, "vision": false, "reasoning": "historical fact, no time limit"}}
-- "what is Stoicism" → {{"search": false, "search_query": "", "time_range": null, "vision": false, "reasoning": "well-known concept, use internal knowledge"}}
-- "hey what's up" → {{"search": false, "search_query": "", "time_range": null, "vision": false, "reasoning": "casual greeting"}}
-- [image attached] "what is this" → {{"search": false, "time_range": null, "vision": true, "reasoning": "user wants image analyzed"}}"""
-
-    try:
-        # System instructions + user message for tool decision
-        full_input = f"{prompt}\n\nCurrent message: {user_message}\nHas image attachment: {has_image}"
-
-        response = client.models.generate_content(
-            model="gemini-3-flash-preview",
-            contents=full_input,
-            config=types.GenerateContentConfig(
-                temperature=0.1,
-                max_output_tokens=256,
-                response_mime_type="application/json"
-            )
-        )
-
-        if not response or not response.text:
-            raise Exception("No response from Gemini")
-        
-        # Extract and parse JSON
-        decision = _extract_json(response.text)
-        print(f"[Router] Decision (Gemini): search={decision.get('search')}, vision={decision.get('vision')}, time_range={decision.get('time_range')}, query='{decision.get('search_query', '')[:50]}'")
-        return decision
-        
-    except (json.JSONDecodeError, ValueError) as e:
-        print(f"[Router] JSON parse error: {e}")
-        return {
-            "search": len(user_message) > 15,
-            "search_query": user_message,
-            "time_range": None,
-            "vision": has_image,
-            "reasoning": "fallback due to parse error"
-        }
-    except Exception as e:
-        print(f"[Router Error] {e}")
-        return {
-            "search": False,
-            "search_query": "",
-            "time_range": None,
-            "vision": has_image,
-            "reasoning": f"error: {e}"
-        }
-
-
 async def generate_response(
     user_message: str,
     search_context: str = "",
@@ -796,7 +688,7 @@ async def summarize_text(text: str) -> str:
 
     try:
         response = client.models.generate_content(
-            model="gemini-3-flash-preview",
+            model="gemini-2.5-flash",
             contents=f"{system_prompt}\n\nConversation History:\n{text}",
             config=types.GenerateContentConfig(
                 temperature=0.3,
