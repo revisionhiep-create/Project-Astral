@@ -2,6 +2,40 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.5.3] - 2026-03-14
+
+### 🎬 MP4/Video Support Documentation
+
+**Confirmed and documented existing MP4 and video format support for Discord video attachments.**
+
+#### Capabilities
+- **Discord Video Support**: Full support for MP4 videos posted by users in Discord
+  - Detects `gifv` embeds with `embed.video.url` (MP4 format)
+  - Analyzes videos using Gemini 3.0 Flash vision API
+  - Passes analysis to Grok for personality-driven responses
+
+- **Supported Video Formats**: Gemini API supports multiple formats
+  - MP4 (video/mp4) - Primary Discord format
+  - WebM (video/webm)
+  - MOV (video/mov)
+  - Plus: AVI, MPEG, FLV, WMV, 3GPP
+
+#### Technical Implementation
+- **Detection**: Lines 106-111 in `bot/cogs/chat.py`
+  - Checks for `embed.type == "gifv"` and extracts `embed.video.url`
+  - Priority 1 detection in embed processing pipeline
+- **Vision Analysis**: `bot/tools/vision.py` (describe_gif function)
+  - Uses Gemini 3.0 Flash for video understanding
+  - Lines 213-318: GIF/video analysis with character recognition
+- **Processing**: Uses `types.Part.from_bytes(data=gif_data, mime_type=mime_type)`
+  - Sends video data to Gemini for analysis
+  - MIME type retrieved from HTTP response headers
+
+#### Benefits
+- **User videos analyzable**: Discord users can share MP4 videos for Astral to view
+- **No code changes needed**: Feature already implemented and working
+- **Multiple formats**: Supports all major video formats via Gemini API
+
 ## [5.5.2] - 2026-03-14
 
 ### 🛡️ Atomic Writes for Summary Files - Prevents Corruption
