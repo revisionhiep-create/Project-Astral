@@ -2,11 +2,33 @@
 
 All notable changes to Project Astral will be documented in this file.
 
+## [5.5.4] - 2026-03-14
+
+### 🐛 Video Attachment Detection - Bug Fix
+
+**Fixed missing detection for direct video file uploads (MP4, MOV, WebM, etc.).**
+
+#### Problem
+- Bot could see embedded videos (gifv type) but NOT direct video file uploads
+- Users uploading video files directly had them ignored
+- Only image files and embedded videos were being detected
+
+#### Solution
+- Added video MIME type detection to attachment handler
+- Detection via `content_type.startswith("video/")`
+- Videos processed through Gemini vision → Grok response pipeline
+
+#### Technical Details
+- **File Modified**: `bot/cogs/chat.py` lines 100-104
+- **Detection**: MIME type check for `video/*` content types
+- **Processing**: Uses `gif_url` variable → Gemini vision analysis
+- **Debug logging**: Added print statement with filename and MIME type
+
 ## [5.5.3] - 2026-03-14
 
 ### 🎬 MP4/Video Support Documentation
 
-**Confirmed and documented existing MP4 and video format support for Discord video attachments.**
+**Confirmed existing support for embedded videos, but direct video uploads were not working (fixed in v5.5.4).**
 
 #### Capabilities
 - **Discord Video Support**: Full support for MP4 videos posted by users in Discord

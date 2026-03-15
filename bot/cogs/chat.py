@@ -88,14 +88,20 @@ class ChatCog(commands.Cog):
                 image_url = None
                 gif_url = None
 
-                # First, check for direct image attachments
+                # First, check for direct image and video attachments
                 for attachment in message.attachments:
-                    if attachment.content_type and attachment.content_type.startswith("image/"):
-                        if attachment.content_type == "image/gif" or attachment.url.lower().endswith('.gif'):
+                    if attachment.content_type:
+                        if attachment.content_type.startswith("image/"):
+                            if attachment.content_type == "image/gif" or attachment.url.lower().endswith('.gif'):
+                                gif_url = attachment.url
+                            else:
+                                image_url = attachment.url
+                            break
+                        elif attachment.content_type.startswith("video/"):
+                            # Handle video files (MP4, MOV, WebM, etc.) - treat as gif_url for vision analysis
                             gif_url = attachment.url
-                        else:
-                            image_url = attachment.url
-                        break
+                            print(f"[Chat] Detected video attachment: {attachment.filename} (MIME: {attachment.content_type})")
+                            break
 
                 # Second, check for Tenor GIF links in message content or embeds
                 # Discord's GIF button sends Tenor URLs as plain text or in embeds
